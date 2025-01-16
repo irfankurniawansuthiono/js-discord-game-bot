@@ -1,4 +1,4 @@
-# nanamibothharam
+# DiscordGameBot
 
 To install dependencies:
 
