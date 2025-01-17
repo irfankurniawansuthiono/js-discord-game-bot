@@ -1395,10 +1395,6 @@ client.once("ready", () => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot || !message.content.startsWith(prefix)) return;
-  const botMentioned = message.mentions.has(client.user);
-  if (botMentioned) {
-    return message.reply({ embeds: [helpEmbed] });
-  }
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
 
