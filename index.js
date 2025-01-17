@@ -119,7 +119,7 @@ class DataManager {
       
       // Calculate robbery chance and amount
       const chance = Math.random() < 0.3;  // 30% chance to succeed
-      const amount = Math.floor(Math.random() * 999999999);
+      const amount = Math.floor(Math.random() * 10000);
       const getAuthorBalance = this.users[authorId].balance;
       if(getAuthorBalance < amount){
         message.reply(`You don't have enough balance ${formatBalance(amount)} to rob!`)
