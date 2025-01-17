@@ -1117,6 +1117,10 @@ const commands = {
       return message.reply(`Usage: ${prefix}giveowner <amount>`);
     }
 
+    if(amount > 1000000000000000){
+      return message.reply(`You can't give that much money!`);
+    }
+
     try {
       const updatedUser = await dataManager.giveOwnerMoney(
         message.author.id,
