@@ -655,6 +655,7 @@ const ownerHelperFirewall = (authorId, message) => {
 // Commands remain the same as in the previous version
 const commands = {
   slots: (message, args) => {
+    if(args.length < 2) return message.reply(`Usage: ${prefix}slots <bet | all>`);
     const bet = args[1];
     return Games.slots(message, bet);
   },
