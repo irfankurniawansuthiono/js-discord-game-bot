@@ -90,6 +90,8 @@ const helpEmbed = new EmbedBuilder()
     {
       name: "Owner Commands",
       value: [
+        `**${prefix}setbalance** <@user> \n Set user's balance`,
+        `**${prefix}setnick** <@user> \n Set user's nickname`,
         `**${prefix}giveowner** <amount> \n Give money to bot owner`,
         `**${prefix}setprefix** <prefix> \n Set bot prefix`,
         `**${prefix}setstatus** <status> \n Set bot status`,
@@ -113,6 +115,30 @@ const helpEmbed = new EmbedBuilder()
   .setFooter({ text: "Nanami Help Menu" })
   .setTimestamp();
 
+  // class discord
+  class DiscordFormat {
+    constructor() {
+      this.color = "#FFF000";
+      this.title = "Nanami";
+    }
+    async setNickname(message, mentionedUser, newNick) {
+      try {
+        // Ambil GuildMember dari user yang disebut
+        const member = message.guild.members.cache.get(mentionedUser.id);
+  
+        if (!member) {
+          return message.channel.send("User tidak ditemukan dalam server ini.");
+        }
+  
+        // Ubah nickname
+        await member.setNickname(newNick);
+        message.channel.send(`Nickname untuk ${mentionedUser} berhasil diubah menjadi ${newNick}!`);
+      } catch (error) {
+        console.error("Error saat mengubah nickname:", error);
+        message.channel.send("Terjadi kesalahan saat mencoba mengubah nickname.");
+      }
+    }
+  }
 // Data Management
 class DataManager {
   constructor() {
@@ -405,6 +431,7 @@ class DataManager {
   }
 }
 
+const discordFormat = new DiscordFormat();
 const dataManager = new DataManager();
 
 // Games
@@ -1091,6 +1118,24 @@ const ownerHelperFirewall = (authorId, message) => {
   return true;
 };
 const commands = {
+  setbalance: async (message, args) => {
+    if(!ownerHelperFirewall(message.author.id, message)) return;
+    if (args.length < 3) {
+      return message.reply(`Usage: ${prefix}setbalance <user> <amount>`);
+    }
+    const userId = args[1];
+    const amount = parseInt(args[2]);
+    if (isNaN(amount) || amount <= 0) {
+      return message.reply("Please enter a valid amount.");
+    }
+    try {
+      await dataManager.setBalance(userId, amount);
+      message.reply(`Balance for user ${userId} has been set to ${amount}.`);
+    } catch (error) {
+      console.error("Error in setBalance command:", error);
+      message.reply("An error occurred while processing the command.");
+    }
+  },
   resetap: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     try {
@@ -1257,7 +1302,15 @@ const commands = {
     }
     return Games.numberGuess(message, bet, guess);
   },
-
+  nick: (message, args) => {
+    if(!ownerHelperFirewall(message.author.id, message)) return;
+    const mention = message.mentions.users.first();
+    const newNick = args.slice(2).join(" ");
+    if (!mention || !newNick) {
+      return message.reply("Please provide a new nickname.");
+    }
+    return discordFormat.setNickname(message,mention, newNick);
+  },
   dice: (message, args) => {
     const bet = args[1];
     const guess = args[2];
