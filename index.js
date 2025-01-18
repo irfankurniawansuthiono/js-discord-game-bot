@@ -134,7 +134,7 @@ class DataManager {
         },
         {
           headers: {
-            Authorization: `Bearer nanami`,
+            Authorization: `Bearer ${process.env.API_AI_KEY}`,
             "Content-Type": "application/json",
           },
         }
@@ -418,6 +418,8 @@ class Games {
         const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
         return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
     }
+    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -726,6 +728,8 @@ class Games {
         const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
         return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
     }
+    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -870,6 +874,9 @@ class Games {
       );
     }
 
+    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+
+
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -952,6 +959,9 @@ class Games {
         const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
         return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
     }
+
+    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -1008,6 +1018,9 @@ class Games {
         const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
         return message.reply(`Please wait ${remainingTime} seconds before slots again!`);
     }
+
+    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+
     const diceTextReturn = [
       "<:1_:1329775714269925479>",
       "<:2_:1329775740798898198>",
@@ -1077,7 +1090,6 @@ const ownerHelperFirewall = (authorId, message) => {
   }
   return true;
 };
-// Commands remain the same as in the previous version
 const commands = {
   resetap: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
