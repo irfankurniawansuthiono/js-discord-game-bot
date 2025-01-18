@@ -440,8 +440,26 @@ class Games {
   ══════════════`;
       };
   
-      // Send initial game state
-      const gameMsg = await message.reply(createGameDisplay(playerHand, dealerHand));
+      // Create buttons
+      const hitButton = new ButtonBuilder()
+        .setCustomId('hit')
+        .setLabel('Hit')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👊');
+  
+      const standButton = new ButtonBuilder()
+        .setCustomId('stand')
+        .setLabel('Stand')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🛑');
+  
+      const row = new ActionRowBuilder().addComponents(hitButton, standButton);
+  
+      // Send initial game state with buttons
+      const gameMsg = await message.reply({
+        content: createGameDisplay(playerHand, dealerHand),
+        components: [row]
+      });
   
       // Check for natural blackjack
       const playerValue = calculateHandValue(playerHand);
@@ -466,21 +484,26 @@ class Games {
         dataManager.updateStats(message.author.id, amount > 0, amount);
         user = dataManager.getUser(message.author.id);
   
-        await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false, 
-          `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`));
+        await gameMsg.edit({
+          content: createGameDisplay(playerHand, dealerHand, false, 
+            `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`),
+          components: []
+        });
         return;
       }
   
-      // Create collector for player decisions
-      const filter = m => m.author.id === message.author.id && ['h', 's'].includes(m.content.toLowerCase());
-      const collector = message.channel.createMessageCollector({ filter, time: 30000, max: 10 });
+      // Create button collector
+      const filter = i => i.user.id === message.author.id && ['hit', 'stand'].includes(i.customId);
+      const collector = gameMsg.createMessageComponentCollector({ filter, time: 30000 });
   
       let gameEnded = false;
-      
-      collector.on('collect', async (m) => {
+  
+      collector.on('collect', async (interaction) => {
         if (gameEnded) return;
   
-        if (m.content.toLowerCase() === 'h') {
+        await interaction.deferUpdate();
+  
+        if (interaction.customId === 'hit') {
           // Player hits
           playerHand.push(deck.pop());
           const newValue = calculateHandValue(playerHand);
@@ -494,13 +517,18 @@ class Games {
             dataManager.updateStats(message.author.id, false, -bet);
             user = dataManager.getUser(message.author.id);
   
-            await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
-              `Bust! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`));
+            await gameMsg.edit({
+              content: createGameDisplay(playerHand, dealerHand, false,
+                `Bust! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`),
+              components: []
+            });
           } else {
-            await gameMsg.edit(createGameDisplay(playerHand, dealerHand, true,
-              'Type "h" to hit or "s" to stand'));
+            await gameMsg.edit({
+              content: createGameDisplay(playerHand, dealerHand),
+              components: [row]
+            });
           }
-        } else if (m.content.toLowerCase() === 's') {
+        } else if (interaction.customId === 'stand') {
           gameEnded = true;
           collector.stop();
   
@@ -532,8 +560,11 @@ class Games {
           dataManager.updateStats(message.author.id, amount > 0, amount);
           user = dataManager.getUser(message.author.id);
   
-          await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
-            `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`));
+          await gameMsg.edit({
+            content: createGameDisplay(playerHand, dealerHand, false,
+              `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`),
+            components: []
+          });
         }
       });
   
@@ -543,13 +574,13 @@ class Games {
           dataManager.updateStats(message.author.id, false, -bet);
           user = dataManager.getUser(message.author.id);
   
-          await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
-            `Time's up! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`));
+          await gameMsg.edit({
+            content: createGameDisplay(playerHand, dealerHand, false,
+              `Time's up! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`),
+            components: []
+          });
         }
       });
-  
-      // Initial prompt
-      await message.reply('Type "h" to hit or "s" to stand');
   
     } catch (error) {
       console.error("Error in blackjack game:", error);
