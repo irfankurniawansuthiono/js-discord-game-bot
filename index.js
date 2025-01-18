@@ -50,6 +50,7 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix}profile** \n Alias for balance`,
         `**${prefix}ownerinfo** \n Show bot owner information`,
         `**${prefix}botinfo** \n Show your bot information`,
+        `**${prefix}serverinfo** \n Show server information`,
       ].join("\n\n"),
     },
     {
@@ -902,6 +903,113 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 // Commands remain the same as in the previous version
 const commands = {
+  serverinfo: async (message) => {
+    try {
+      // Fetch guild owner
+      const owner = await message.guild.fetchOwner();
+      
+      // Get human-readable verification level
+      const verificationLevels = {
+        0: 'None',
+        1: 'Low',
+        2: 'Medium',
+        3: 'High',
+        4: 'Highest'
+      };
+  
+      // Get human-readable NSFW level
+      const nsfwLevels = {
+        0: 'Default',
+        1: 'Explicit',
+        2: 'Safe',
+        3: 'Age Restricted'
+      };
+  
+      // Get human-readable boost tier
+      const boostTiers = {
+        0: 'None',
+        1: 'Tier 1',
+        2: 'Tier 2',
+        3: 'Tier 3'
+      };
+  
+      // Count different types of channels
+      const textChannels = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
+      const voiceChannels = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size;
+      const categories = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).size;
+      const totalChannels = message.guild.channels.cache.size;
+  
+      const serverEmbed = new EmbedBuilder()
+        .setColor("#FFD700")
+        .setTitle(message.guild.name)
+        .setDescription(message.guild.description || 'No description')
+        .setThumbnail(message.guild.iconURL({ dynamic: true, size: 1024 }))
+        .addFields([
+          { 
+            name: "👑 Owner", 
+            value: `${owner.user.tag}`, 
+            inline: true 
+          },
+          { 
+            name: "👥 Members", 
+            value: `Total: ${message.guild.memberCount}
+            Users: ${message.guild.members.cache.filter(m => !m.user.bot).size}
+            Bots: ${message.guild.members.cache.filter(m => m.user.bot).size}`, 
+            inline: true 
+          },
+          { 
+            name: "📺 Channels", 
+            value: `Total: ${totalChannels}
+            Text: ${textChannels}
+            Voice: ${voiceChannels}
+            Categories: ${categories}`, 
+            inline: true 
+          },
+          { 
+            name: "🎭 Roles", 
+            value: `${message.guild.roles.cache.size}`, 
+            inline: true 
+          },
+          { 
+            name: "🚀 Boosts", 
+            value: `Count: ${message.guild.premiumSubscriptionCount}
+            Tier: ${boostTiers[message.guild.premiumTier]}`, 
+            inline: true 
+          },
+          { 
+            name: "🔒 Verification", 
+            value: verificationLevels[message.guild.verificationLevel], 
+            inline: true 
+          },
+          { 
+            name: "🔞 NSFW Level", 
+            value: nsfwLevels[message.guild.nsfwLevel], 
+            inline: true 
+          },
+          { 
+            name: "😀 Emojis & Stickers", 
+            value: `Emojis: ${message.guild.emojis.cache.size}
+            Stickers: ${message.guild.stickers.cache.size}`, 
+            inline: true 
+          },
+          { 
+            name: "📅 Created", 
+            value: `<t:${Math.floor(message.guild.createdTimestamp / 1000)}:R>`, 
+            inline: true 
+          }
+        ]);
+  
+      // Add server banner if exists
+      if (message.guild.bannerURL()) {
+        serverEmbed.setImage(message.guild.bannerURL({ dynamic: true, size: 1024 }));
+      }
+  
+      return message.reply({ embeds: [serverEmbed] });
+    } catch (error) {
+      console.error('Error in serverinfo command:', error);
+      return message.reply('An error occurred while fetching server information.');
+    }
+  },
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
