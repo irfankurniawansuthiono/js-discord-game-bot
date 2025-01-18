@@ -60,8 +60,11 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix} ownerinfo** \n Show bot owner information`,
         `**${prefix} botinfo** \n Show your bot information`,
         `**${prefix} ttfind** <prompt> \n Search for TikTok videos`,
+        `**${prefix} ttinfo** <tiktok url> \n Show TikTok video information`,
         `**${prefix} ttdown** <tiktok url> \n Download TikTok video`,
-        `**${prefix} ytdown** <prompt> \n Download YouTube videos`,
+        `**${prefix} ytdown** <youtube url> \n Download YouTube videos`,
+        `**${prefix} iginfo** <instagram url> \n Show Instagram video information`,
+        `**${prefix} igdown** <instagram url> \n Download Instagram videos`,
       ].join("\n\n"),
     },
     {
@@ -184,6 +187,137 @@ const helpEmbed = new EmbedBuilder()
         );
       }
     }
+    async instagramDownload(message, url) {
+      // Validasi URL Instagram
+      if (!url || !url.startsWith("https://www.instagram.com/")) {
+        return message.reply("Please provide a valid Instagram URL.");
+      }
+    
+      try {
+        // Mengirim pesan loading
+        const igMessage = await message.reply("<a:loading:1330226649169399882> Downloading...");
+    
+        // Mengambil data video dari API
+        const response = await axios.get(
+          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+        );
+        const data = response.data;
+    
+        // Validasi response data
+        if (!data || !data.result) {
+          return igMessage.edit(
+            "There was an error processing your request, please try again later."
+          );
+        }
+    
+        const videoInfo = data.result;
+        const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
+        const videoTitle = videoInfo.title;
+        const videoThumbnail = videoInfo.thumbnail;
+        const videoType = videoInfo.medias.find((media) => media.type === "video");
+
+        // Unduh video dari URL tanpa watermark
+        const fileResponse = await axios.get(videoUrl, {
+          responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
+        });
+  
+        const fileBuffer = Buffer.from(fileResponse.data, "binary"); // Konversi ke buffer
+        const fileAttachment = new AttachmentBuilder(fileBuffer, { name: videoType ? "video.mp4" : "image.jpg" });
+    
+        // Membuat Embed untuk menampilkan informasi video Instagram
+        const igEmbed = new EmbedBuilder()
+          .setColor("#FFFF00")
+          .setTitle("Instagram Download")
+          .setDescription(
+            `${videoTitle}`
+          )
+          .setURL(videoUrl)
+          .setThumbnail(videoThumbnail)
+          .setFooter({ text: "Downloaded via https://api.itzky.us.kg", iconURL: message.author.displayAvatarURL() })
+          .setTimestamp();
+    
+        // Mengirim embed ke pengguna dengan URL video
+        if (videoUrl) {
+          // Edit pesan dengan embed dan tombol
+          await igMessage.edit({ embeds: [igEmbed], files: [fileAttachment], content: "Here's your video!" });
+        } else {
+          // Jika tidak ada URL video, beri tahu pengguna
+          return igMessage.edit("No video found for the given Instagram URL.");
+        }
+      } catch (error) {
+        console.error("Error in instagram Download command:", error);
+        return message.reply(
+          "There was an error processing your Instagram file request, please try again later."
+        );
+      }
+    }
+    async instagramInfo(message, url) {
+      // Validasi URL Instagram
+      if (!url || !url.startsWith("https://www.instagram.com/")) {
+        return message.reply("Please provide a valid Instagram URL.");
+      }
+    
+      try {
+        // Mengirim pesan loading
+        const igMessage = await message.reply("<a:loading:1330226649169399882> Fetching...");
+    
+        // Mengambil data video dari API
+        const response = await axios.get(
+          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+        );
+        const data = response.data;
+    
+        // Validasi response data
+        if (!data || !data.result) {
+          return igMessage.edit(
+            "There was an error processing your request, please try again later."
+          );
+        }
+    
+        const videoInfo = data.result;
+        const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
+        const videoTitle = videoInfo.title;
+        const videoThumbnail = videoInfo.thumbnail;
+        const videoDuration = videoInfo.duration;
+        const videoType = videoInfo.medias.find((media) => media.type === "video");
+    
+        // Membuat Embed untuk menampilkan informasi video Instagram
+        const igEmbed = new EmbedBuilder()
+          .setColor("#FFFF00")
+          .setTitle("Instagram Information")
+          .setDescription(
+            `**Title**: ${videoTitle}\n\n${videoType ? `**Type**: Video\n` : `**Type**: Image\n`}\n\n${videoType ? `**Duration**: ${videoDuration} seconds}` : ""}
+            `
+          )
+          .setURL(videoUrl)
+          .setThumbnail(videoThumbnail)
+          .setFooter({ text: "Nanami" })
+          .setTimestamp();
+    
+        // Mengirim embed ke pengguna dengan URL video
+        if (videoUrl) {
+          // Menambahkan tombol download jika URL video ada
+          const videoDownloadButton = new ButtonBuilder()
+            .setLabel("🎥 Download Video")
+            .setStyle(ButtonStyle.Link)
+            .setURL(videoUrl); // URL video yang dapat diunduh
+    
+          const row = new ActionRowBuilder().addComponents(videoDownloadButton);
+    
+          // Edit pesan dengan embed dan tombol
+          await igMessage.edit({ embeds: [igEmbed], components: [row], content: "Here's the result!" });
+        } else {
+          // Jika tidak ada URL video, beri tahu pengguna
+          return igMessage.edit("No video found for the given Instagram URL.");
+        }
+      } catch (error) {
+        console.error("Error in instagram Download command:", error);
+        return message.reply(
+          "There was an error processing your Instagram file request, please try again later."
+        );
+      }
+    }
+
     async youtubeDownload(message, url) {
       // Cek URL
       if (!url) {
@@ -238,7 +372,7 @@ const helpEmbed = new EmbedBuilder()
           .setURL(url) // Link ke video YouTube
           .setThumbnail(videoThumbnail)
           .setFooter({
-            text: "Downloaded by api.itzky.us.kg",
+            text: "Downloaded via api.itzky.us.kg",
             iconURL: message.author.displayAvatarURL(),
           })
           .setTimestamp();
@@ -1384,9 +1518,23 @@ const ownerHelperFirewall = (authorId, message) => {
   return true;
 };
 const commands = {
+  igdown: async (message, args) => {
+    if(args.length < 2) {
+      return message.reply(`Usage: ${prefix} igdown <url>`);
+    }
+    const url = args[1];
+    await apiManagement.instagramDownload(message, url);
+  },
+  iginfo: async (message, args) => {
+    if(args.length < 2) {
+      return message.reply(`Usage: ${prefix} iginfo <url>`);
+    }
+    const url = args[1];
+    await apiManagement.instagramInfo(message, url);
+  },
   ttinfo: async (message, args) => {
     if(args.length < 2) {
-      return message.reply(`Usage: ${prefix}ttinfo <url>`);
+      return message.reply(`Usage: ${prefix} ttinfo <url>`);
     }
     const url = args[1];
     await apiManagement.tiktokInfo(message, url);
