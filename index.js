@@ -366,11 +366,11 @@ class Games {
 
     try {
       // Emoji untuk slot
-      const emojis = ["⭐", "🍒", "🍇"];
+      const emojis = ["⭐", "🍒", "🍇", "🍑", "🍆", "🌽"];
 
       // 20% chance to win
       const winningChance = Math.random() < 0.2;
-
+       const starChance = Math.random() < 0.1;
       // Fungsi untuk mendapatkan random emoji
       const getRandomEmoji = () =>
         emojis[Math.floor(Math.random() * emojis.length)];
@@ -395,7 +395,7 @@ class Games {
         const randomSlots = Array(3)
           .fill()
           .map(() => getRandomEmoji());
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await slotMsg.edit(createSlotDisplay(randomSlots));
       }
 
@@ -423,7 +423,16 @@ class Games {
       let resultMessage;
       if (won) {
         let multiplier = 10; // Multiplier untuk kemenangan
-        if(finalSlots[0] === "⭐" && finalSlots[1] === "⭐" && finalSlots[2] === "⭐") multiplier = 100
+        if(finalSlots[0] === "⭐" && finalSlots[1] === "⭐" && finalSlots[2] === "⭐") {
+          if(starChance) {
+            multiplier = 100;
+          }else{
+            // ganti ke emoji selain bintang tetapi dia akan tetap sama
+            finalSlots[0] = "🍒";
+            finalSlots[1] = "🍒";
+            finalSlots[2] = "🍒";
+          }
+        }
         const winnings = bet * multiplier;
         dataManager.updateBalance(message.author.id, winnings);
         dataManager.updateStats(message.author.id, winningChance, winnings);
