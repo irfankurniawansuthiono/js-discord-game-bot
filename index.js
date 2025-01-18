@@ -120,10 +120,6 @@ class DataManager {
       // Calculate robbery chance and amount
       const chance = Math.random() < 0.3;  // 30% chance to succeed
       const amount = Math.floor(Math.random() * 10000);
-      const getAuthorBalance = this.users[authorId].balance;
-      if(getAuthorBalance < amount){
-        message.reply(`You don't have enough balance ${formatBalance(amount)} to rob!`)
-      }
       // Create base embed
       const robEmbedHelper = new EmbedBuilder()
         .setColor("#FF0000")
@@ -166,7 +162,7 @@ class DataManager {
       }
   
       // Save changes
-      await this.saveData();
+      this.saveData();
       
       // Send result message
       await robMsg.edit({ embeds: [robEmbedHelper] });
@@ -181,7 +177,7 @@ class DataManager {
       // Handle errors
       const errorEmbed = new EmbedBuilder()
         .setColor("#FF0000")
-        .setTitle("Error")
+        .setTitle(":anger: Error")
         .setDescription(error.message)
         .setFooter({ text: "Nanami" })
         .setTimestamp();
@@ -1054,7 +1050,8 @@ const commands = {
       {
         name: "🔗 Links",
         value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
-               • [Developer Website](https://www.irfanks.site/)`,
+                • [Community Server](https://discord.gg/ARsVsfjtqA)
+                • [Developer Website](https://www.irfanks.site/)`,
         inline: false
       }
     )
@@ -1272,7 +1269,7 @@ const commands = {
         );
       }
       if (error.message === "Insufficient balance!") {
-        return message.reply("You don't have enough money for this transfer!");
+        return message.reply(`${targetUser} don't have enough money for this transfer!`);
       }
 
       console.error("Error in take command:", error);
