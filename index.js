@@ -1958,6 +1958,27 @@ const commands = {
 // Event Handlers
 client.once("ready", () => {
   console.log(`Bot logged in as ${client.user.tag}`);
+  client.user.setPresence({
+    activities: [
+      {
+        name: "N!help for commands",
+        type: ActivityType.Listening,
+        details: "The best bot assistant!",
+        state: "Join our server for more!", // Teks status tambahan
+        assets: {
+          largeImage: "desain_tanpa_judul", // Nama gambar besar dari Art Assets
+          largeText: "Nanami Bot", // Teks saat hover gambar besar
+          smallImage: "desain_tanpa_judul", // Nama gambar kecil dari Art Assets (opsional)
+          smallText: "Helping you always!", // Teks saat hover gambar kecil (opsional)
+        },
+        buttons: [
+          { label: "Invite Me", url: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot` },
+          { label: "Support Server", url: "https://discord.gg/ARsVsfjtqA" },
+        ],
+      },
+    ],
+    status: "online", // Status bot (online, idle, dnd, invisible)
+  });
 });
 
 client.on("messageCreate", async (message) => {
@@ -1973,7 +1994,7 @@ client.on("messageCreate", async (message) => {
     console.log(prompt);
     await dataManager.aiResponse(message, prompt);
   }
-
+  
   if(!message.content.startsWith(prefix)) return;
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
