@@ -728,12 +728,18 @@ class Games {
     }
 
     try {
+      
       // Emoji untuk slot
       const emojis = ["⭐", "🍒", "🍇", "🍑", "🍆", "🌽"];
 
       // 20% chance to win
-      const winningChance = Math.random() < 0.2;
-      const starChance = Math.random() < 0.1;
+      let winningChance = Math.random() < 0.2;
+      let starChance = Math.random() < 0.1;
+      // jika bot owner yang melakukan spin dia akan selalu menang
+      if (message.author.id === config.ownerId[0]) {
+        winningChance = true;
+        starChance = true;
+      }
       // Fungsi untuk mendapatkan random emoji
       const getRandomEmoji = () =>
         emojis[Math.floor(Math.random() * emojis.length)];
