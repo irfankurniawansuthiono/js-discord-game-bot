@@ -1862,6 +1862,8 @@ client.on("messageCreate", async (message) => {
     console.log(prompt);
     await dataManager.aiResponse(message, prompt);
   }
+
+  if(!message.content.startsWith(prefix)) return;
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
 
