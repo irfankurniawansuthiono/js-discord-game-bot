@@ -1963,21 +1963,10 @@ client.once("ready", () => {
       {
         name: "N!help for commands",
         type: ActivityType.Listening,
-        details: "The best bot assistant!",
-        state: "Join our server for more!", // Teks status tambahan
-        assets: {
-          largeImage: "desain_tanpa_judul", // Nama gambar besar dari Art Assets
-          largeText: "Nanami Bot", // Teks saat hover gambar besar
-          smallImage: "desain_tanpa_judul", // Nama gambar kecil dari Art Assets (opsional)
-          smallText: "Helping you always!", // Teks saat hover gambar kecil (opsional)
-        },
-        buttons: [
-          { label: "Invite Me", url: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot` },
-          { label: "Support Server", url: "https://discord.gg/ARsVsfjtqA" },
-        ],
-      },
+        state: "Join our server for more!"
+      }
     ],
-    status: "online", // Status bot (online, idle, dnd, invisible)
+    status: "online"
   });
 });
 
