@@ -905,97 +905,118 @@ const ownerHelperFirewall = (authorId, message) => {
 const commands = {
   serverinfo: async (message) => {
     try {
-      // Fetch guild owner
+      // Fetch owner of the server
       const owner = await message.guild.fetchOwner();
-      
-      // Get human-readable verification level
+  
+      // Fetch member data (ensure cache is up to date)
+      await message.guild.members.fetch();
+  
+      // Verification levels
       const verificationLevels = {
-        0: 'None',
-        1: 'Low',
-        2: 'Medium',
-        3: 'High',
-        4: 'Highest'
+        0: '`None` - Unrestricted',
+        1: '`Low` - Must have verified email',
+        2: '`Medium` - Registered for 5+ minutes',
+        3: '`High` - Member for 10+ minutes',
+        4: '`Highest` - Must have verified phone'
       };
   
-      // Get human-readable NSFW level
+      // NSFW levels
       const nsfwLevels = {
-        0: 'Default',
-        1: 'Explicit',
-        2: 'Safe',
-        3: 'Age Restricted'
+        0: '`Default` - Guild default',
+        1: '`Explicit` - Age-restricted content',
+        2: '`Safe` - Clean content only',
+        3: '`Age Restricted` - Must be 18+'
       };
   
-      // Get human-readable boost tier
+      // Boost tiers
       const boostTiers = {
-        0: 'None',
-        1: 'Tier 1',
-        2: 'Tier 2',
-        3: 'Tier 3'
+        0: '`None` - No perks',
+        1: '`Tier 1` - 100 emoji slots, 720p streams',
+        2: '`Tier 2` - 150 emoji slots, 1080p streams',
+        3: '`Tier 3` - 250 emoji slots, 4K streams'
       };
   
-      // Count different types of channels
-      const textChannels = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
-      const voiceChannels = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size;
-      const categories = message.guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).size;
-      const totalChannels = message.guild.channels.cache.size;
+      // Channel counting
+      const channels = {
+        text: message.guild.channels.cache.filter(c => c.type === 0).size,
+        voice: message.guild.channels.cache.filter(c => c.type === 2).size,
+        announcement: message.guild.channels.cache.filter(c => c.type === 5).size,
+        stage: message.guild.channels.cache.filter(c => c.type === 13).size,
+        forum: message.guild.channels.cache.filter(c => c.type === 15).size,
+        categories: message.guild.channels.cache.filter(c => c.type === 4).size
+      };
   
+      // Member statistics
+      const totalMembers = message.guild.memberCount;
+      const humans = message.guild.members.cache.filter(m => !m.user.bot).size;
+      const bots = message.guild.members.cache.filter(m => m.user.bot).size;
+  
+      // Calculate member presence status
+      const online = message.guild.members.cache.filter(m => m.presence?.status === 'online').size;
+      const idle = message.guild.members.cache.filter(m => m.presence?.status === 'idle').size;
+      const dnd = message.guild.members.cache.filter(m => m.presence?.status === 'dnd').size;
+      const offline = totalMembers - (online + idle + dnd); // The remaining members are offline
+  
+      // Server features
+      const features = message.guild.features.map(f =>
+        `\`${f.toLowerCase().replace(/_/g, ' ')}\``).join(', ') || 'None';
+  
+      // Create embed
       const serverEmbed = new EmbedBuilder()
         .setColor("#FFD700")
-        .setTitle(message.guild.name)
-        .setDescription(message.guild.description || 'No description')
+        .setTitle(`${message.guild.name} Server Information`)
+        .setDescription(message.guild.description || 'No description set')
         .setThumbnail(message.guild.iconURL({ dynamic: true, size: 1024 }))
         .addFields([
-          { 
-            name: "👑 Owner", 
-            value: `${owner.user.tag}`, 
-            inline: true 
+          {
+            name: "👑 Owner Information",
+            value: `Tag: \`${owner.user.tag}\`\nID: \`${owner.user.id}\``,
+            inline: true
           },
-          { 
-            name: "👥 Members", 
-            value: `Total: ${message.guild.memberCount}
-            Users: ${message.guild.members.cache.filter(m => !m.user.bot).size}
-            Bots: ${message.guild.members.cache.filter(m => m.user.bot).size}`, 
-            inline: true 
+          {
+            name: "👥 Member Statistics",
+            value: `Total: \`${totalMembers}\`\n👤 Humans: \`${humans}\`\n🤖 Bots: \`${bots}\``,
+            inline: true
           },
-          { 
-            name: "📺 Channels", 
-            value: `Total: ${totalChannels}
-            Text: ${textChannels}
-            Voice: ${voiceChannels}
-            Categories: ${categories}`, 
-            inline: true 
+          {
+            name: "🟢 Online Members",
+            value: `🟢 Online: \`${online}\`\n🟡 Idle: \`${idle}\`\n🔴 DND: \`${dnd}\`\n⚫ Offline: \`${offline}\``,
+            inline: true
           },
-          { 
-            name: "🎭 Roles", 
-            value: `${message.guild.roles.cache.size}`, 
-            inline: true 
+          {
+            name: "📺 Channel Information",
+            value: `💬 Text: \`${channels.text}\`\n🔊 Voice: \`${channels.voice}\`\n📢 Announcement: \`${channels.announcement}\`\n🎭 Stage: \`${channels.stage}\`\n📋 Forums: \`${channels.forum}\`\n📁 Categories: \`${channels.categories}\`\n📊 Total Channels: \`${Object.values(channels).reduce((a, b) => a + b, 0)}\``,
+            inline: false
           },
-          { 
-            name: "🚀 Boosts", 
-            value: `Count: ${message.guild.premiumSubscriptionCount}
-            Tier: ${boostTiers[message.guild.premiumTier]}`, 
-            inline: true 
+          {
+            name: "🎭 Role Information",
+            value: `Total Roles: \`${message.guild.roles.cache.size}\`\nHighest Role: ${message.guild.roles.highest}\nColor Roles: \`${message.guild.roles.cache.filter(r => r.color !== 0).size}\``,
+            inline: true
           },
-          { 
-            name: "🔒 Verification", 
-            value: verificationLevels[message.guild.verificationLevel], 
-            inline: true 
+          {
+            name: "🚀 Server Boost Status",
+            value: `Level: ${boostTiers[message.guild.premiumTier]}\nTotal Boosts: \`${message.guild.premiumSubscriptionCount || '0'}\`\nBoosters: \`${message.guild.members.cache.filter(m => m.premiumSince).size}\``,
+            inline: true
           },
-          { 
-            name: "🔞 NSFW Level", 
-            value: nsfwLevels[message.guild.nsfwLevel], 
-            inline: true 
+          {
+            name: "🛡️ Security Settings",
+            value: `Verification Level: ${verificationLevels[message.guild.verificationLevel]}\nNSFW Level: ${nsfwLevels[message.guild.nsfwLevel]}\n2FA Required: \`${message.guild.mfaLevel ? 'Yes' : 'No'}\``,
+            inline: true
           },
-          { 
-            name: "😀 Emojis & Stickers", 
-            value: `Emojis: ${message.guild.emojis.cache.size}
-            Stickers: ${message.guild.stickers.cache.size}`, 
-            inline: true 
+          {
+            name: "😀 Custom Content",
+            value: `Regular Emojis: \`${message.guild.emojis.cache.filter(e => !e.animated).size}\`\nAnimated Emojis: \`${message.guild.emojis.cache.filter(e => e.animated).size}\`\nStickers: \`${message.guild.stickers.cache.size}\``,
+            inline: true
           },
-          { 
-            name: "📅 Created", 
-            value: `<t:${Math.floor(message.guild.createdTimestamp / 1000)}:R>`, 
-            inline: true 
+          {
+            name: "✨ Server Features",
+            value: features,
+            inline: false
+          },
+          {
+            name: "⏰ Timestamps",
+            value: `Created: <t:${Math.floor(message.guild.createdTimestamp / 1000)}:F>\nRelative: <t:${Math.floor(message.guild.createdTimestamp / 1000)}:R>`,
+            inline: false
           }
         ]);
   
@@ -1007,9 +1028,15 @@ const commands = {
       return message.reply({ embeds: [serverEmbed] });
     } catch (error) {
       console.error('Error in serverinfo command:', error);
-      return message.reply('An error occurred while fetching server information.');
+      return message.reply({
+        content: 'An error occurred while fetching server information.',
+        ephemeral: true
+      });
     }
   },
+  
+  
+   
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
