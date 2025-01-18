@@ -93,6 +93,7 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix}spamsendto** <ammount> <#channel/@user> <message> \n Send ammount of message to a channel or DM a user`,
         `**${prefix}spamsay** <ammount> <message> \n Send ammount of message to a channel or DM a user`,
         `**${prefix}resetplayer** <@user> \n reset player's data`,
+        `**${prefix}resetap** \n reset all player's data`,
       ].join("\n\n"),
     }
   )
@@ -229,13 +230,25 @@ class DataManager {
     };
   }
 
+  async resetAllPlayer(){
+    for (const userId in this.users) {
+      this.users[userId].balance = config.startingBalance;
+      this.users[userId].stats = {
+        gamesPlayed: 0,
+        gamesWon: 0,
+        totalEarnings: 0,
+        lastDaily: null,
+      };
+    }
+    this.saveData();
+    return this.users;
+  }
   async resetPlayer(userId){
     this.users[userId].balance = config.startingBalance;
     this.users[userId].stats = {
       gamesPlayed: 0,
       gamesWon: 0,
       totalEarnings: 0,
-      lastDaily: null,
     };
     this.saveData();
     return this.users[userId];
@@ -903,6 +916,16 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 // Commands remain the same as in the previous version
 const commands = {
+  resetap: async(message, args)=>{
+    if (!ownerHelperFirewall(message.author.id, message)) return;
+    try {
+      await dataManager.resetAllPlayer();
+      message.reply("All players have been reset.");
+    } catch (error) {
+      console.error("Error in resetAP command:", error);
+      message.reply("An error occurred while processing the command.");
+    }
+  },
   serverinfo: async (message) => {
     try {
       // Fetch owner of the server
@@ -1034,9 +1057,6 @@ const commands = {
       });
     }
   },
-  
-  
-   
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
