@@ -20,7 +20,7 @@ const formatBalance = (amount) =>
 // Configuration
 const config = {
   token: process.env.TOKEN,
-  ownerId: ["411125001853468672", "500585213546463232", "1107212927536201738"],
+  ownerId: ["411125001853468672", "500585213546463232", "1107212927536201738","534661318385336321"],
   defaultPrefix: "N!",
   startingBalance: 100,
   dataFile: "./players.json",
@@ -96,6 +96,11 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix}resetplayer** <@user> \n reset player's data`,
         `**${prefix}resetap** \n reset all player's data`,
       ].join("\n\n"),
+    },{
+      name: "Bot Owner Commands",
+      value: [
+        `**${prefix}announcement** <message> \n Send a message to all servers`,
+      ].join("\n\n"),
     }
   )
   .setFooter({ text: "Nanami Help Menu" })
@@ -110,7 +115,7 @@ class DataManager {
 
   
   async aiResponse(message, prompt) {
-    const character = "Balas setiap pesan dengan nada sinis, kasar, dan penuh sindiran tajam. Jangan ragu untuk menunjukkan ketidaksabaran atau ketidaksukaan terhadap pertanyaan yang dianggap bodoh atau tidak penting. Gunakan humor sarkastik dan komentar pedas yang bisa menusuk perasaan, tetapi tetap pastikan ada sentuhan cerdas agar tetap terkesan tajam dan tidak asal menghina."
+    const character = "Anda adalah ElxyzGPT, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024.";
     try {
       const sessionId = message.author.id;
       const response = await axios.post('https://api.itzky.us.kg/ai/logic', {
@@ -135,6 +140,7 @@ class DataManager {
       await message.reply({ embeds: [responseEmbed] });
     }catch(error) {
       console.error("Error in aiResponse command:", error);
+      return message.reply("There was an error processing your request, please try again later.");
     }
   }
   async robUser(authorId, user, message) {
@@ -1652,6 +1658,20 @@ const commands = {
       return message.reply("An error occurred while processing the transfer.");
     }
   },
+  announcement: async (message, args) => {
+    if (message.author.id !== config.ownerId[0]) return;
+    // kirim pesan ke semua server yang dimasuki oleh bot dengan tag everyone 
+    const servers = client.guilds.cache.map(guild => guild.id);
+    for (const serverId of servers) {
+      const server = client.guilds.cache.get(serverId);
+      if (!server) continue;
+      const everyoneRole = server.roles.cache.find(role => role.name === '@everyone');
+      if (!everyoneRole) continue;
+      const everyoneChannel = server.channels.cache.find(channel => channel.type === 'GUILD_TEXT' && channel.permissionsFor(everyoneRole).has('SEND_MESSAGES'));
+      if (!everyoneChannel) continue;
+      everyoneChannel.send(args.slice(1).join(' '));
+    }
+  },
   take: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     const targetUser = message.mentions.users.first();
@@ -1841,7 +1861,7 @@ client.on("messageCreate", async (message) => {
   // jika bot di tag dia akan menjalankan fungsi AI 
   const getMessageMention = message.mentions.users.first();
   if(getMessageMention === client.user){
-    console.log(`AI Response: ${message.content}`);
+    message.channel.sendTyping();
     const prompt = message.content.slice(message.content.indexOf(">") + 1).trim();
     console.log(prompt)
     await dataManager.aiResponse(message, prompt);
