@@ -363,6 +363,22 @@ class VoiceManager {
       }
   }
 
+  async joinVoice(message) {
+      const guildId = message.guild.id;
+      const voiceChannel = message.member.voice.channel;
+      
+      if (voiceChannel) {
+          const connection = joinVoiceChannel({
+              channelId: voiceChannel.id,
+              guildId: guildId,
+              adapterCreator: message.guild.voiceAdapterCreator,
+          });
+          this.voiceConnections.set(guildId, connection);
+          message.reply('👋 Joined voice channel');
+      } else {
+          message.reply('You need to be in a voice channel first!');
+      }
+  }
   // Method untuk stop musik
   async stop(message) {
       const guildId = message.guild.id;
@@ -1931,10 +1947,10 @@ const commands = {
     await voiceManager.playFromSpotify(message, query);
   },
   join: async (message, args) => {
-    await voiceManager.joinVoiceChannel(message);
+    await voiceManager.joinVoice(message);
   },
   leave: async (message, args) => {
-    await voiceManager.leaveVoiceChannel(message);
+    await voiceManager.leaveVoice(message);
   },
   spdown: async (message, args) => {
     if (args.length < 2) {
