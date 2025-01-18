@@ -1446,8 +1446,7 @@ const commands = {
                **Memory Usage:** ${memoryUsedMB}MB / ${totalMemoryMB}MB
                **Platform:** ${process.platform}
                **Architecture:** ${process.arch}
-               **Process ID:** ${process.pid}
-               **Discord.js Version:** v${require('discord.js').version}`,
+               **Process ID:** ${process.pid}`,
         inline: false
       },
       {
