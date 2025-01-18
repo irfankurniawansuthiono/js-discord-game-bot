@@ -20,7 +20,12 @@ const formatBalance = (amount) =>
 // Configuration
 const config = {
   token: process.env.TOKEN,
-  ownerId: ["411125001853468672", "500585213546463232", "1107212927536201738","534661318385336321"],
+  ownerId: [
+    "411125001853468672",
+    "500585213546463232",
+    "1107212927536201738",
+    "534661318385336321",
+  ],
   defaultPrefix: "N!",
   startingBalance: 10000,
   dataFile: "./players.json",
@@ -51,7 +56,6 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix}profile** \n Alias for balance`,
         `**${prefix}ownerinfo** \n Show bot owner information`,
         `**${prefix}botinfo** \n Show your bot information`,
-        `**${prefix}serverinfo** \n Show server information`,
       ].join("\n\n"),
     },
     {
@@ -96,7 +100,8 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix}resetplayer** <@user> \n reset player's data`,
         `**${prefix}resetap** \n reset all player's data`,
       ].join("\n\n"),
-    },{
+    },
+    {
       name: "Bot Owner Commands",
       value: [
         `**${prefix}announcement** <message> \n Send a message to all servers`,
@@ -113,51 +118,59 @@ class DataManager {
     this.loadData();
   }
 
-  
   async aiResponse(message, prompt) {
-    const character = "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
+    const character =
+      "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
     try {
       const sessionId = message.author.id;
-      const response = await axios.post('https://api.itzky.us.kg/ai/logic', {
-        prompt,
-        sessionId,
-        character,
-      }, {
-        headers: {
-          'Authorization': `Bearer nanami`,
-          'Content-Type': 'application/json',
+      const response = await axios.post(
+        "https://api.itzky.us.kg/ai/logic",
+        {
+          prompt,
+          sessionId,
+          character,
         },
-      });
+        {
+          headers: {
+            Authorization: `Bearer nanami`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
       const responseEmbed = new EmbedBuilder()
-      // warna kuning
+        // warna kuning
         .setColor("#FFFF00")
         .setTitle("AI Response")
         .setDescription(response.data.result.answer)
-        .setFooter({ text:`AI Endpoint by ${response.data.creator}` })
+        .setFooter({ text: `AI Endpoint by ${response.data.creator}` })
         .setTimestamp();
 
       await message.reply({ embeds: [responseEmbed] });
-    }catch(error) {
+    } catch (error) {
       console.error("Error in aiResponse command:", error);
-      return message.reply("There was an error processing your request, please try again later.");
+      return message.reply(
+        "There was an error processing your request, please try again later."
+      );
     }
   }
   async robUser(authorId, user, message) {
     try {
       // Initial robbery message
-      const robMsg = await message.reply(`<:rob:1329849024211062828>Robbing... ${user}`);
-      
+      const robMsg = await message.reply(
+        `<:rob:1329849024211062828>Robbing... ${user}`
+      );
+
       // Get correct userId from user object
       const userId = user.id;
-      
+
       // Check if both users have accounts
       if (!this.users[userId] || !this.users[authorId]) {
         throw new Error("One or both users do not have an account!");
       }
-      
+
       // Calculate robbery chance and amount
-      const chance = Math.random() < 0.3;  // 30% chance to succeed
+      const chance = Math.random() < 0.3; // 30% chance to succeed
       const amount = Math.floor(Math.random() * 10000);
       // Create base embed
       const robEmbedHelper = new EmbedBuilder()
@@ -165,14 +178,14 @@ class DataManager {
         .setTitle(":ninja: Rob Result")
         .setFooter({ text: "Nanami" })
         .setTimestamp();
-  
+
       // Handle successful robbery
       if (chance) {
         // Check if target has enough money
         if (this.users[userId].balance < amount) {
           throw new Error("Target doesn't have enough money to rob!");
         }
-        
+
         // Transfer money
         this.users[userId].balance -= amount;
         this.users[authorId].balance += amount;
@@ -182,36 +195,35 @@ class DataManager {
           Your balance has been increased by ${formatBalance(amount)}!
           Your balance now is ${formatBalance(this.users[authorId].balance)}!`
         );
-      } 
+      }
       // Handle failed robbery
       else {
         // Check if robber has enough money to pay penalty
         if (this.users[authorId].balance < amount) {
           throw new Error("You don't have enough money to pay the penalty!");
         }
-        
+
         this.users[authorId].balance -= amount;
-        
+
         robEmbedHelper.setDescription(
           `You failed to rob ${user}! Better luck next time!\n` +
-          `Your balance has been reduced by ${formatBalance(amount)}!\
+            `Your balance has been reduced by ${formatBalance(amount)}!\
 
           Your balance now is ${formatBalance(this.users[authorId].balance)}!`
         );
       }
-  
+
       // Save changes
       this.saveData();
-      
+
       // Send result message
       await robMsg.edit({ embeds: [robEmbedHelper] });
-  
+
       // Return updated user objects
       return {
         fromUser: this.users[authorId],
         toUser: this.users[userId],
       };
-  
     } catch (error) {
       // Handle errors
       const errorEmbed = new EmbedBuilder()
@@ -220,7 +232,7 @@ class DataManager {
         .setDescription(error.message)
         .setFooter({ text: "Nanami" })
         .setTimestamp();
-      
+
       await message.reply({ embeds: [errorEmbed] });
       return null;
     }
@@ -233,7 +245,7 @@ class DataManager {
     // Deduct from sender
     if (this.users[userId].balance < amount) {
       throw new Error("Insufficient balance!");
-    }else{
+    } else {
       this.users[userId].balance -= amount;
       // Add to receiver
       this.users[authorId].balance += amount;
@@ -266,7 +278,7 @@ class DataManager {
     };
   }
 
-  async resetAllPlayer(){
+  async resetAllPlayer() {
     for (const userId in this.users) {
       this.users[userId].balance = config.startingBalance;
       this.users[userId].stats = {
@@ -279,7 +291,7 @@ class DataManager {
     this.saveData();
     return this.users;
   }
-  async resetPlayer(userId){
+  async resetPlayer(userId) {
     this.users[userId].balance = config.startingBalance;
     this.users[userId].stats = {
       gamesPlayed: 0,
@@ -400,7 +412,7 @@ class Games {
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
     }
-  
+
     // Handle "all-in" bet
     if (bet === "all") {
       bet = user.balance;
@@ -410,74 +422,102 @@ class Games {
         return message.reply("Please enter a valid bet amount!");
       }
     }
-  
+
     if (bet > user.balance) {
       return message.reply("Insufficient balance for this bet!");
     }
-  
+
     try {
-      const suits = { '♠': 'Spades', '♣': 'Clubs', '♥': 'Hearts', '♦': 'Diamonds' };
-      const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      const suits = {
+        "♠": "Spades",
+        "♣": "Clubs",
+        "♥": "Hearts",
+        "♦": "Diamonds",
+      };
+      const values = [
+        "A",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "J",
+        "Q",
+        "K",
+      ];
       let deck = [];
       let playerHand = [];
       let dealerHand = [];
-  
+
       // Initialize deck
       for (let suit in suits) {
         for (let value of values) {
           deck.push({ suit, value });
         }
       }
-  
+
       // Shuffle deck
       for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
       }
-  
+
       // Initial deal
       playerHand.push(deck.pop());
       dealerHand.push(deck.pop());
       playerHand.push(deck.pop());
       dealerHand.push(deck.pop());
-  
+
       // Function to calculate hand value
       const calculateHandValue = (hand) => {
         let value = 0;
         let aces = 0;
-  
+
         for (let card of hand) {
-          if (card.value === 'A') {
+          if (card.value === "A") {
             aces += 1;
             value += 11;
-          } else if (['K', 'Q', 'J'].includes(card.value)) {
+          } else if (["K", "Q", "J"].includes(card.value)) {
             value += 10;
           } else {
             value += parseInt(card.value);
           }
         }
-  
+
         while (value > 21 && aces > 0) {
           value -= 10;
           aces -= 1;
         }
-  
+
         return value;
       };
-  
+
       // Function to format hand display
       const formatHand = (hand, hideSecond = false) => {
-        return hand.map((card, index) => {
-          if (hideSecond && index === 1) return '🎴';
-          return `${card.suit}${card.value}`;
-        }).join(' ');
+        return hand
+          .map((card, index) => {
+            if (hideSecond && index === 1) return "🎴";
+            return `${card.suit}${card.value}`;
+          })
+          .join(" ");
       };
-  
+
       // Create initial game display
-      const createGameDisplay = (playerHand, dealerHand, hideDealer = true, gameStatus = '') => {
+      const createGameDisplay = (
+        playerHand,
+        dealerHand,
+        hideDealer = true,
+        gameStatus = ""
+      ) => {
         const playerValue = calculateHandValue(playerHand);
-        const dealerValue = hideDealer ? calculateHandValue([dealerHand[0]]) : calculateHandValue(dealerHand);
-        
+        const dealerValue = hideDealer
+          ? calculateHandValue([dealerHand[0]])
+          : calculateHandValue(dealerHand);
+
         return `
   🎰 Blackjack 🎰
   ══════════════
@@ -489,36 +529,36 @@ class Games {
   ${gameStatus}
   ══════════════`;
       };
-  
+
       // Create buttons
       const hitButton = new ButtonBuilder()
-        .setCustomId('hit')
-        .setLabel('Hit')
+        .setCustomId("hit")
+        .setLabel("Hit")
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('👊');
-  
+        .setEmoji("👊");
+
       const standButton = new ButtonBuilder()
-        .setCustomId('stand')
-        .setLabel('Stand')
+        .setCustomId("stand")
+        .setLabel("Stand")
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🛑');
-  
+        .setEmoji("🛑");
+
       const row = new ActionRowBuilder().addComponents(hitButton, standButton);
-  
+
       // Send initial game state with buttons
       const gameMsg = await message.reply({
         content: createGameDisplay(playerHand, dealerHand),
-        components: [row]
+        components: [row],
       });
-  
+
       // Check for natural blackjack
       const playerValue = calculateHandValue(playerHand);
       const dealerValue = calculateHandValue(dealerHand);
-  
+
       if (playerValue === 21 || dealerValue === 21) {
         let amount;
         let resultMessage;
-  
+
         if (playerValue === 21 && dealerValue === 21) {
           amount = 0;
           resultMessage = "Both have Blackjack - Push!";
@@ -527,71 +567,88 @@ class Games {
           resultMessage = `Blackjack! You won ${formatBalance(amount)}!`;
         } else {
           amount = -bet;
-          resultMessage = `Dealer has Blackjack! You lost ${formatBalance(bet)}!`;
+          resultMessage = `Dealer has Blackjack! You lost ${formatBalance(
+            bet
+          )}!`;
         }
-  
+
         dataManager.updateBalance(message.author.id, amount);
         dataManager.updateStats(message.author.id, amount > 0, amount);
         user = dataManager.getUser(message.author.id);
-  
+
         await gameMsg.edit({
-          content: createGameDisplay(playerHand, dealerHand, false, 
-            `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`),
-          components: []
+          content: createGameDisplay(
+            playerHand,
+            dealerHand,
+            false,
+            `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`
+          ),
+          components: [],
         });
         return;
       }
-  
+
       // Create button collector
-      const filter = i => i.user.id === message.author.id && ['hit', 'stand'].includes(i.customId);
-      const collector = gameMsg.createMessageComponentCollector({ filter, time: 30000 });
-  
+      const filter = (i) =>
+        i.user.id === message.author.id &&
+        ["hit", "stand"].includes(i.customId);
+      const collector = gameMsg.createMessageComponentCollector({
+        filter,
+        time: 30000,
+      });
+
       let gameEnded = false;
-  
-      collector.on('collect', async (interaction) => {
+
+      collector.on("collect", async (interaction) => {
         if (gameEnded) return;
-  
+
         await interaction.deferUpdate();
-  
-        if (interaction.customId === 'hit') {
+
+        if (interaction.customId === "hit") {
           // Player hits
           playerHand.push(deck.pop());
           const newValue = calculateHandValue(playerHand);
-  
+
           if (newValue > 21) {
             gameEnded = true;
             collector.stop();
-  
+
             // Player busts
             dataManager.updateBalance(message.author.id, -bet);
             dataManager.updateStats(message.author.id, false, -bet);
             user = dataManager.getUser(message.author.id);
-  
+
             await gameMsg.edit({
-              content: createGameDisplay(playerHand, dealerHand, false,
-                `Bust! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`),
-              components: []
+              content: createGameDisplay(
+                playerHand,
+                dealerHand,
+                false,
+                `Bust! You lost ${formatBalance(
+                  bet
+                )}!\nCurrent balance: ${formatBalance(user.balance)}`
+              ),
+              components: [],
             });
           } else {
             await gameMsg.edit({
               content: createGameDisplay(playerHand, dealerHand),
-              components: [row]
+              components: [row],
             });
           }
-        } else if (interaction.customId === 'stand') {
+        } else if (interaction.customId === "stand") {
           gameEnded = true;
           collector.stop();
-  
+
           // Dealer's turn
           while (calculateHandValue(dealerHand) < 17) {
             dealerHand.push(deck.pop());
           }
-  
+
           const finalPlayerValue = calculateHandValue(playerHand);
           const finalDealerValue = calculateHandValue(dealerHand);
           let amount;
           let resultMessage;
-  
+
           if (finalDealerValue > 21) {
             amount = bet;
             resultMessage = `Dealer busts! You won ${formatBalance(bet)}!`;
@@ -605,36 +662,49 @@ class Games {
             amount = 0;
             resultMessage = "Push - it's a tie!";
           }
-  
+
           dataManager.updateBalance(message.author.id, amount);
           dataManager.updateStats(message.author.id, amount > 0, amount);
           user = dataManager.getUser(message.author.id);
-  
+
           await gameMsg.edit({
-            content: createGameDisplay(playerHand, dealerHand, false,
-              `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`),
-            components: []
+            content: createGameDisplay(
+              playerHand,
+              dealerHand,
+              false,
+              `${resultMessage}\nCurrent balance: ${formatBalance(
+                user.balance
+              )}`
+            ),
+            components: [],
           });
         }
       });
-  
-      collector.on('end', async () => {
+
+      collector.on("end", async () => {
         if (!gameEnded) {
           dataManager.updateBalance(message.author.id, -bet);
           dataManager.updateStats(message.author.id, false, -bet);
           user = dataManager.getUser(message.author.id);
-  
+
           await gameMsg.edit({
-            content: createGameDisplay(playerHand, dealerHand, false,
-              `Time's up! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`),
-            components: []
+            content: createGameDisplay(
+              playerHand,
+              dealerHand,
+              false,
+              `Time's up! You lost ${formatBalance(
+                bet
+              )}!\nCurrent balance: ${formatBalance(user.balance)}`
+            ),
+            components: [],
           });
         }
       });
-  
     } catch (error) {
       console.error("Error in blackjack game:", error);
-      return message.reply("An error occurred while playing the game. Please try again.");
+      return message.reply(
+        "An error occurred while playing the game. Please try again."
+      );
     }
   }
   static async slots(message, bet) {
@@ -663,7 +733,7 @@ class Games {
 
       // 20% chance to win
       const winningChance = Math.random() < 0.2;
-       const starChance = Math.random() < 0.1;
+      const starChance = Math.random() < 0.1;
       // Fungsi untuk mendapatkan random emoji
       const getRandomEmoji = () =>
         emojis[Math.floor(Math.random() * emojis.length)];
@@ -677,7 +747,7 @@ class Games {
 ║                                          ║
 ╚═════════════╝
 `;
-      }
+      };
 
       // Kirim pesan awal
       const slotMsg = await message.reply("🎰 Starting the slot machine...");
@@ -705,21 +775,26 @@ class Games {
         finalSlots = [
           firstEmoji,
           firstEmoji,
-          secondEmoji !== firstEmoji ? secondEmoji : getRandomEmoji()
+          secondEmoji !== firstEmoji ? secondEmoji : getRandomEmoji(),
         ];
       }
 
       // Cek kemenangan (baris tengah)
-      const won = finalSlots[0] === finalSlots[1] && finalSlots[1] === finalSlots[2];
+      const won =
+        finalSlots[0] === finalSlots[1] && finalSlots[1] === finalSlots[2];
 
       // Update balance dan tampilkan hasil
       let resultMessage;
       if (won) {
         let multiplier = 10; // Multiplier untuk kemenangan
-        if(finalSlots[0] === "⭐" && finalSlots[1] === "⭐" && finalSlots[2] === "⭐") {
-          if(starChance) {
+        if (
+          finalSlots[0] === "⭐" &&
+          finalSlots[1] === "⭐" &&
+          finalSlots[2] === "⭐"
+        ) {
+          if (starChance) {
             multiplier = 100;
-          }else{
+          } else {
             // ganti ke emoji selain bintang tetapi dia akan tetap sama
             finalSlots[0] = "🍒";
             finalSlots[1] = "🍒";
@@ -952,7 +1027,7 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 // Commands remain the same as in the previous version
 const commands = {
-  resetap: async(message, args)=>{
+  resetap: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     try {
       await dataManager.resetAllPlayer();
@@ -962,144 +1037,14 @@ const commands = {
       message.reply("An error occurred while processing the command.");
     }
   },
-  serverinfo: async (message) => {
-    try {
-      // Fetch owner of the server
-      const owner = await message.guild.fetchOwner();
-  
-      // Fetch member data (ensure cache is up to date)
-      await message.guild.members.fetch();
-  
-      // Verification levels
-      const verificationLevels = {
-        0: '`None` - Unrestricted',
-        1: '`Low` - Must have verified email',
-        2: '`Medium` - Registered for 5+ minutes',
-        3: '`High` - Member for 10+ minutes',
-        4: '`Highest` - Must have verified phone'
-      };
-  
-      // NSFW levels
-      const nsfwLevels = {
-        0: '`Default` - Guild default',
-        1: '`Explicit` - Age-restricted content',
-        2: '`Safe` - Clean content only',
-        3: '`Age Restricted` - Must be 18+'
-      };
-  
-      // Boost tiers
-      const boostTiers = {
-        0: '`None` - No perks',
-        1: '`Tier 1` - 100 emoji slots, 720p streams',
-        2: '`Tier 2` - 150 emoji slots, 1080p streams',
-        3: '`Tier 3` - 250 emoji slots, 4K streams'
-      };
-  
-      // Channel counting
-      const channels = {
-        text: message.guild.channels.cache.filter(c => c.type === 0).size,
-        voice: message.guild.channels.cache.filter(c => c.type === 2).size,
-        announcement: message.guild.channels.cache.filter(c => c.type === 5).size,
-        stage: message.guild.channels.cache.filter(c => c.type === 13).size,
-        forum: message.guild.channels.cache.filter(c => c.type === 15).size,
-        categories: message.guild.channels.cache.filter(c => c.type === 4).size
-      };
-  
-      // Member statistics
-      const totalMembers = message.guild.memberCount;
-      const humans = message.guild.members.cache.filter(m => !m.user.bot).size;
-      const bots = message.guild.members.cache.filter(m => m.user.bot).size;
-  
-      // Calculate member presence status
-      const online = message.guild.members.cache.filter(m => m.presence?.status === 'online').size;
-      const idle = message.guild.members.cache.filter(m => m.presence?.status === 'idle').size;
-      const dnd = message.guild.members.cache.filter(m => m.presence?.status === 'dnd').size;
-      const offline = totalMembers - (online + idle + dnd); // The remaining members are offline
-  
-      // Server features
-      const features = message.guild.features.map(f =>
-        `\`${f.toLowerCase().replace(/_/g, ' ')}\``).join(', ') || 'None';
-  
-      // Create embed
-      const serverEmbed = new EmbedBuilder()
-        .setColor("#FFD700")
-        .setTitle(`${message.guild.name} Server Information`)
-        .setDescription(message.guild.description || 'No description set')
-        .setThumbnail(message.guild.iconURL({ dynamic: true, size: 1024 }))
-        .addFields([
-          {
-            name: "👑 Owner Information",
-            value: `Tag: \`${owner.user.tag}\`\nID: \`${owner.user.id}\``,
-            inline: true
-          },
-          {
-            name: "👥 Member Statistics",
-            value: `Total: \`${totalMembers}\`\n👤 Humans: \`${humans}\`\n🤖 Bots: \`${bots}\``,
-            inline: true
-          },
-          {
-            name: "🟢 Online Members",
-            value: `🟢 Online: \`${online}\`\n🟡 Idle: \`${idle}\`\n🔴 DND: \`${dnd}\`\n⚫ Offline: \`${offline}\``,
-            inline: true
-          },
-          {
-            name: "📺 Channel Information",
-            value: `💬 Text: \`${channels.text}\`\n🔊 Voice: \`${channels.voice}\`\n📢 Announcement: \`${channels.announcement}\`\n🎭 Stage: \`${channels.stage}\`\n📋 Forums: \`${channels.forum}\`\n📁 Categories: \`${channels.categories}\`\n📊 Total Channels: \`${Object.values(channels).reduce((a, b) => a + b, 0)}\``,
-            inline: false
-          },
-          {
-            name: "🎭 Role Information",
-            value: `Total Roles: \`${message.guild.roles.cache.size}\`\nHighest Role: ${message.guild.roles.highest}\nColor Roles: \`${message.guild.roles.cache.filter(r => r.color !== 0).size}\``,
-            inline: true
-          },
-          {
-            name: "🚀 Server Boost Status",
-            value: `Level: ${boostTiers[message.guild.premiumTier]}\nTotal Boosts: \`${message.guild.premiumSubscriptionCount || '0'}\`\nBoosters: \`${message.guild.members.cache.filter(m => m.premiumSince).size}\``,
-            inline: true
-          },
-          {
-            name: "🛡️ Security Settings",
-            value: `Verification Level: ${verificationLevels[message.guild.verificationLevel]}\nNSFW Level: ${nsfwLevels[message.guild.nsfwLevel]}\n2FA Required: \`${message.guild.mfaLevel ? 'Yes' : 'No'}\``,
-            inline: true
-          },
-          {
-            name: "😀 Custom Content",
-            value: `Regular Emojis: \`${message.guild.emojis.cache.filter(e => !e.animated).size}\`\nAnimated Emojis: \`${message.guild.emojis.cache.filter(e => e.animated).size}\`\nStickers: \`${message.guild.stickers.cache.size}\``,
-            inline: true
-          },
-          {
-            name: "✨ Server Features",
-            value: features,
-            inline: false
-          },
-          {
-            name: "⏰ Timestamps",
-            value: `Created: <t:${Math.floor(message.guild.createdTimestamp / 1000)}:F>\nRelative: <t:${Math.floor(message.guild.createdTimestamp / 1000)}:R>`,
-            inline: false
-          }
-        ]);
-  
-      // Add server banner if exists
-      if (message.guild.bannerURL()) {
-        serverEmbed.setImage(message.guild.bannerURL({ dynamic: true, size: 1024 }));
-      }
-  
-      return message.reply({ embeds: [serverEmbed] });
-    } catch (error) {
-      console.error('Error in serverinfo command:', error);
-      return message.reply({
-        content: 'An error occurred while fetching server information.',
-        ephemeral: true
-      });
-    }
-  },
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
     return Games.blackjack(message, bet);
   },
   slots: (message, args) => {
-    if(args.length < 2) return message.reply(`Usage: ${prefix}slots <bet | all>`);
+    if (args.length < 2)
+      return message.reply(`Usage: ${prefix}slots <bet | all>`);
     const bet = args[1];
     return Games.slots(message, bet);
   },
@@ -1403,12 +1348,12 @@ const commands = {
   },
   rob: async (message, args) => {
     const userMention = message.mentions.users.first();
-    if(!userMention) {
+    if (!userMention) {
       return message.reply("Please mention a user to rob.");
     }
-    try{
+    try {
       return await dataManager.robUser(message.author.id, userMention, message);
-    }catch(error){
+    } catch (error) {
       console.error("Error in rob command:", error);
       const errorMsg = await message.channel.send(
         "An error occurred while robbing the user."
@@ -1417,97 +1362,107 @@ const commands = {
     }
   },
   botinfo: async (message) => {
-      // Get guild count
-  const guildCount = client.guilds.cache.size;
-  
-  // Get total member count across all guilds
-  const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-  
-  // Get registered users count
-  const registeredUsers = Object.keys(dataManager.users).length;
-  
-  // Calculate total balance across all users
-  const totalEconomy = Object.values(dataManager.users).reduce((acc, user) => acc + user.balance, 0);
-  
-  // Get uptime
-  const uptime = process.uptime();
-  const days = Math.floor(uptime / 86400);
-  const hours = Math.floor(uptime / 3600) % 24;
-  const minutes = Math.floor(uptime / 60) % 60;
-  const seconds = Math.floor(uptime % 60);
-  
-  // Get memory usage
-  const memoryUsage = process.memoryUsage();
-  const memoryUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-  const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+    // Get guild count
+    const guildCount = client.guilds.cache.size;
 
-  // Fetch the full bot user to get banner
-  const botUser = await client.users.fetch(client.user.id, { force: true });
-  
-  const infoEmbed = new EmbedBuilder()
-    .setColor("#FFD700")
-    .setTitle("🤖 BOT Information")
-    .setThumbnail(client.user.displayAvatarURL({ size: 4096 }))
-    // Set banner if exists
-    .setImage(
-      botUser.bannerURL({ size: 4096 }) || 
-      "https://cdn.discordapp.com/attachments/1234567890/default-banner.png" // Ganti dengan URL banner default jika bot tidak punya banner
-    )
-    .addFields(
-      {
-        name: "📊 Bot Statistics",
-        value: `**Username:** ${client.user.username}
+    // Get total member count across all guilds
+    const totalMembers = client.guilds.cache.reduce(
+      (acc, guild) => acc + guild.memberCount,
+      0
+    );
+
+    // Get registered users count
+    const registeredUsers = Object.keys(dataManager.users).length;
+
+    // Calculate total balance across all users
+    const totalEconomy = Object.values(dataManager.users).reduce(
+      (acc, user) => acc + user.balance,
+      0
+    );
+
+    // Get uptime
+    const uptime = process.uptime();
+    const days = Math.floor(uptime / 86400);
+    const hours = Math.floor(uptime / 3600) % 24;
+    const minutes = Math.floor(uptime / 60) % 60;
+    const seconds = Math.floor(uptime % 60);
+
+    // Get memory usage
+    const memoryUsage = process.memoryUsage();
+    const memoryUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+    const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+
+    // Fetch the full bot user to get banner
+    const botUser = await client.users.fetch(client.user.id, { force: true });
+
+    const infoEmbed = new EmbedBuilder()
+      .setColor("#FFD700")
+      .setTitle("🤖 BOT Information")
+      .setThumbnail(client.user.displayAvatarURL({ size: 4096 }))
+      // Set banner if exists
+      .setImage(
+        botUser.bannerURL({ size: 4096 }) ||
+          "https://cdn.discordapp.com/attachments/1234567890/default-banner.png" // Ganti dengan URL banner default jika bot tidak punya banner
+      )
+      .addFields(
+        {
+          name: "📊 Bot Statistics",
+          value: `**Username:** ${client.user.username}
                **ID:** ${client.user.id}
                **Created:** ${client.user.createdAt.toLocaleDateString()}
-               **Developer:** ${(await client.users.fetch(config.ownerId[0])).username}
+               **Developer:** ${
+                 (await client.users.fetch(config.ownerId[0])).username
+               }
                **Node.js:** ${process.version}
                **Banner:** ${botUser.banner ? "✅" : "❌"}
                **Verified:** ${client.user.verified ? "✅" : "❌"}
                **Bot Public:** ${client.user.bot ? "✅" : "❌"}`,
-        inline: false
-      },
-      {
-        name: "🌐 Network Statistics",
-        value: `**Servers:** ${guildCount.toLocaleString()}
+          inline: false,
+        },
+        {
+          name: "🌐 Network Statistics",
+          value: `**Servers:** ${guildCount.toLocaleString()}
                **Total Members:** ${totalMembers.toLocaleString()}
                **Registered Users:** ${registeredUsers.toLocaleString()}
                **Total Economy:** ${formatBalance(totalEconomy)}
                **Ping:** ${client.ws.ping}ms
-               **Shards:** ${client.shard ? `✅ (${client.shard.count})` : "❌"}`,
-        inline: false
-      },
-      {
-        name: "⚙️ System Information",
-        value: `**Uptime:** ${days}d ${hours}h ${minutes}m ${seconds}s
+               **Shards:** ${
+                 client.shard ? `✅ (${client.shard.count})` : "❌"
+               }`,
+          inline: false,
+        },
+        {
+          name: "⚙️ System Information",
+          value: `**Uptime:** ${days}d ${hours}h ${minutes}m ${seconds}s
                **Memory Usage:** ${memoryUsedMB}MB / ${totalMemoryMB}MB
                **Platform:** ${process.platform}
                **Architecture:** ${process.arch}
                **Process ID:** ${process.pid}`,
-        inline: false
-      },
-      {
-        name: "🎮 Games Available",
-        value: `• Coin Flip (2x multiplier)
+          inline: false,
+        },
+        {
+          name: "🎮 Games Available",
+          value: `• Coin Flip (2x multiplier)
                • Number Guess (5x multiplier)
                • Dice Roll (8x multiplier)
                • Slots (10x multiplier)`,
-        inline: false
-      },
-      {
-        name: "🔗 Links",
-        value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
+          inline: false,
+        },
+        {
+          name: "🔗 Links",
+          value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
                 • [Community Server](https://discord.gg/ARsVsfjtqA)
                 • [Developer Website](https://www.irfanks.site/)`,
-        inline: false
-      }
-    )
-    .setFooter({ 
-      text: `Requested by ${message.author.tag} | Bot Version 1.0.0`, 
-      iconURL: message.author.displayAvatarURL({ dynamic: true })
-    })
-    .setTimestamp();
+          inline: false,
+        }
+      )
+      .setFooter({
+        text: `Requested by ${message.author.tag} | Bot Version 1.0.0`,
+        iconURL: message.author.displayAvatarURL({ dynamic: true }),
+      })
+      .setTimestamp();
 
-  return message.reply({ embeds: [infoEmbed] });
+    return message.reply({ embeds: [infoEmbed] });
   },
   ownerinfo: async (message) => {
     const owner = await dataManager.getUserProfile(config.ownerId[0], client);
@@ -1560,7 +1515,10 @@ const commands = {
       return message.reply(`Usage: ${prefix}giveowner <amount>`);
     }
 
-    if(amount > 1000000000000000000000000000000000000000000000000000000000000000000){
+    if (
+      amount >
+      1000000000000000000000000000000000000000000000000000000000000000000
+    ) {
       return message.reply(`You can't give that much money!`);
     }
 
@@ -1659,17 +1617,40 @@ const commands = {
     }
   },
   announcement: async (message, args) => {
-    if (message.author.id !== config.ownerId[0]) return;
-    // kirim pesan ke semua server yang dimasuki oleh bot dengan tag everyone 
-    const servers = client.guilds.cache.map(guild => guild.id);
+    // Cek apakah yang mengirim pesan adalah pemilik bot
+    if (message.author.id !== config.ownerId[0]) {
+      return message.reply(
+        "Anda tidak memiliki izin untuk mengirim pengumuman."
+      );
+    }
+
+    // Mengirim balasan kepada pengguna yang mengirim command
+    message.reply("Mengirim pengumuman...");
+
+    // Mengambil semua server yang dimasuki bot
+    const servers = client.guilds.cache.map((guild) => guild.id);
+
     for (const serverId of servers) {
       const server = client.guilds.cache.get(serverId);
       if (!server) continue;
-      const everyoneRole = server.roles.cache.find(role => role.name === '@everyone');
+
+      // Mencari role @everyone
+      const everyoneRole = server.roles.cache.find(
+        (role) => role.name === "@everyone"
+      );
       if (!everyoneRole) continue;
-      const everyoneChannel = server.channels.cache.find(channel => channel.type === 'GUILD_TEXT' && channel.permissionsFor(everyoneRole).has('SEND_MESSAGES'));
-      if (!everyoneChannel) continue;
-      everyoneChannel.send(args.slice(1).join(' '));
+
+      // Mencari channel yang bisa mengirim pesan
+      const everyoneChannel = server.channels.cache.find(
+        (channel) =>
+          channel.type === "GUILD_TEXT" &&
+          channel.permissionsFor(everyoneRole).has("SEND_MESSAGES")
+      );
+
+      // Jika channel ditemukan, kirim pengumuman
+      if (everyoneChannel) {
+        everyoneChannel.send(args.slice(1).join(" "));
+      }
     }
   },
   take: async (message, args) => {
@@ -1693,7 +1674,6 @@ const commands = {
         targetUser.id,
         amount
       );
-      
 
       const takeEmbed = new EmbedBuilder()
         .setColor("#FF0000")
@@ -1729,7 +1709,9 @@ const commands = {
         );
       }
       if (error.message === "Insufficient balance!") {
-        return message.reply(`${targetUser} don't have enough money for this transfer!`);
+        return message.reply(
+          `${targetUser} don't have enough money for this transfer!`
+        );
       }
 
       console.error("Error in take command:", error);
@@ -1814,11 +1796,13 @@ const commands = {
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        return `${hours.toString().padStart(2, "0")}:${minutes.toString()}:${
-          seconds.toString().padStart(2, "0")
-        }`
+        return `${hours
+          .toString()
+          .padStart(2, "0")}:${minutes.toString()}:${seconds
+          .toString()
+          .padStart(2, "0")}`;
       };
-      const timeLeft = (lastDaily + setCD - now);
+      const timeLeft = lastDaily + setCD - now;
       return message.reply(
         `You can claim your daily reward again in ${formatClockHHMMSS(
           timeLeft
@@ -1837,10 +1821,10 @@ const commands = {
   resetplayer: async (message) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     try {
-      
       const userId = message.mentions.users.first();
-      if(!userId) return message.reply("Please mention a user to reset!");
-      if(userId.id === config.ownerId[0]) return message.reply("You cannot reset the owner of the bot!");
+      if (!userId) return message.reply("Please mention a user to reset!");
+      if (userId.id === config.ownerId[0])
+        return message.reply("You cannot reset the owner of the bot!");
       await dataManager.resetPlayer(userId.id);
       return message.reply(`Player ${userId} has been reset.`);
     } catch (error) {
@@ -1858,12 +1842,14 @@ client.once("ready", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  // jika bot di tag dia akan menjalankan fungsi AI 
+  // jika bot di tag dia akan menjalankan fungsi AI
   const getMessageMention = message.mentions.users.first();
-  if(getMessageMention === client.user){
+  if (getMessageMention === client.user) {
     message.channel.sendTyping();
-    const prompt = message.content.slice(message.content.indexOf(">") + 1).trim();
-    console.log(prompt)
+    const prompt = message.content
+      .slice(message.content.indexOf(">") + 1)
+      .trim();
+    console.log(prompt);
     await dataManager.aiResponse(message, prompt);
   }
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
