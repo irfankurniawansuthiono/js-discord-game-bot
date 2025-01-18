@@ -1123,7 +1123,7 @@ const commands = {
       return message.reply(`Usage: ${prefix}giveowner <amount>`);
     }
 
-    if(amount > 1000000000000000){
+    if(amount > 1000000000000000000000000000000000000000000000000000000000000000000){
       return message.reply(`You can't give that much money!`);
     }
 
