@@ -1424,7 +1424,6 @@ const commands = {
                **ID:** ${client.user.id}
                **Created:** ${client.user.createdAt.toLocaleDateString()}
                **Developer:** ${(await client.users.fetch(config.ownerId[0])).username}
-               **Library:** discord.js ${require('discord.js').version}
                **Node.js:** ${process.version}
                **Banner:** ${botUser.banner ? "✅" : "❌"}
                **Verified:** ${client.user.verified ? "✅" : "❌"}
