@@ -63,6 +63,7 @@ const helpEmbed = new EmbedBuilder()
       value: [
         `**${prefix}flip** <bet | all> <h/t> \n Flip a coin (2x multiplier)`,
         `**${prefix}guess** <bet | all> <1-10> \n Guess a number (5x multiplier)`,
+        `**${prefix}bj** <bet | all> \n Play blackjack (5x multiplier)`,
         `**${prefix}dice** <bet | all> <2-12> \n Guess dice sum (8x multiplier)`,
         `**${prefix}daily**  \n Claim daily reward`,
         `**${prefix}slots** <bet | all> \n Play slots (10x multiplier)`,
@@ -344,6 +345,217 @@ const dataManager = new DataManager();
 
 // Games
 class Games {
+  static async blackjack(message, bet) {
+    let user = dataManager.getUser(message.author.id);
+    if (!user) {
+      return message.reply(`You need to register first! Use ${prefix}register`);
+    }
+  
+    // Handle "all-in" bet
+    if (bet === "all") {
+      bet = user.balance;
+    } else {
+      bet = parseInt(bet);
+      if (isNaN(bet) || bet <= 0) {
+        return message.reply("Please enter a valid bet amount!");
+      }
+    }
+  
+    if (bet > user.balance) {
+      return message.reply("Insufficient balance for this bet!");
+    }
+  
+    try {
+      const suits = { '♠': 'Spades', '♣': 'Clubs', '♥': 'Hearts', '♦': 'Diamonds' };
+      const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+      let deck = [];
+      let playerHand = [];
+      let dealerHand = [];
+  
+      // Initialize deck
+      for (let suit in suits) {
+        for (let value of values) {
+          deck.push({ suit, value });
+        }
+      }
+  
+      // Shuffle deck
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+  
+      // Initial deal
+      playerHand.push(deck.pop());
+      dealerHand.push(deck.pop());
+      playerHand.push(deck.pop());
+      dealerHand.push(deck.pop());
+  
+      // Function to calculate hand value
+      const calculateHandValue = (hand) => {
+        let value = 0;
+        let aces = 0;
+  
+        for (let card of hand) {
+          if (card.value === 'A') {
+            aces += 1;
+            value += 11;
+          } else if (['K', 'Q', 'J'].includes(card.value)) {
+            value += 10;
+          } else {
+            value += parseInt(card.value);
+          }
+        }
+  
+        while (value > 21 && aces > 0) {
+          value -= 10;
+          aces -= 1;
+        }
+  
+        return value;
+      };
+  
+      // Function to format hand display
+      const formatHand = (hand, hideSecond = false) => {
+        return hand.map((card, index) => {
+          if (hideSecond && index === 1) return '🎴';
+          return `${card.suit}${card.value}`;
+        }).join(' ');
+      };
+  
+      // Create initial game display
+      const createGameDisplay = (playerHand, dealerHand, hideDealer = true, gameStatus = '') => {
+        const playerValue = calculateHandValue(playerHand);
+        const dealerValue = hideDealer ? calculateHandValue([dealerHand[0]]) : calculateHandValue(dealerHand);
+        
+        return `
+  🎰 Blackjack 🎰
+  ══════════════
+  Dealer's Hand: ${formatHand(dealerHand, hideDealer)}
+  ${hideDealer ? `Value: ${dealerValue}+?` : `Value: ${dealerValue}`}
+  
+  Your Hand: ${formatHand(playerHand)}
+  Value: ${playerValue}
+  ${gameStatus}
+  ══════════════`;
+      };
+  
+      // Send initial game state
+      const gameMsg = await message.reply(createGameDisplay(playerHand, dealerHand));
+  
+      // Check for natural blackjack
+      const playerValue = calculateHandValue(playerHand);
+      const dealerValue = calculateHandValue(dealerHand);
+  
+      if (playerValue === 21 || dealerValue === 21) {
+        let amount;
+        let resultMessage;
+  
+        if (playerValue === 21 && dealerValue === 21) {
+          amount = 0;
+          resultMessage = "Both have Blackjack - Push!";
+        } else if (playerValue === 21) {
+          amount = Math.floor(bet * 1.5);
+          resultMessage = `Blackjack! You won ${formatBalance(amount)}!`;
+        } else {
+          amount = -bet;
+          resultMessage = `Dealer has Blackjack! You lost ${formatBalance(bet)}!`;
+        }
+  
+        dataManager.updateBalance(message.author.id, amount);
+        dataManager.updateStats(message.author.id, amount > 0, amount);
+        user = dataManager.getUser(message.author.id);
+  
+        await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false, 
+          `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`));
+        return;
+      }
+  
+      // Create collector for player decisions
+      const filter = m => m.author.id === message.author.id && ['h', 's'].includes(m.content.toLowerCase());
+      const collector = message.channel.createMessageCollector({ filter, time: 30000, max: 10 });
+  
+      let gameEnded = false;
+      
+      collector.on('collect', async (m) => {
+        if (gameEnded) return;
+  
+        if (m.content.toLowerCase() === 'h') {
+          // Player hits
+          playerHand.push(deck.pop());
+          const newValue = calculateHandValue(playerHand);
+  
+          if (newValue > 21) {
+            gameEnded = true;
+            collector.stop();
+  
+            // Player busts
+            dataManager.updateBalance(message.author.id, -bet);
+            dataManager.updateStats(message.author.id, false, -bet);
+            user = dataManager.getUser(message.author.id);
+  
+            await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
+              `Bust! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`));
+          } else {
+            await gameMsg.edit(createGameDisplay(playerHand, dealerHand, true,
+              'Type "h" to hit or "s" to stand'));
+          }
+        } else if (m.content.toLowerCase() === 's') {
+          gameEnded = true;
+          collector.stop();
+  
+          // Dealer's turn
+          while (calculateHandValue(dealerHand) < 17) {
+            dealerHand.push(deck.pop());
+          }
+  
+          const finalPlayerValue = calculateHandValue(playerHand);
+          const finalDealerValue = calculateHandValue(dealerHand);
+          let amount;
+          let resultMessage;
+  
+          if (finalDealerValue > 21) {
+            amount = bet;
+            resultMessage = `Dealer busts! You won ${formatBalance(bet)}!`;
+          } else if (finalDealerValue > finalPlayerValue) {
+            amount = -bet;
+            resultMessage = `Dealer wins! You lost ${formatBalance(bet)}!`;
+          } else if (finalPlayerValue > finalDealerValue) {
+            amount = bet;
+            resultMessage = `You win! You won ${formatBalance(bet)}!`;
+          } else {
+            amount = 0;
+            resultMessage = "Push - it's a tie!";
+          }
+  
+          dataManager.updateBalance(message.author.id, amount);
+          dataManager.updateStats(message.author.id, amount > 0, amount);
+          user = dataManager.getUser(message.author.id);
+  
+          await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
+            `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`));
+        }
+      });
+  
+      collector.on('end', async () => {
+        if (!gameEnded) {
+          dataManager.updateBalance(message.author.id, -bet);
+          dataManager.updateStats(message.author.id, false, -bet);
+          user = dataManager.getUser(message.author.id);
+  
+          await gameMsg.edit(createGameDisplay(playerHand, dealerHand, false,
+            `Time's up! You lost ${formatBalance(bet)}!\nCurrent balance: ${formatBalance(user.balance)}`));
+        }
+      });
+  
+      // Initial prompt
+      await message.reply('Type "h" to hit or "s" to stand');
+  
+    } catch (error) {
+      console.error("Error in blackjack game:", error);
+      return message.reply("An error occurred while playing the game. Please try again.");
+    }
+  }
   static async slots(message, bet) {
     let user = dataManager.getUser(message.author.id);
     if (!user) {
@@ -659,6 +871,11 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 // Commands remain the same as in the previous version
 const commands = {
+  bj: (message, args) => {
+    if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
+    const bet = args[1];
+    return Games.blackjack(message, bet);
+  },
   slots: (message, args) => {
     if(args.length < 2) return message.reply(`Usage: ${prefix}slots <bet | all>`);
     const bet = args[1];

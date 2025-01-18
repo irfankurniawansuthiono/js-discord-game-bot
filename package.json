@@ -1,5 +1,5 @@
 {
-  "name": "nanamibothharam",
+  "name": "nanami",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {
@@ -9,7 +9,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@prisma/client": "6.2.1",
     "discord.js": "^14.17.3"
   }
 }
