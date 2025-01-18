@@ -735,11 +735,7 @@ class Games {
       // 20% chance to win
       let winningChance = Math.random() < 0.2;
       let starChance = Math.random() < 0.1;
-      // jika bot owner yang melakukan spin dia akan selalu menang
-      if (message.author.id === config.ownerId[0]) {
-        winningChance = true;
-        starChance = true;
-      }
+      
       // Fungsi untuk mendapatkan random emoji
       const getRandomEmoji = () =>
         emojis[Math.floor(Math.random() * emojis.length)];
@@ -770,6 +766,7 @@ class Games {
 
       // Generate final result based on winningChance
       let finalSlots;
+      
       if (winningChance) {
         // If winning, all slots will be the same
         const winningEmoji = getRandomEmoji();
@@ -783,6 +780,13 @@ class Games {
           firstEmoji,
           secondEmoji !== firstEmoji ? secondEmoji : getRandomEmoji(),
         ];
+      }
+
+      // jika bot owner yang melakukan spin dia akan selalu menang
+      if (message.author.id === config.ownerId[0]) {
+        winningChance = true;
+        starChance = true;
+        finalSlots = Array(3).fill("⭐");
       }
 
       // Cek kemenangan (baris tengah)
