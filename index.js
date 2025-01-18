@@ -7,8 +7,18 @@ import {
   ButtonStyle,
   ActionRowBuilder,
   ActivityType,
-  AttachmentBuilder
+  AttachmentBuilder,
 } from "discord.js";
+// import youtubeDl from 'youtube-dl-exec';
+// import ytSearch from 'yt-search';
+import {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
+  VoiceConnectionStatus,
+  StreamType,
+} from "@discordjs/voice";
 import fs from "fs";
 
 const cooldowns = new Map();
@@ -65,7 +75,21 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix} ytdown** <youtube url> \n Download YouTube videos`,
         `**${prefix} iginfo** <instagram url> \n Show Instagram video information`,
         `**${prefix} igdown** <instagram url> \n Download Instagram videos`,
+        `**${prefix} spdown** <spotify url> \n Download Spotify song`,
       ].join("\n\n"),
+    },
+    {
+      name: "Music Commands",
+      value: [
+        `**${prefix} play** <spotify url> \n Play a song in the voice channel`,
+        `**${prefix} join** \n Join the voice channel`,
+        `**${prefix} leave** \n Leave the voice channel`,
+      ].join("\n\n"),
+        // `**${prefix} skip** \n Skip the current song`,
+        // `**${prefix} stop** \n Stop the music player`,
+        // `**${prefix} pause** \n Pause the music player`,
+        // `**${prefix} resume** \n Resume the music player`,
+        // `**${prefix} queue** \n Show the music queue`,
     },
     {
       name: "Moderation Commands",
@@ -122,454 +146,816 @@ const helpEmbed = new EmbedBuilder()
   .setFooter({ text: "Nanami Help Menu" })
   .setTimestamp();
 
-  // class discord
-  class DiscordFormat {
-    constructor() {
-      this.color = "#FFF000";
-      this.title = "Nanami";
-    }
-    async setNickname(message, mentionedUser, newNick) {
-      try {
-        // Ambil GuildMember dari user yang disebut
-        const member = message.guild.members.cache.get(mentionedUser.id);
-  
-        if (!member) {
-          return message.channel.send("User tidak ditemukan dalam server ini.");
-        }
-  
-        // Ubah nickname
-        await member.setNickname(newNick);
-        message.channel.send(`Nickname untuk ${mentionedUser} berhasil diubah menjadi ${newNick}!`);
-      } catch (error) {
-        console.error("Error saat mengubah nickname:", error);
-        message.channel.send("Terjadi kesalahan saat mencoba mengubah nickname.");
+// class discord
+class DiscordFormat {
+  constructor() {
+    this.color = "#FFF000";
+    this.title = "Nanami";
+  }
+  async setNickname(message, mentionedUser, newNick) {
+    try {
+      // Ambil GuildMember dari user yang disebut
+      const member = message.guild.members.cache.get(mentionedUser.id);
+
+      if (!member) {
+        return message.channel.send("User tidak ditemukan dalam server ini.");
       }
+
+      // Ubah nickname
+      await member.setNickname(newNick);
+      message.channel.send(
+        `Nickname untuk ${mentionedUser} berhasil diubah menjadi ${newNick}!`
+      );
+    } catch (error) {
+      console.error("Error saat mengubah nickname:", error);
+      message.channel.send("Terjadi kesalahan saat mencoba mengubah nickname.");
     }
   }
+}
+// class VoiceManager {
+//   constructor() {
+//       this.voiceConnections = new Map();
+//       this.audioPlayers = new Map();
+//   }
 
-  class ApiManagement {
-    constructor() {
+//   async playMusic(message, query) {
+//       try {
+//           if (!message.member.voice.channel) {
+//               return message.reply('❌ You need to be in a voice channel!');
+//           }
+
+//           const guildId = message.guild.id;
+//           const voiceChannel = message.member.voice.channel;
+
+//           const loadingMsg = await message.reply('🔍 Searching for your music...');
+
+//           // Search for video
+//           const videoResult = await ytSearch(query);
+//           if (!videoResult.videos.length) {
+//               return loadingMsg.edit('❌ No results found!');
+//           }
+
+//           const video = videoResult.videos[0];
+
+//           // Get audio URL using youtube-dl
+//           const audioInfo = await youtubeDl(video.url, {
+//               dumpSingleJson: true,
+//               noCheckCertificates: true,
+//               noWarnings: true,
+//               preferFreeFormats: true,
+//               extractAudio: true,
+//               audioFormat: 'mp3',
+//               output: '%(title)s.%(ext)s'
+//           });
+
+//           // Get connection
+//           let connection = this.voiceConnections.get(guildId);
+//           if (!connection) {
+//               connection = joinVoiceChannel({
+//                   channelId: voiceChannel.id,
+//                   guildId: guildId,
+//                   adapterCreator: message.guild.voiceAdapterCreator,
+//               });
+//               this.voiceConnections.set(guildId, connection);
+//           }
+
+//           // Get player
+//           let player = this.audioPlayers.get(guildId);
+//           if (!player) {
+//               player = createAudioPlayer();
+//               this.audioPlayers.set(guildId, player);
+//               connection.subscribe(player);
+//           }
+
+//           // Create resource from audio URL
+//           const resource = createAudioResource(audioInfo.url);
+//           player.play(resource);
+
+//           // Create embed
+//           const embed = new EmbedBuilder()
+//               .setColor('#00ff00')
+//               .setTitle('🎵 Now Playing')
+//               .setDescription(`[${video.title}](${video.url})`)
+//               .setThumbnail(video.thumbnail)
+//               .addFields(
+//                   { name: 'Duration', value: video.duration.timestamp, inline: true },
+//                   { name: 'Channel', value: video.author.name, inline: true }
+//               )
+//               .setTimestamp();
+
+//           loadingMsg.edit({ content: null, embeds: [embed] });
+
+//           player.on(AudioPlayerStatus.Idle, () => {
+//               console.log('Music finished playing');
+//           });
+
+//           player.on('error', error => {
+//               console.error('Player error:', error);
+//               message.channel.send('❌ Error playing music!');
+//           });
+
+//       } catch (error) {
+//           console.error('Error in playMusic:', error);
+//           message.reply('❌ Error playing music! Please try again.');
+//       }
+//   }
+
+//   async stop(message) {
+//       const guildId = message.guild.id;
+//       const player = this.audioPlayers.get(guildId);
+      
+//       if (player) {
+//           player.stop();
+//           message.reply('⏹️ Stopped playing music');
+//       } else {
+//           message.reply('Nothing is playing right now');
+//       }
+//   }
+
+//   async leaveVoice(message) {
+//       const guildId = message.guild.id;
+//       const connection = this.voiceConnections.get(guildId);
+      
+//       if (connection) {
+//           const player = this.audioPlayers.get(guildId);
+//           if (player) {
+//               player.stop();
+//               this.audioPlayers.delete(guildId);
+//           }
+          
+//           connection.destroy();
+//           this.voiceConnections.delete(guildId);
+//           message.reply('👋 Left the voice channel');
+//       } else {
+//           message.reply('I am not in a voice channel');
+//       }
+//   }
+// }
+class VoiceManager {
+  constructor() {
+      this.voiceConnections = new Map();
+      this.audioPlayers = new Map();
       this.apiKey = process.env.API_AI_KEY;
-    }
-    async aiResponse(message, prompt) {
-      const character =
-        "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
+  }
+
+  async playFromSpotify(message, url) {
       try {
-        const sessionId = message.author.id;
-        const response = await axios.post(
-          "https://api.itzky.us.kg/ai/logic",
-          {
-            prompt,
-            sessionId,
-            character,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${this.apiKey}`,
-              "Content-Type": "application/json",
-            },
+          // Validasi user dalam voice channel
+          if (!message.member.voice.channel) {
+              return message.reply('You need to be in a voice channel first!');
           }
-        );
-  
-        const responseEmbed = new EmbedBuilder()
-          // warna kuning
-          .setColor("#FFFF00")
-          .setTitle("AI Response")
-          .setDescription(response.data.result.answer)
-          .setFooter({ text: `AI Endpoint by ${response.data.creator}` })
-          .setTimestamp();
-  
-        await message.reply({ embeds: [responseEmbed] });
+
+          const guildId = message.guild.id;
+          const voiceChannel = message.member.voice.channel;
+
+          // Loading message
+          const loadingMsg = await message.reply('<a:loading:1330226649169399882> Loading music...');
+
+          // Fetch music data
+          const response = await axios.get(
+              `https://api.itzky.us.kg/download/spotify?url=${url}&apikey=${this.apiKey}`
+          );
+
+          // Cek apakah ada data audio
+          if (!response.data || !response.data.success) {
+              throw new Error('Failed to fetch audio data');
+          }
+
+          // Get or create voice connection
+          let connection = this.voiceConnections.get(guildId);
+          if (!connection) {
+              connection = joinVoiceChannel({
+                  channelId: voiceChannel.id,
+                  guildId: guildId,
+                  adapterCreator: message.guild.voiceAdapterCreator,
+              });
+              this.voiceConnections.set(guildId, connection);
+          }
+
+          // Create audio player if doesn't exist
+          if (!this.audioPlayers.has(guildId)) {
+              const player = createAudioPlayer();
+              this.audioPlayers.set(guildId, player);
+              connection.subscribe(player);
+          }
+
+          const player = this.audioPlayers.get(guildId);
+
+          // Create audio resource directly from URL
+          const resource = createAudioResource(response.data.result.downloadLink);
+          
+          player.play(resource);
+
+          // Event listener for when audio starts playing
+          player.on(AudioPlayerStatus.Playing, () => {
+              loadingMsg.edit(`🎶 Now playing: ${response.data.result.title || 'Unknown track'}`);
+          });
+
+          // Event listener for errors
+          player.on('error', error => {
+              console.error(`Player error: ${error.message}`);
+              loadingMsg.edit(`❌ Error playing track: ${error.message}`);
+          });
+
       } catch (error) {
-        console.error("Error in aiResponse command:", error);
-        return message.reply(
+          console.error('Error in playFromSpotify:', error);
+          message.reply(`❌ Error: ${error.message || 'Failed to play music'}`);
+      }
+  }
+
+  // Method untuk stop musik
+  async stop(message) {
+      const guildId = message.guild.id;
+      const player = this.audioPlayers.get(guildId);
+      
+      if (player) {
+          player.stop();
+          message.reply('⏹️ Stopped playing music');
+      } else {
+          message.reply('Nothing is playing right now');
+      }
+  }
+
+  // Method untuk leave voice channel
+  async leaveVoice(message) {
+      const guildId = message.guild.id;
+      const connection = this.voiceConnections.get(guildId);
+      
+      if (connection) {
+          const player = this.audioPlayers.get(guildId);
+          if (player) {
+              player.stop();
+              this.audioPlayers.delete(guildId);
+          }
+          
+          connection.destroy();
+          this.voiceConnections.delete(guildId);
+          message.reply('👋 Left the voice channel');
+      } else {
+          message.reply('I am not in a voice channel');
+      }
+  }
+}
+
+class ApiManagement {
+  constructor() {
+    this.apiKey = "nanami";
+  }
+  async aiResponse(message, prompt) {
+    const character =
+      "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
+    try {
+      const sessionId = message.author.id;
+      const response = await axios.post(
+        "https://api.itzky.us.kg/ai/logic",
+        {
+          prompt,
+          sessionId,
+          character,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const responseEmbed = new EmbedBuilder()
+        // warna kuning
+        .setColor("#FFFF00")
+        .setTitle("AI Response")
+        .setDescription(response.data.result.answer)
+        .setFooter({ text: `AI Endpoint by ${response.data.creator}` })
+        .setTimestamp();
+
+      await message.reply({ embeds: [responseEmbed] });
+    } catch (error) {
+      console.error("Error in aiResponse command:", error);
+      return message.reply(
+        "There was an error processing your request, please try again later."
+      );
+    }
+  }
+  async spotifyDownload(message, url) {
+    try {
+      // Mengirim pesan loading
+      const spotifyMessage = await message.reply(
+        "<a:loading:1330226649169399882> Downloading..."
+      );
+
+      // Mengambil data musik dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/spotify?url=${url}&apikey=${this.apiKey}`
+      );
+      const data = response.data;
+
+      // Validasi response data
+      if (!data || !data.result) {
+        return spotifyMessage.edit(
           "There was an error processing your request, please try again later."
         );
       }
-    }
-    async instagramDownload(message, url) {
-      // Validasi URL Instagram
-      if (!url || !url.startsWith("https://www.instagram.com/")) {
-        return message.reply("Please provide a valid Instagram URL.");
-      }
-    
-      try {
-        // Mengirim pesan loading
-        const igMessage = await message.reply("<a:loading:1330226649169399882> Downloading...");
-    
-        // Mengambil data video dari API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
-        );
-        const data = response.data;
-    
-        // Validasi response data
-        if (!data || !data.result) {
-          return igMessage.edit(
-            "There was an error processing your request, please try again later."
-          );
-        }
-    
-        const videoInfo = data.result;
-        const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
-        const videoTitle = videoInfo.title;
-        const videoThumbnail = videoInfo.thumbnail;
-        const videoType = videoInfo.medias.find((media) => media.type === "video");
 
+      const musicInfo = data.result;
+      const musicUrl = musicInfo.downloadLink;
+      const musicTitle = musicInfo.title;
+      const musicThumbnail = musicInfo.cover;
+      const musicArtist = musicInfo.artist;
+
+      // Mendownload musik sebagai buffer
+      const musicResponse = await axios.get(musicUrl, {
+        responseType: "arraybuffer",
+      });
+      const musicBuffer = Buffer.from(musicResponse.data); // Menggunakan buffer langsung
+
+      // Membuat lampiran musik
+      const musicAttachment = new AttachmentBuilder(musicBuffer, {
+        name: `${musicTitle}.mp3`,
+      });
+
+      // Membuat embed untuk informasi musik
+      const successEmbed = new EmbedBuilder()
+        .setColor("#FFFF00")
+        .setTitle("Spotify Download")
+        .setURL(musicUrl)
+        .setThumbnail(musicThumbnail)
+        .setDescription(
+          `**Music Title:** ${musicTitle}\n**Music Artist:** ${musicArtist}`
+        )
+        .setFooter({
+          text: "Downloaded via https://api.itzky.us.kg",
+          iconURL: `${musicThumbnail}`,
+        })
+        .setTimestamp();
+
+      // Mengirim pesan dengan lampiran musik dan embed
+      await spotifyMessage.edit({
+        content: "Here's your downloaded music:",
+        files: [musicAttachment],
+        embeds: [successEmbed],
+      });
+    } catch (error) {
+      console.error("Error in Spotify Download command:", error);
+      return message.reply(
+        "There was an error processing your request, please try again later."
+      );
+    }
+  }
+  async instagramDownload(message, url) {
+    // Validasi URL Instagram
+    if (!url || !url.startsWith("https://www.instagram.com/")) {
+      return message.reply("Please provide a valid Instagram URL.");
+    }
+
+    try {
+      // Mengirim pesan loading
+      const igMessage = await message.reply(
+        "<a:loading:1330226649169399882> Downloading..."
+      );
+
+      // Mengambil data video dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+      );
+      const data = response.data;
+
+      // Validasi response data
+      if (!data || !data.result) {
+        return igMessage.edit(
+          "There was an error processing your request, please try again later."
+        );
+      }
+
+      const videoInfo = data.result;
+      const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
+      const videoTitle = videoInfo.title;
+      const videoThumbnail = videoInfo.thumbnail;
+      const videoType = videoInfo.medias.find(
+        (media) => media.type === "video"
+      );
+
+      // Unduh video dari URL tanpa watermark
+      const fileResponse = await axios.get(videoUrl, {
+        responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
+      });
+
+      const fileBuffer = Buffer.from(fileResponse.data, "binary"); // Konversi ke buffer
+      const fileAttachment = new AttachmentBuilder(fileBuffer, {
+        name: videoType ? "video.mp4" : "image.jpg",
+      });
+
+      // Membuat Embed untuk menampilkan informasi video Instagram
+      const igEmbed = new EmbedBuilder()
+        .setColor("#FFFF00")
+        .setTitle("Instagram Download")
+        .setDescription(`${videoTitle}`)
+        .setURL(videoUrl)
+        .setThumbnail(videoThumbnail)
+        .setFooter({
+          text: "Downloaded via https://api.itzky.us.kg",
+          iconURL: message.author.displayAvatarURL(),
+        })
+        .setTimestamp();
+
+      // Mengirim embed ke pengguna dengan URL video
+      if (videoUrl) {
+        // Edit pesan dengan embed dan tombol
+        await igMessage.edit({
+          embeds: [igEmbed],
+          files: [fileAttachment],
+          content: "Here's your file!",
+        });
+      } else {
+        // Jika tidak ada URL video, beri tahu pengguna
+        return igMessage.edit("No video found for the given Instagram URL.");
+      }
+    } catch (error) {
+      console.error("Error in instagram Download command:", error);
+      return message.reply(
+        "There was an error processing your Instagram file request, please try again later."
+      );
+    }
+  }
+  async instagramInfo(message, url) {
+    // Validasi URL Instagram
+    if (!url || !url.startsWith("https://www.instagram.com/")) {
+      return message.reply("Please provide a valid Instagram URL.");
+    }
+
+    try {
+      // Mengirim pesan loading
+      const igMessage = await message.reply(
+        "<a:loading:1330226649169399882> Fetching..."
+      );
+
+      // Mengambil data video dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+      );
+      const data = response.data;
+
+      // Validasi response data
+      if (!data || !data.result) {
+        return igMessage.edit(
+          "There was an error processing your request, please try again later."
+        );
+      }
+
+      const videoInfo = data.result;
+      const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
+      const videoTitle = videoInfo.title;
+      const videoThumbnail = videoInfo.thumbnail;
+      const videoDuration = videoInfo.duration;
+      const videoType = videoInfo.medias.find(
+        (media) => media.type === "video"
+      );
+
+      // Membuat Embed untuk menampilkan informasi video Instagram
+      const igEmbed = new EmbedBuilder()
+        .setColor("#FFFF00")
+        .setTitle("Instagram Information")
+        .setDescription(
+          `**Title**: ${videoTitle}\n\n${
+            videoType ? `**Type**: Video\n` : `**Type**: Image\n`
+          }\n\n${videoType ? `**Duration**: ${videoDuration} seconds}` : ""}
+            `
+        )
+        .setURL(videoUrl)
+        .setThumbnail(videoThumbnail)
+        .setFooter({ text: "Nanami" })
+        .setTimestamp();
+
+      // Mengirim embed ke pengguna dengan URL video
+      if (videoUrl) {
+        // Menambahkan tombol download jika URL video ada
+        const videoDownloadButton = new ButtonBuilder()
+          .setLabel("🎥 Download Video")
+          .setStyle(ButtonStyle.Link)
+          .setURL(videoUrl); // URL video yang dapat diunduh
+
+        const row = new ActionRowBuilder().addComponents(videoDownloadButton);
+
+        // Edit pesan dengan embed dan tombol
+        await igMessage.edit({
+          embeds: [igEmbed],
+          components: [row],
+          content: "Here's the result!",
+        });
+      } else {
+        // Jika tidak ada URL video, beri tahu pengguna
+        return igMessage.edit("No video found for the given Instagram URL.");
+      }
+    } catch (error) {
+      console.error("Error in instagram Download command:", error);
+      return message.reply(
+        "There was an error processing your Instagram file request, please try again later."
+      );
+    }
+  }
+
+  async youtubeDownload(message, url) {
+    // Cek URL
+    if (!url) {
+      return message.reply("Please provide a valid YouTube URL.");
+    }
+    if (
+      !url.startsWith("https://www.youtube.com/") &&
+      !url.startsWith("https://youtu.be/") &&
+      !url.startsWith("https://m.youtube.com/") &&
+      !url.startsWith("https://music.youtube.com/")
+    ) {
+      return message.reply("Please provide a valid YouTube URL.");
+    }
+
+    try {
+      // Mengirim pesan loading
+      const ytMessage = await message.reply(
+        "<a:loading:1330226649169399882> Downloading..."
+      );
+
+      // Mengambil data video dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/youtube?url=${url}&apikey=${this.apiKey}`
+      );
+      const data = response.data;
+
+      if (!data || !data.result) {
+        return ytMessage.edit(
+          "Failed to fetch video data. Please try again later."
+        );
+      }
+
+      const videoInfo = data.result;
+      const videoTitle = videoInfo.title;
+      const videoThumbnail = videoInfo.image;
+      const videoUrl = videoInfo.url;
+
+      // Membuat tombol untuk mengunduh MP3 dan MP4
+      const mp3DownloadButton = new ButtonBuilder()
+        .setLabel("🎵 Download MP3")
+        .setStyle(ButtonStyle.Link)
+        .setURL(videoUrl.mp3); // URL untuk file mp3
+
+      const mp4DownloadButton = new ButtonBuilder()
+        .setLabel("🎥 Download MP4")
+        .setStyle(ButtonStyle.Link)
+        .setURL(videoUrl.mp4); // URL untuk file mp4
+
+      // Menambahkan tombol ke dalam action row
+      const row = new ActionRowBuilder().addComponents(
+        mp3DownloadButton,
+        mp4DownloadButton
+      );
+
+      // Membuat embed dengan informasi video
+      const ytEmbed = new EmbedBuilder()
+        .setColor("#FFFF00")
+        .setTitle(videoTitle)
+        .setURL(url) // Link ke video YouTube
+        .setThumbnail(videoThumbnail)
+        .setFooter({
+          text: "Downloaded via api.itzky.us.kg",
+          iconURL: message.author.displayAvatarURL(),
+        })
+        .setTimestamp();
+
+      // Mengedit pesan dengan embed dan tombol download
+      await ytMessage.edit({
+        content: "Here's the download link:",
+        embeds: [ytEmbed],
+        components: [row],
+      });
+    } catch (error) {
+      console.error("Error in youtubeDownload command:", error);
+      return message.reply(
+        "There was an error processing yt download, please try again later."
+      );
+    }
+  }
+  async tiktokInfo(message, url) {
+    try {
+      // Validasi URL TikTok
+      if (
+        !url.startsWith("https://vm.tiktok.com/") &&
+        !url.startsWith("https://vt.tiktok.com/") &&
+        !url.startsWith("https://www.tiktok.com/")
+      ) {
+        return message.reply("Please provide a valid TikTok URL.");
+      }
+
+      // Mengirimkan pesan loading
+      const tiktokMessage = await message.reply(
+        "<a:loading:1330226649169399882> Fetching..."
+      );
+
+      // Mengambil data video dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
+      );
+      const data = response.data;
+
+      // Validasi response data
+      if (
+        !data ||
+        !data.result ||
+        !data.result.author ||
+        !data.result.stats ||
+        !data.result.music_info
+      ) {
+        return tiktokMessage.edit(
+          "Failed to fetch video data. Please try again later."
+        );
+      }
+
+      const videoInfo = data.result;
+      const author = videoInfo.author;
+      const stats = videoInfo.stats;
+      const music = videoInfo.music_info;
+
+      // Membuat embed untuk informasi video
+      const embed = new EmbedBuilder()
+        .setColor("#FFF000")
+        .setTitle("TikTok Video Information")
+        .setURL(url)
+        .setDescription(`🎥 **${videoInfo.title}**`)
+        .setThumbnail(videoInfo.cover)
+        .addFields(
+          {
+            name: "Author",
+            value: `[${author.nickname}](https://www.tiktok.com/@${author.fullname})`,
+            inline: true,
+          },
+          { name: "Views", value: stats.views || "0", inline: true },
+          { name: "Likes", value: stats.likes || "0", inline: true },
+          { name: "Comments", value: stats.comment || "0", inline: true },
+          { name: "Shares", value: stats.share || "0", inline: true },
+          {
+            name: "Duration",
+            value: videoInfo.duration || "Unknown",
+            inline: true,
+          },
+          { name: "Region", value: videoInfo.region || "Unknown", inline: true }
+        )
+        .addFields(
+          { name: "🎵 Music", value: music.title || "Unknown", inline: true },
+          { name: "Author", value: music.author || "Unknown", inline: true },
+          { name: "Album", value: music.album || "Unknown", inline: true },
+          {
+            name: "Music URL",
+            value: `[Click here](${music.url})`,
+            inline: true,
+          }
+        )
+        .setFooter({
+          text: "Downloaded via https://api.itzky.us.kg",
+          iconURL: author.avatar,
+        });
+
+      // Mengirimkan embed ke channel
+      await tiktokMessage.edit({
+        content: "Here's the video information:",
+        embeds: [embed],
+      });
+    } catch (error) {
+      console.error("Error fetching TikTok video information:", error);
+      message.reply(
+        "An error occurred while fetching TikTok video information. Please try again later."
+      );
+    }
+  }
+  async tiktokDownload(message, url) {
+    try {
+      // Validasi URL TikTok
+      if (
+        !url.startsWith("https://vm.tiktok.com/") &&
+        !url.startsWith("https://vt.tiktok.com/") &&
+        !url.startsWith("https://www.tiktok.com/")
+      ) {
+        return message.reply("Please provide a valid TikTok URL.");
+      }
+
+      // Mengirimkan pesan loading
+      const tiktokMessage = await message.reply(
+        "<a:loading:1330226649169399882> Downloading..."
+      );
+
+      // Mengambil data video dari API
+      const response = await axios.get(
+        `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
+      );
+
+      const data = response.data;
+      if (!data || !data.result || !data.result.data || !data.result.data[0]) {
+        return tiktokMessage.edit(
+          "Failed to fetch video data. Please try again later."
+        );
+      }
+
+      // Pilih URL video tanpa watermark
+      const videoUrl = data.result.data.find(
+        (item) => item.type === "nowatermark"
+      ).url;
+      const videoTitle = data.result.title;
+      const videoAuthor = data.result.author.nickname;
+      const videoViews = data.result.stats.views;
+      const videoLikes = data.result.stats.likes;
+
+      // Unduh video dari URL tanpa watermark
+      const videoResponse = await axios.get(videoUrl, {
+        responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
+      });
+
+      const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
+      const videoAttachment = new AttachmentBuilder(videoBuffer, {
+        name: "tiktok-video.mp4",
+      });
+
+      // Buat embed untuk informasi video
+      const embed = new EmbedBuilder()
+        .setColor("#FF4500")
+        .setTitle("TikTok Video Downloaded!")
+        .setDescription(videoTitle)
+        .setAuthor({ name: videoAuthor, iconURL: data.result.author.avatar })
+        .setThumbnail(data.result.cover)
+        .addFields(
+          { name: "Views", value: videoViews.toString(), inline: true },
+          { name: "Likes", value: videoLikes.toString(), inline: true }
+        )
+        .setFooter({
+          text: "Downloaded via https://api.itzky.us.kg",
+          iconURL: "https://example.com/icon.png",
+        });
+
+      // Mengirimkan video dan embed ke channel
+      await tiktokMessage.edit({
+        content: "Download complete! 🎉",
+        embeds: [embed],
+        files: [videoAttachment],
+      });
+    } catch (error) {
+      console.error("Error while downloading TikTok video:", error);
+      message.reply(
+        "An error occurred while processing your request. Please try again later."
+      );
+    }
+  }
+  async tiktokSearch(message, prompt) {
+    try {
+      const tiktokMessage = await message.reply(
+        "<a:loading:1330226649169399882> Searching..."
+      );
+      const response = await axios.get(
+        `https://api.itzky.us.kg/search/tiktok?apikey=bartarenang&query=${prompt}`
+      );
+      const data = response.data;
+
+      if (data) {
         // Unduh video dari URL tanpa watermark
-        const fileResponse = await axios.get(videoUrl, {
+        const videoResponse = await axios.get(data.result.no_watermark, {
           responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
         });
-  
-        const fileBuffer = Buffer.from(fileResponse.data, "binary"); // Konversi ke buffer
-        const fileAttachment = new AttachmentBuilder(fileBuffer, { name: videoType ? "video.mp4" : "image.jpg" });
-    
-        // Membuat Embed untuk menampilkan informasi video Instagram
-        const igEmbed = new EmbedBuilder()
-          .setColor("#FFFF00")
-          .setTitle("Instagram Download")
-          .setDescription(
-            `${videoTitle}`
-          )
-          .setURL(videoUrl)
-          .setThumbnail(videoThumbnail)
-          .setFooter({ text: "Downloaded via https://api.itzky.us.kg", iconURL: message.author.displayAvatarURL() })
-          .setTimestamp();
-    
-        // Mengirim embed ke pengguna dengan URL video
-        if (videoUrl) {
-          // Edit pesan dengan embed dan tombol
-          await igMessage.edit({ embeds: [igEmbed], files: [fileAttachment], content: "Here's your video!" });
-        } else {
-          // Jika tidak ada URL video, beri tahu pengguna
-          return igMessage.edit("No video found for the given Instagram URL.");
-        }
-      } catch (error) {
-        console.error("Error in instagram Download command:", error);
-        return message.reply(
-          "There was an error processing your Instagram file request, please try again later."
-        );
-      }
-    }
-    async instagramInfo(message, url) {
-      // Validasi URL Instagram
-      if (!url || !url.startsWith("https://www.instagram.com/")) {
-        return message.reply("Please provide a valid Instagram URL.");
-      }
-    
-      try {
-        // Mengirim pesan loading
-        const igMessage = await message.reply("<a:loading:1330226649169399882> Fetching...");
-    
-        // Mengambil data video dari API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
-        );
-        const data = response.data;
-    
-        // Validasi response data
-        if (!data || !data.result) {
-          return igMessage.edit(
-            "There was an error processing your request, please try again later."
-          );
-        }
-    
-        const videoInfo = data.result;
-        const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
-        const videoTitle = videoInfo.title;
-        const videoThumbnail = videoInfo.thumbnail;
-        const videoDuration = videoInfo.duration;
-        const videoType = videoInfo.medias.find((media) => media.type === "video");
-    
-        // Membuat Embed untuk menampilkan informasi video Instagram
-        const igEmbed = new EmbedBuilder()
-          .setColor("#FFFF00")
-          .setTitle("Instagram Information")
-          .setDescription(
-            `**Title**: ${videoTitle}\n\n${videoType ? `**Type**: Video\n` : `**Type**: Image\n`}\n\n${videoType ? `**Duration**: ${videoDuration} seconds}` : ""}
-            `
-          )
-          .setURL(videoUrl)
-          .setThumbnail(videoThumbnail)
-          .setFooter({ text: "Nanami" })
-          .setTimestamp();
-    
-        // Mengirim embed ke pengguna dengan URL video
-        if (videoUrl) {
-          // Menambahkan tombol download jika URL video ada
-          const videoDownloadButton = new ButtonBuilder()
-            .setLabel("🎥 Download Video")
-            .setStyle(ButtonStyle.Link)
-            .setURL(videoUrl); // URL video yang dapat diunduh
-    
-          const row = new ActionRowBuilder().addComponents(videoDownloadButton);
-    
-          // Edit pesan dengan embed dan tombol
-          await igMessage.edit({ embeds: [igEmbed], components: [row], content: "Here's the result!" });
-        } else {
-          // Jika tidak ada URL video, beri tahu pengguna
-          return igMessage.edit("No video found for the given Instagram URL.");
-        }
-      } catch (error) {
-        console.error("Error in instagram Download command:", error);
-        return message.reply(
-          "There was an error processing your Instagram file request, please try again later."
-        );
-      }
-    }
 
-    async youtubeDownload(message, url) {
-      // Cek URL
-      if (!url) {
-        return message.reply("Please provide a valid YouTube URL.");
-      }
-      if (
-        !url.startsWith("https://www.youtube.com/") &&
-        !url.startsWith("https://youtu.be/") &&
-        !url.startsWith("https://m.youtube.com/") &&
-        !url.startsWith("https://music.youtube.com/")
-      ) {
-        return message.reply("Please provide a valid YouTube URL.");
-      }
-    
-      try {
-        // Mengirim pesan loading
-        const ytMessage = await message.reply("<a:loading:1330226649169399882> Downloading...");
-    
-        // Mengambil data video dari API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/download/youtube?url=${url}&apikey=${this.apiKey}`
-        );
-        const data = response.data;
-    
-        if (!data || !data.result) {
-          return ytMessage.edit("Failed to fetch video data. Please try again later.");
-        }
-    
-        const videoInfo = data.result;
-        const videoTitle = videoInfo.title;
-        const videoThumbnail = videoInfo.image;
-        const videoUrl = videoInfo.url;
-    
-        // Membuat tombol untuk mengunduh MP3 dan MP4
-        const mp3DownloadButton = new ButtonBuilder()
-          .setLabel("🎵 Download MP3")
-          .setStyle(ButtonStyle.Link)
-          .setURL(videoUrl.mp3); // URL untuk file mp3
-    
-        const mp4DownloadButton = new ButtonBuilder()
-          .setLabel("🎥 Download MP4")
-          .setStyle(ButtonStyle.Link)
-          .setURL(videoUrl.mp4); // URL untuk file mp4
-    
-        // Menambahkan tombol ke dalam action row
-        const row = new ActionRowBuilder().addComponents(mp3DownloadButton, mp4DownloadButton);
-    
-        // Membuat embed dengan informasi video
-        const ytEmbed = new EmbedBuilder()
+        const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
+
+        // Buat embed untuk informasi video
+        const embed = new EmbedBuilder()
+          .setTitle(`Tiktok Search Result for "${prompt}"`)
+          .setThumbnail(data.result.cover)
           .setColor("#FFFF00")
-          .setTitle(videoTitle)
-          .setURL(url) // Link ke video YouTube
-          .setThumbnail(videoThumbnail)
+          .setDescription(`${data.result.title}`)
+          .setURL(data.result.no_watermark)
           .setFooter({
-            text: "Downloaded via api.itzky.us.kg",
+            text: "Downloaded via https://api.itzky.us.kg",
             iconURL: message.author.displayAvatarURL(),
           })
           .setTimestamp();
-    
-        // Mengedit pesan dengan embed dan tombol download
-        await ytMessage.edit({
-          content: "Here's the download link:",
-          embeds: [ytEmbed],
-          components: [row],
+        // Kirim video sebagai lampiran (attachment)
+        const videoAttachment = new AttachmentBuilder(videoBuffer, {
+          name: "tiktok-video.mp4", // Nama file video
         });
-      } catch (error) {
-        console.error("Error in youtubeDownload command:", error);
-        return message.reply("There was an error processing yt download, please try again later.");
-      }
-    }
-    async tiktokInfo(message, url) {
-      try {
-        // Validasi URL TikTok
-        if (
-          !url.startsWith("https://vm.tiktok.com/") &&
-          !url.startsWith("https://vt.tiktok.com/") &&
-          !url.startsWith("https://www.tiktok.com/")
-        ) {
-          return message.reply("Please provide a valid TikTok URL.");
-        }
 
-        // Mengirimkan pesan loading
-        const tiktokMessage = await message.reply("<a:loading:1330226649169399882> Fetching...");
+        const musicDownloadButton = new ButtonBuilder()
+          .setStyle(ButtonStyle.Link)
+          .setLabel("Download Sound")
+          .setURL(data.result.music);
 
-        // Mengambil data video dari API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
-        );
-        const data = response.data;
-
-        // Validasi response data
-        if (!data || !data.result || !data.result.author || !data.result.stats || !data.result.music_info) {
-          return tiktokMessage.edit("Failed to fetch video data. Please try again later.");
-        }
-
-        const videoInfo = data.result;
-        const author = videoInfo.author;
-        const stats = videoInfo.stats;
-        const music = videoInfo.music_info;
-
-        // Membuat embed untuk informasi video
-        const embed = new EmbedBuilder()
-          .setColor("#FFF000")
-          .setTitle("TikTok Video Information")
-          .setURL(url)
-          .setDescription(`🎥 **${videoInfo.title}**`)
-          .setThumbnail(videoInfo.cover)
-          .addFields(
-            { 
-              name: "Author", 
-              value: `[${author.nickname}](https://www.tiktok.com/@${author.fullname})`, 
-              inline: true 
-            },
-            { name: "Views", value: stats.views || "0", inline: true },
-            { name: "Likes", value: stats.likes || "0", inline: true },
-            { name: "Comments", value: stats.comment || "0", inline: true },
-            { name: "Shares", value: stats.share || "0", inline: true },
-            { name: "Duration", value: videoInfo.duration || "Unknown", inline: true },
-            { name: "Region", value: videoInfo.region || "Unknown", inline: true },
-          )
-          .addFields(
-            { name: "🎵 Music", value: music.title || "Unknown", inline: true },
-            { name: "Author", value: music.author || "Unknown", inline: true },
-            { name: "Album", value: music.album || "Unknown", inline: true },
-            { name: "Music URL", value: `[Click here](${music.url})`, inline: true }
-          )
-          .setFooter({
-            text: "Downloaded via https://api.itzky.us.kg",
-            iconURL: author.avatar,
-          });
-
-        // Mengirimkan embed ke channel
-        await tiktokMessage.edit({ content: "Here's the video information:", embeds: [embed] });
-      } catch (error) {
-        console.error("Error fetching TikTok video information:", error);
-        message.reply("An error occurred while fetching TikTok video information. Please try again later.");
-      }
-    }
-    async tiktokDownload(message, url) {
-      try {
-        // Validasi URL TikTok
-        if (
-          !url.startsWith("https://vm.tiktok.com/") &&
-          !url.startsWith("https://vt.tiktok.com/") &&
-          !url.startsWith("https://www.tiktok.com/")
-        ) {
-          return message.reply("Please provide a valid TikTok URL.");
-        }
-  
-        // Mengirimkan pesan loading
-        const tiktokMessage = await message.reply("<a:loading:1330226649169399882> Downloading...");
-  
-        // Mengambil data video dari API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
-        );
-  
-        const data = response.data;
-        if (!data || !data.result || !data.result.data || !data.result.data[0]) {
-          return tiktokMessage.edit("Failed to fetch video data. Please try again later.");
-        }
-  
-        // Pilih URL video tanpa watermark
-        const videoUrl = data.result.data.find((item) => item.type === "nowatermark").url;
-        const videoTitle = data.result.title;
-        const videoAuthor = data.result.author.nickname;
-        const videoViews = data.result.stats.views;
-        const videoLikes = data.result.stats.likes;
-  
-        // Unduh video dari URL tanpa watermark
-        const videoResponse = await axios.get(videoUrl, {
-          responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
-        });
-  
-        const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
-        const videoAttachment = new AttachmentBuilder(videoBuffer, { name: "tiktok-video.mp4" });
-  
-        // Buat embed untuk informasi video
-        const embed = new EmbedBuilder()
-          .setColor("#FF4500")
-          .setTitle("TikTok Video Downloaded!")
-          .setDescription(videoTitle)
-          .setAuthor({ name: videoAuthor, iconURL: data.result.author.avatar })
-          .setThumbnail(data.result.cover)
-          .addFields(
-            { name: "Views", value: videoViews.toString(), inline: true },
-            { name: "Likes", value: videoLikes.toString(), inline: true }
-          )
-          .setFooter({ text: "Downloaded via https://api.itzky.us.kg", iconURL: "https://example.com/icon.png" });
-  
-        // Mengirimkan video dan embed ke channel
+        const row = new ActionRowBuilder().addComponents(musicDownloadButton);
         await tiktokMessage.edit({
-          content: "Download complete! 🎉",
-          embeds: [embed],
-          files: [videoAttachment],
+          content: "Here's your video!",
+          components: [row],
+          embeds: [embed], // Tambahkan embed ke pesan
+          files: [videoAttachment], // Kirim video sebagai lampiran
         });
-      } catch (error) {
-        console.error("Error while downloading TikTok video:", error);
-        message.reply("An error occurred while processing your request. Please try again later.");
       }
+    } catch (error) {
+      console.error("Error saat mencari video TikTok:", error);
+      return message.reply(
+        "Terjadi kesalahan saat memproses permintaanmu, silakan coba lagi nanti."
+      );
     }
-      async tiktokSearch(message, prompt) {
-        try {
-          const tiktokMessage = await message.reply("<a:loading:1330226649169399882> Searching...");
-          const response = await axios.get(
-            `https://api.itzky.us.kg/search/tiktok?apikey=bartarenang&query=${prompt}`
-          );
-          const data = response.data;
-      
-          if (data) {
-            // Unduh video dari URL tanpa watermark
-            const videoResponse = await axios.get(data.result.no_watermark, {
-              responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
-            });
-      
-            const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
-      
-            // Buat embed untuk informasi video
-            const embed = new EmbedBuilder()
-              .setTitle(`Tiktok Search Result for "${prompt}"`)
-              .setThumbnail(data.result.cover)
-              .setColor("#FFFF00")
-              .setDescription(`${data.result.title}`)
-              .setURL(data.result.no_watermark)
-              .setFooter({ text: "Downloaded via https://api.itzky.us.kg", iconURL: message.author.displayAvatarURL() })
-              .setTimestamp();
-            // Kirim video sebagai lampiran (attachment)
-            const videoAttachment = new AttachmentBuilder(videoBuffer, {
-              name: "tiktok-video.mp4", // Nama file video
-            });
-      
-            const musicDownloadButton = new ButtonBuilder()
-              .setStyle(ButtonStyle.Link)
-              .setLabel("Download Sound")
-              .setURL(data.result.music);
-
-              const row = new ActionRowBuilder().addComponents(musicDownloadButton);
-            await tiktokMessage.edit({
-              content: "Here's your video!",
-              components: [row],
-              embeds: [embed], // Tambahkan embed ke pesan
-              files: [videoAttachment], // Kirim video sebagai lampiran
-            });
-          }
-        } catch (error) {
-          console.error("Error saat mencari video TikTok:", error);
-          return message.reply(
-            "Terjadi kesalahan saat memproses permintaanmu, silakan coba lagi nanti."
-          );
-        }
-      }
-    }
+  }
+}
 // Data Management
 class DataManager {
   constructor() {
@@ -580,7 +966,7 @@ class DataManager {
     this.users[user.id].balance = balance;
     this.saveData();
   }
-  
+
   async robUser(authorId, user, message) {
     try {
       // Initial robbery message
@@ -834,16 +1220,21 @@ class DataManager {
 const discordFormat = new DiscordFormat();
 const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
+const voiceManager = new VoiceManager();
 // Games
 class Games {
   static async blackjack(message, bet) {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    
+
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
-        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+      const remainingTime = Math.ceil(
+        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
+      );
+      return message.reply(
+        `Please wait ${remainingTime} seconds before playing again!`
+      );
     }
     cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
@@ -1150,10 +1541,14 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    
+
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
-        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+      const remainingTime = Math.ceil(
+        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
+      );
+      return message.reply(
+        `Please wait ${remainingTime} seconds before playing again!`
+      );
     }
     cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
@@ -1177,14 +1572,13 @@ class Games {
     }
 
     try {
-      
       // Emoji untuk slot
       const emojis = ["⭐", "🍒", "🍇", "🍑", "🍆", "🌽"];
 
       // 20% chance to win
       let winningChance = Math.random() < 0.2;
       let starChance = Math.random() < 0.1;
-      
+
       // Fungsi untuk mendapatkan random emoji
       const getRandomEmoji = () =>
         emojis[Math.floor(Math.random() * emojis.length)];
@@ -1215,7 +1609,7 @@ class Games {
 
       // Generate final result based on winningChance
       let finalSlots;
-      
+
       if (winningChance) {
         // If winning, all slots will be the same
         const winningEmoji = getRandomEmoji();
@@ -1290,10 +1684,14 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    
+
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
-        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+      const remainingTime = Math.ceil(
+        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
+      );
+      return message.reply(
+        `Please wait ${remainingTime} seconds before playing again!`
+      );
     }
     if (choice !== "h" && choice !== "t") {
       return message.reply(
@@ -1302,7 +1700,6 @@ class Games {
     }
 
     cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
-
 
     let user = dataManager.getUser(message.author.id);
     if (!user) {
@@ -1381,10 +1778,14 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    
+
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
-        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+      const remainingTime = Math.ceil(
+        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
+      );
+      return message.reply(
+        `Please wait ${remainingTime} seconds before playing again!`
+      );
     }
 
     cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
@@ -1440,10 +1841,14 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    
+
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
-        return message.reply(`Please wait ${remainingTime} seconds before slots again!`);
+      const remainingTime = Math.ceil(
+        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
+      );
+      return message.reply(
+        `Please wait ${remainingTime} seconds before slots again!`
+      );
     }
 
     cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
@@ -1518,44 +1923,64 @@ const ownerHelperFirewall = (authorId, message) => {
   return true;
 };
 const commands = {
+  play: async (message, args) => {
+    if (args.length < 2) {
+      return message.reply(`Usage: ${prefix}play <spotify url>`);
+    }
+    const query = args.slice(1).join(" ");
+    await voiceManager.playFromSpotify(message, query);
+  },
+  join: async (message, args) => {
+    await voiceManager.joinVoiceChannel(message);
+  },
+  leave: async (message, args) => {
+    await voiceManager.leaveVoiceChannel(message);
+  },
+  spdown: async (message, args) => {
+    if (args.length < 2) {
+      return message.reply(`Usage: ${prefix} spdown <url>`);
+    }
+    const url = args[1];
+    await apiManagement.spotifyDownload(message, url);
+  },
   igdown: async (message, args) => {
-    if(args.length < 2) {
+    if (args.length < 2) {
       return message.reply(`Usage: ${prefix} igdown <url>`);
     }
     const url = args[1];
     await apiManagement.instagramDownload(message, url);
   },
   iginfo: async (message, args) => {
-    if(args.length < 2) {
+    if (args.length < 2) {
       return message.reply(`Usage: ${prefix} iginfo <url>`);
     }
     const url = args[1];
     await apiManagement.instagramInfo(message, url);
   },
   ttinfo: async (message, args) => {
-    if(args.length < 2) {
+    if (args.length < 2) {
       return message.reply(`Usage: ${prefix} ttinfo <url>`);
     }
     const url = args[1];
     await apiManagement.tiktokInfo(message, url);
   },
-  ttdown: async(message, args) => {
+  ttdown: async (message, args) => {
     const url = args[1];
     await apiManagement.tiktokDownload(message, url);
   },
-  ytdown: async(message, args) => {
+  ytdown: async (message, args) => {
     const url = args[1];
     await apiManagement.youtubeDownload(message, url);
   },
   ttfind: async (message, args) => {
-    if(args.length < 2) {
+    if (args.length < 2) {
       return message.reply(`Usage: ${prefix}ttfind <prompt>`);
     }
     const prompt = args.slice(1).join(" ");
     await apiManagement.tiktokSearch(message, prompt);
   },
   setbalance: async (message, args) => {
-    if(!ownerHelperFirewall(message.author.id, message)) return;
+    if (!ownerHelperFirewall(message.author.id, message)) return;
     if (args.length < 3) {
       return message.reply(`Usage: ${prefix}setbalance <user> <amount>`);
     }
@@ -1739,13 +2164,13 @@ const commands = {
     return Games.numberGuess(message, bet, guess);
   },
   nick: (message, args) => {
-    if(!ownerHelperFirewall(message.author.id, message)) return;
+    if (!ownerHelperFirewall(message.author.id, message)) return;
     const mention = message.mentions.users.first();
     const newNick = args.slice(2).join(" ");
     if (!mention || !newNick) {
       return message.reply("Please provide a new nickname.");
     }
-    return discordFormat.setNickname(message,mention, newNick);
+    return discordFormat.setNickname(message, mention, newNick);
   },
   dice: (message, args) => {
     const bet = args[1];
@@ -2396,10 +2821,10 @@ client.once("ready", () => {
       {
         name: "N!help",
         type: ActivityType.Listening,
-        state: "Join our server for more!"
-      }
+        state: "Join our server for more!",
+      },
     ],
-    status: "online"
+    status: "online",
   });
 });
 
@@ -2416,8 +2841,8 @@ client.on("messageCreate", async (message) => {
     console.log(prompt);
     await apiManagement.aiResponse(message, prompt);
   }
-  
-  if(!message.content.startsWith(prefix)) return;
+
+  if (!message.content.startsWith(prefix)) return;
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
 
