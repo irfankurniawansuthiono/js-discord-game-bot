@@ -10,6 +10,8 @@ import {
 } from "discord.js";
 import fs from "fs";
 
+const cooldowns = new Map();
+const COOLDOWN_DURATION = 5 * 1000; // 5 seconds
 const formatBalance = (amount) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -408,6 +410,14 @@ const dataManager = new DataManager();
 // Games
 class Games {
   static async blackjack(message, bet) {
+    // Check cooldown
+    const lastUsed = cooldowns.get(message.author.id);
+    const now = Date.now();
+    
+    if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
+        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+    }
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -708,6 +718,14 @@ class Games {
     }
   }
   static async slots(message, bet) {
+    // Check cooldown
+    const lastUsed = cooldowns.get(message.author.id);
+    const now = Date.now();
+    
+    if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
+        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+    }
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -838,6 +856,14 @@ class Games {
     }
   }
   static async coinFlip(message, bet, choice) {
+    // Check cooldown
+    const lastUsed = cooldowns.get(message.author.id);
+    const now = Date.now();
+    
+    if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
+        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+    }
     if (choice !== "h" && choice !== "t") {
       return message.reply(
         "Invalid choice! Please choose 'h' for heads or 't' for tails."
@@ -918,6 +944,14 @@ class Games {
   }
 
   static async numberGuess(message, bet, guess) {
+    // Check cooldown
+    const lastUsed = cooldowns.get(message.author.id);
+    const now = Date.now();
+    
+    if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
+        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+        return message.reply(`Please wait ${remainingTime} seconds before playing again!`);
+    }
     let user = dataManager.getUser(message.author.id);
     if (!user) {
       return message.reply(`You need to register first! Use ${prefix}register`);
@@ -966,6 +1000,14 @@ class Games {
   }
 
   static async diceRoll(message, bet, guess) {
+    // Check cooldown
+    const lastUsed = cooldowns.get(message.author.id);
+    const now = Date.now();
+    
+    if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
+        const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+        return message.reply(`Please wait ${remainingTime} seconds before slots again!`);
+    }
     const diceTextReturn = [
       "<:1_:1329775714269925479>",
       "<:2_:1329775740798898198>",
@@ -1047,6 +1089,7 @@ const commands = {
       message.reply("An error occurred while processing the command.");
     }
   },
+
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
