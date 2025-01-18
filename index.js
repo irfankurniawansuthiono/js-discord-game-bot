@@ -2394,7 +2394,7 @@ client.once("ready", () => {
   client.user.setPresence({
     activities: [
       {
-        name: "N!help for commands",
+        name: "N!help",
         type: ActivityType.Listening,
         state: "Join our server for more!"
       }
