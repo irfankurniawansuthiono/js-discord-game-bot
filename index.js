@@ -390,12 +390,12 @@ class Games {
       const slotMsg = await message.reply("🎰 Starting the slot machine...");
 
       // Animasi spinning
-      const animationFrames = 10;
+      const animationFrames = 5;
       for (let i = 0; i < animationFrames; i++) {
         const randomSlots = Array(3)
           .fill()
           .map(() => getRandomEmoji());
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         await slotMsg.edit(createSlotDisplay(randomSlots));
       }
 
