@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   Client,
   GatewayIntentBits,
@@ -107,6 +108,35 @@ class DataManager {
     this.loadData();
   }
 
+  
+  async aiResponse(message, prompt) {
+    const character = "Balas setiap pesan dengan nada sinis, kasar, dan penuh sindiran tajam. Jangan ragu untuk menunjukkan ketidaksabaran atau ketidaksukaan terhadap pertanyaan yang dianggap bodoh atau tidak penting. Gunakan humor sarkastik dan komentar pedas yang bisa menusuk perasaan, tetapi tetap pastikan ada sentuhan cerdas agar tetap terkesan tajam dan tidak asal menghina."
+    try {
+      const sessionId = message.author.id;
+      const response = await axios.post('https://api.itzky.us.kg/ai/logic', {
+        prompt,
+        sessionId,
+        character,
+      }, {
+        headers: {
+          'Authorization': `Bearer nanami`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const responseEmbed = new EmbedBuilder()
+      // warna kuning
+        .setColor("#FFFF00")
+        .setTitle("AI Response")
+        .setDescription(response.data.result.answer)
+        .setFooter({ text:`AI Endpoint by ${response.data.creator}` })
+        .setTimestamp();
+
+      await message.reply({ embeds: [responseEmbed] });
+    }catch(error) {
+      console.error("Error in aiResponse command:", error);
+    }
+  }
   async robUser(authorId, user, message) {
     try {
       // Initial robbery message
@@ -1806,7 +1836,16 @@ client.once("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.content.startsWith(prefix)) return;
+  if (message.author.bot) return;
+
+  // jika bot di tag dia akan menjalankan fungsi AI 
+  const getMessageMention = message.mentions.users.first();
+  if(getMessageMention === client.user){
+    console.log(`AI Response: ${message.content}`);
+    const prompt = message.content.slice(message.content.indexOf(">") + 1).trim();
+    console.log(prompt)
+    await dataManager.aiResponse(message, prompt);
+  }
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
 
