@@ -53,62 +53,62 @@ const helpEmbed = new EmbedBuilder()
     {
       name: "Basic Commands",
       value: [
-        `**${prefix}register** \n Create new account`,
-        `**${prefix}help** \n Show this message`,
-        `**${prefix}profile** \n Alias for balance`,
-        `**${prefix}ownerinfo** \n Show bot owner information`,
-        `**${prefix}botinfo** \n Show your bot information`,
+        `**${prefix} register** \n Create new account`,
+        `**${prefix} help** \n Show this message`,
+        `**${prefix} profile** \n Alias for balance`,
+        `**${prefix} ownerinfo** \n Show bot owner information`,
+        `**${prefix} botinfo** \n Show your bot information`,
       ].join("\n\n"),
     },
     {
       name: "Moderation Commands",
-      value: [`**${prefix}rbc** \n Delete all bot messages in channel`].join(
+      value: [`**${prefix} rbc** \n Delete all bot messages in channel`].join(
         "\n\n"
       ),
     },
     {
       name: "Games",
       value: [
-        `**${prefix}flip** <bet | all> <h/t> \n Flip a coin (2x multiplier)`,
-        `**${prefix}guess** <bet | all> <1-10> \n Guess a number (5x multiplier)`,
-        `**${prefix}bj** <bet | all> \n Play blackjack (5x multiplier)`,
-        `**${prefix}dice** <bet | all> <2-12> \n Guess dice sum (8x multiplier)`,
-        `**${prefix}daily**  \n Claim daily reward`,
-        `**${prefix}slots** <bet | all> \n Play slots (10x multiplier)`,
+        `**${prefix} flip** <bet | all> <h/t> \n Flip a coin (2x multiplier)`,
+        `**${prefix} guess** <bet | all> <1-10> \n Guess a number (5x multiplier)`,
+        `**${prefix} bj** <bet | all> \n Play blackjack (5x multiplier)`,
+        `**${prefix} dice** <bet | all> <2-12> \n Guess dice sum (8x multiplier)`,
+        `**${prefix} daily**  \n Claim daily reward`,
+        `**${prefix} slots** <bet | all> \n Play slots (10x multiplier)`,
       ].join("\n\n"),
     },
     {
       name: "Social",
       value: [
-        `**${prefix}give** <@user> <amount> \n Give money to user`,
-        `**${prefix}rank** \n Show top players`,
-        `**${prefix}invite** \n Invite Nanami to your server`,
-        `**${prefix}profile** <@user?> \n Show user profile`,
-        `**${prefix}rob** <@user> \n Rob a user`,
+        `**${prefix} give** <@user> <amount> \n Give money to user`,
+        `**${prefix} rank** \n Show top players`,
+        `**${prefix} invite** \n Invite Nanami to your server`,
+        `**${prefix} profile** <@user?> \n Show user profile`,
+        `**${prefix} rob** <@user> \n Rob a user`,
       ].join("\n\n"),
     },
     {
       name: "Owner Commands",
       value: [
-        `**${prefix}setbalance** <@user> \n Set user's balance`,
-        `**${prefix}setnick** <@user> \n Set user's nickname`,
-        `**${prefix}giveowner** <amount> \n Give money to bot owner`,
-        `**${prefix}setprefix** <prefix> \n Set bot prefix`,
-        `**${prefix}setstatus** <status> \n Set bot status`,
-        `**${prefix}registeruser** \n Register a user`,
-        `**${prefix}say** \n say message to current channel`,
-        `**${prefix}rbc** \n Delete all bot messages in channel`,
-        `**${prefix}sendto** <#channel/@user> <message> \n Send a message to a channel or DM a user`,
-        `**${prefix}spamsendto** <ammount> <#channel/@user> <message> \n Send ammount of message to a channel or DM a user`,
-        `**${prefix}spamsay** <ammount> <message> \n Send ammount of message to a channel or DM a user`,
-        `**${prefix}resetplayer** <@user> \n reset player's data`,
-        `**${prefix}resetap** \n reset all player's data`,
+        `**${prefix} setbalance** <@user> \n Set user's balance`,
+        `**${prefix} setnick** <@user> \n Set user's nickname`,
+        `**${prefix} giveowner** <amount> \n Give money to bot owner`,
+        `**${prefix} setprefix** <prefix> \n Set bot prefix`,
+        `**${prefix} setstatus** <status> \n Set bot status`,
+        `**${prefix} registeruser** \n Register a user`,
+        `**${prefix} say** \n say message to current channel`,
+        `**${prefix} rbc** \n Delete all bot messages in channel`,
+        `**${prefix} sendto** <#channel/@user> <message> \n Send a message to a channel or DM a user`,
+        `**${prefix} spamsendto** <ammount> <#channel/@user> <message> \n Send ammount of message to a channel or DM a user`,
+        `**${prefix} spamsay** <ammount> <message> \n Send ammount of message to a channel or DM a user`,
+        `**${prefix} resetplayer** <@user> \n reset player's data`,
+        `**${prefix} resetap** \n reset all player's data`,
       ].join("\n\n"),
     },
     {
       name: "Bot Owner Commands",
       value: [
-        `**${prefix}announcement** <message> \n Send a message to all servers`,
+        `**${prefix} announcement** <message> \n Send a message to all servers`,
       ].join("\n\n"),
     }
   )
@@ -145,7 +145,10 @@ class DataManager {
     this.users = {};
     this.loadData();
   }
-
+  setBalance(user, balance) {
+    this.users[user.id].balance = balance;
+    this.saveData();
+  }
   async aiResponse(message, prompt) {
     const character =
       "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
@@ -1123,14 +1126,14 @@ const commands = {
     if (args.length < 3) {
       return message.reply(`Usage: ${prefix}setbalance <user> <amount>`);
     }
-    const userId = args[1];
+    const user = message.mentions.users.first();
     const amount = parseInt(args[2]);
     if (isNaN(amount) || amount <= 0) {
       return message.reply("Please enter a valid amount.");
     }
     try {
-      await dataManager.setBalance(userId, amount);
-      message.reply(`Balance for user ${userId} has been set to ${amount}.`);
+      dataManager.setBalance(user, amount);
+      message.reply(`Balance for user ${user} has been set to ${amount}.`);
     } catch (error) {
       console.error("Error in setBalance command:", error);
       message.reply("An error occurred while processing the command.");
