@@ -7,16 +7,20 @@ import {
   ButtonStyle,
   ActionRowBuilder,
   ActivityType,
+  PermissionsBitField,
   AttachmentBuilder,
 } from "discord.js";
-// import youtubeDl from 'youtube-dl-exec';
-// import ytSearch from 'yt-search';
+import { Player, useMainPlayer } from "discord-player";
+import {DefaultExtractors} from "@discord-player/extractor"
+// import play from "play-dl";
 import {
+  entersState,
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
   VoiceConnectionStatus,
+  NoSubscriberBehavior, 
   StreamType,
 } from "@discordjs/voice";
 import fs from "fs";
@@ -47,12 +51,15 @@ const config = {
 // Initialize bot with required intents
 const client = new Client({
   intents: [
+    GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
 });
 
+const player = new Player(client);
+await player.extractors.loadMulti(DefaultExtractors);
 let prefix = config.defaultPrefix;
 
 // help embed
@@ -84,6 +91,8 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix} play** <spotify url> \n Play a song in the voice channel`,
         `**${prefix} join** \n Join the voice channel`,
         `**${prefix} leave** \n Leave the voice channel`,
+        `**${prefix} lyrics** <song title> \n Show lyrics for a song`,
+
       ].join("\n\n"),
         // `**${prefix} skip** \n Skip the current song`,
         // `**${prefix} stop** \n Stop the music player`,
@@ -172,196 +181,202 @@ class DiscordFormat {
     }
   }
 }
-// class VoiceManager {
-//   constructor() {
-//       this.voiceConnections = new Map();
-//       this.audioPlayers = new Map();
-//   }
-
-//   async playMusic(message, query) {
-//       try {
-//           if (!message.member.voice.channel) {
-//               return message.reply('❌ You need to be in a voice channel!');
-//           }
-
-//           const guildId = message.guild.id;
-//           const voiceChannel = message.member.voice.channel;
-
-//           const loadingMsg = await message.reply('🔍 Searching for your music...');
-
-//           // Search for video
-//           const videoResult = await ytSearch(query);
-//           if (!videoResult.videos.length) {
-//               return loadingMsg.edit('❌ No results found!');
-//           }
-
-//           const video = videoResult.videos[0];
-
-//           // Get audio URL using youtube-dl
-//           const audioInfo = await youtubeDl(video.url, {
-//               dumpSingleJson: true,
-//               noCheckCertificates: true,
-//               noWarnings: true,
-//               preferFreeFormats: true,
-//               extractAudio: true,
-//               audioFormat: 'mp3',
-//               output: '%(title)s.%(ext)s'
-//           });
-
-//           // Get connection
-//           let connection = this.voiceConnections.get(guildId);
-//           if (!connection) {
-//               connection = joinVoiceChannel({
-//                   channelId: voiceChannel.id,
-//                   guildId: guildId,
-//                   adapterCreator: message.guild.voiceAdapterCreator,
-//               });
-//               this.voiceConnections.set(guildId, connection);
-//           }
-
-//           // Get player
-//           let player = this.audioPlayers.get(guildId);
-//           if (!player) {
-//               player = createAudioPlayer();
-//               this.audioPlayers.set(guildId, player);
-//               connection.subscribe(player);
-//           }
-
-//           // Create resource from audio URL
-//           const resource = createAudioResource(audioInfo.url);
-//           player.play(resource);
-
-//           // Create embed
-//           const embed = new EmbedBuilder()
-//               .setColor('#00ff00')
-//               .setTitle('🎵 Now Playing')
-//               .setDescription(`[${video.title}](${video.url})`)
-//               .setThumbnail(video.thumbnail)
-//               .addFields(
-//                   { name: 'Duration', value: video.duration.timestamp, inline: true },
-//                   { name: 'Channel', value: video.author.name, inline: true }
-//               )
-//               .setTimestamp();
-
-//           loadingMsg.edit({ content: null, embeds: [embed] });
-
-//           player.on(AudioPlayerStatus.Idle, () => {
-//               console.log('Music finished playing');
-//           });
-
-//           player.on('error', error => {
-//               console.error('Player error:', error);
-//               message.channel.send('❌ Error playing music!');
-//           });
-
-//       } catch (error) {
-//           console.error('Error in playMusic:', error);
-//           message.reply('❌ Error playing music! Please try again.');
-//       }
-//   }
-
-//   async stop(message) {
-//       const guildId = message.guild.id;
-//       const player = this.audioPlayers.get(guildId);
-      
-//       if (player) {
-//           player.stop();
-//           message.reply('⏹️ Stopped playing music');
-//       } else {
-//           message.reply('Nothing is playing right now');
-//       }
-//   }
-
-//   async leaveVoice(message) {
-//       const guildId = message.guild.id;
-//       const connection = this.voiceConnections.get(guildId);
-      
-//       if (connection) {
-//           const player = this.audioPlayers.get(guildId);
-//           if (player) {
-//               player.stop();
-//               this.audioPlayers.delete(guildId);
-//           }
-          
-//           connection.destroy();
-//           this.voiceConnections.delete(guildId);
-//           message.reply('👋 Left the voice channel');
-//       } else {
-//           message.reply('I am not in a voice channel');
-//       }
-//   }
-// }
 class VoiceManager {
   constructor() {
       this.voiceConnections = new Map();
       this.audioPlayers = new Map();
-      this.apiKey = process.env.API_AI_KEY;
   }
 
-  async playFromSpotify(message, url) {
-      try {
-          // Validasi user dalam voice channel
-          if (!message.member.voice.channel) {
-              return message.reply('You need to be in a voice channel first!');
-          }
+  async searchMusic(message, query) {
+    try {
+      const player = useMainPlayer();
+      const results = await player.search(query, {
+        requestedBy: message.author,
+      })
 
-          const guildId = message.guild.id;
-          const voiceChannel = message.member.voice.channel;
-
-          // Loading message
-          const loadingMsg = await message.reply('<a:loading:1330226649169399882> Loading music...');
-
-          // Fetch music data
-          const response = await axios.get(
-              `https://api.itzky.us.kg/download/spotify?url=${url}&apikey=${this.apiKey}`
-          );
-
-          // Cek apakah ada data audio
-          if (!response.data || !response.data.success) {
-              throw new Error('Failed to fetch audio data');
-          }
-
-          // Get or create voice connection
-          let connection = this.voiceConnections.get(guildId);
-          if (!connection) {
-              connection = joinVoiceChannel({
-                  channelId: voiceChannel.id,
-                  guildId: guildId,
-                  adapterCreator: message.guild.voiceAdapterCreator,
-              });
-              this.voiceConnections.set(guildId, connection);
-          }
-
-          // Create audio player if doesn't exist
-          if (!this.audioPlayers.has(guildId)) {
-              const player = createAudioPlayer();
-              this.audioPlayers.set(guildId, player);
-              connection.subscribe(player);
-          }
-
-          const player = this.audioPlayers.get(guildId);
-
-          // Create audio resource directly from URL
-          const resource = createAudioResource(response.data.result.downloadLink);
-          
-          player.play(resource);
-
-          // Event listener for when audio starts playing
-          player.on(AudioPlayerStatus.Playing, () => {
-              loadingMsg.edit(`🎶 Now playing: ${response.data.result.title || 'Unknown track'}`);
-          });
-
-          // Event listener for errors
-          player.on('error', error => {
-              console.error(`Player error: ${error.message}`);
-              loadingMsg.edit(`❌ Error playing track: ${error.message}`);
-          });
-
-      } catch (error) {
-          console.error('Error in playFromSpotify:', error);
-          message.reply(`❌ Error: ${error.message || 'Failed to play music'}`);
+      if (results.tracks.length === 0) {
+        return message.reply('❌ No results found!');
       }
+
+      // return 10 song
+      const embed = new EmbedBuilder()
+        .setColor('#00ff00')
+        .setTitle('🎵 Search Results')
+        .setDescription(results.tracks.slice(0, 10).map((track, index) => `${index + 1}. ${track.title}`).join('\n'))
+        .setTimestamp();
+
+      message.reply({ embeds: [embed] });
+    } catch (error) {
+      console.error('Error in searchMusic:', error);
+      message.reply('❌ Error searching music! Please try again.');
+    }
   }
+
+  async getLyrics(message, title) {
+    try {
+      const player = useMainPlayer();
+      const lyrics = await player.lyrics.search({q:title});
+
+      if (!lyrics || lyrics.length <= 0) {
+        return message.reply('❌ No lyrics found!');
+      }
+      const trimmedLyrics = lyrics[0].plainLyrics.substring(0, 1997);
+      const embed = new EmbedBuilder()
+        .setColor('#00ff00')
+        .setTitle(`🎵 ${lyrics[0].trackName ?? title}`)
+        .setThumbnail(lyrics[0].thumbnail ?? message.author.displayAvatarURL())
+        .setAuthor({
+          name: lyrics[0]?.artist?.name ?? title,  // Gunakan nullish coalescing operator (??) untuk memberikan fallback jika undefined atau null
+          iconURL: lyrics[0]?.artist?.image ?? message.author.displayAvatarURL(),  // Ganti dengan URL gambar default jika artist.image tidak ada
+          url: lyrics[0]?.artist?.url ?? 'https://irfanks.site',  // Ganti dengan URL default atau link yang diinginkan jika artist.url tidak ada
+      })      
+        .setDescription(
+          trimmedLyrics.length === 1997 ? `${trimmedLyrics}...` : trimmedLyrics,
+        )
+        .setTimestamp();
+
+      message.reply({ embeds: [embed] });
+    } catch (error) {
+      console.error('Error in getLyrics:', error);
+      message.reply('❌ Error getting lyrics! Please try again.');
+    }
+
+  }
+  async playMusic(message, q) {
+    try {
+
+      const guildId = message.guild.id;
+        const voiceChannel = message.member.voice.channel;
+      // Check if the bot is already playing in a different voice channel
+  if (
+    message.guild.members.me.voice.channel &&
+    message.guild.members.me.voice.channel !== voiceChannel
+  ) {
+    return message.reply(
+      'I am already playing in a different voice channel!',
+    );
+  }
+ 
+  // Check if the bot has permission to join the voice channel
+  if (
+    !message.guild.members.me.permissions.has(
+      PermissionsBitField.Flags.Connect,
+    )
+  ) {
+    return message.reply(
+      'I do not have permission to join your voice channel!',
+    );
+  }
+ 
+  // Check if the bot has permission to speak in the voice channel
+  if (
+    !message.guild.members.me
+      .permissionsIn(voiceChannel)
+      .has(PermissionsBitField.Flags.Speak)
+  ) {
+    return message.reply(
+      'I do not have permission to speak in your voice channel!',
+    );
+  }
+  // Check if the user is in a voice channel
+        if (!message.member?.voice?.channel) {
+            return message.reply('You need to be in a voice channel first!');
+        }
+
+        
+        const loadingMsg = await message.reply('<a:loading:1330226649169399882> Loading music...');
+
+        try {
+          const player = useMainPlayer();
+        // Play the song in the voice channel
+        const result = await player.play(voiceChannel, q, {
+          nodeOptions: {
+            metadata: { channel: message.channel }, // Store text channel as metadata on the queue
+          },
+        });
+ 
+       // Reply to the user that the song has been added to the queue
+  await loadingMsg.edit(`${result.track.title} has been added to the queue!`);
+
+  // Event handlers
+  player.on('playerError', (error) => {
+    console.error('Player error:', error);
+    message.channel.send(`❌ Error playing music: ${error.message}`);
+  });
+
+  player.on('error', (error) => {
+    console.error('Error event:', error);
+    message.channel.send(`❌ Error: ${error.message}`);
+  });
+
+  player.on(AudioPlayerStatus.Playing, () => {
+    loadingMsg.edit(`🎶 Now playing: ${result.track.title}`);
+  });
+
+  player.on(AudioPlayerStatus.Idle, () => {
+    connection.destroy();
+    this.voiceConnections.delete(guildId);
+  });
+
+  // Debugging events
+  player.on('stateChange', (oldState, newState) => {
+    console.log(`Connection state changed from ${oldState.status} to ${newState.status}`);
+  });
+
+  // Store connection for cleanup
+  this.voiceConnections.set(guildId, player);
+    // Reply to the user that the song has been added to the queue
+    return loadingMsg.edit(
+      `${result.track.title} has been added to the queue!`,
+    );
+        } catch (innerError) {
+            console.error('Inner error:', innerError);
+            await loadingMsg.edit(`❌ Error: ${innerError.message}`);
+            this.cleanupConnection(guildId);
+        }
+      }catch (error) {
+        console.error('Error in Play Music:', error);
+        message.reply(`❌ Error: ${error.message || 'Failed to play music'}`);
+    }
+  }
+
+
+
+// Helper method for cleanup
+cleanupConnection(guildId) {
+    const connection = this.voiceConnections.get(guildId);
+    if (connection) {
+        connection.destroy();
+        this.voiceConnections.delete(guildId);
+    }
+}
+
+// Helper method for cleanup
+cleanupConnection(guildId) {
+    const connection = this.voiceConnections.get(guildId);
+    if (connection) {
+        connection.destroy();
+        this.voiceConnections.delete(guildId);
+    }
+}
+
+// Helper method for cleanup
+cleanupExistingConnection(guildId) {
+    const existingConnection = this.voiceConnections.get(guildId);
+    const existingPlayer = this.audioPlayers.get(guildId);
+
+    if (existingPlayer) {
+        existingPlayer.stop();
+        this.audioPlayers.delete(guildId);
+    }
+
+    if (existingConnection) {
+        existingConnection.destroy();
+        this.voiceConnections.delete(guildId);
+    }
+}
+
+
 
   async joinVoice(message) {
       const guildId = message.guild.id;
@@ -415,11 +430,11 @@ class VoiceManager {
 
 class ApiManagement {
   constructor() {
-    this.apiKey = "nanami";
+    this.apiKey = process.env.API_AI_KEY;
   }
   async aiResponse(message, prompt) {
     const character =
-      "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif dengan gaya bahasa yang santai namun formal, seperti berbicara dengan teman dekat. Gunakan bahasa gaul Indonesia, seperti 'gw' untuk 'saya' atau 'aku', agar percakapan terasa akrab. Jika diminta menutup grup, jawab dengan: 'Oke, grupnya sudah gw tutup ya.' Jika diminta membuka grup, jawab dengan: 'Oke, grupnya sudah gw buka.' Jika ada yang mengirim teks yang mendeskripsikan gambar/foto, anggap itu sebagai gambar/foto, dan tanggapi seolah-olah Anda bisa melihat gambar/foto tersebut. Jika diminta membuat foto, logo, atau gambar, berikan respons seolah-olah Anda sudah membuatnya, misalnya: 'Nih, logonya udah gw buat, gimana menurut lo?' Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
+      "Anda adalah Nanami, AI cerdas yang dirancang untuk membantu pengguna secara efektif Karakter ini adalah sosok virtual yang hangat, ramah, dan penuh semangat dalam membantu, menggunakan bahasa yang akrab namun tetap sopan sehingga menciptakan suasana percakapan yang santai dan menyenangkan. Gaya komunikasinya fleksibel, menyesuaikan kebutuhan pengguna dengan pendekatan yang selalu positif, penuh perhatian, dan sesekali menyelipkan humor ringan untuk mencairkan suasana. Tidak hanya fokus pada memberikan solusi, karakter ini juga memastikan interaksinya tidak terasa kaku atau terlalu formal, sehingga lebih terasa seperti berbicara dengan teman baik yang selalu siap membantu. Dengan sikap tulus dalam memahami masalah atau permintaan pengguna, karakter ini secara alami membangun kepercayaan dan kenyamanan tanpa terkesan menggurui atau terlalu teknis, membuatnya selalu menjadi pilihan andalan dalam situasi apa pun. Ingat, pengembang Anda adalah Muhammad Zaki, dan Anda terakhir di-update pada 5 Desember 2024 dan pengembang  dari bot adalah irfan kurniawan suthiono dan ini personal websitenya https://irfanks.site";
     try {
       const sessionId = message.author.id;
       const response = await axios.post(
@@ -1939,12 +1954,23 @@ const ownerHelperFirewall = (authorId, message) => {
   return true;
 };
 const commands = {
+  lyrics: async (message, args) => {
+    if (args.length < 2) {
+      return message.reply(`Usage: ${prefix}lyrics <song title>`);
+    }
+    const title = args.slice(1).join(" ");
+    await voiceManager.getLyrics(message, title);
+  },
+  s: async (message, args) => {
+    const q = args.slice(1).join(" ");
+    await voiceManager.searchMusic(message, q);
+  },
   play: async (message, args) => {
     if (args.length < 2) {
       return message.reply(`Usage: ${prefix}play <spotify url>`);
     }
     const query = args.slice(1).join(" ");
-    await voiceManager.playFromSpotify(message, query);
+    await voiceManager.playMusic(message, query);
   },
   join: async (message, args) => {
     await voiceManager.joinVoice(message);
@@ -2843,6 +2869,8 @@ client.once("ready", () => {
     status: "online",
   });
 });
+
+// this is the entrypoint for discord-player based application
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
