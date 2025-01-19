@@ -1955,34 +1955,23 @@ class Games {
 
   // Make it a regular method instead of static
   async tebakGambar(message, guess, clue, jawab) {
-    // check if the user is registered
     const user = dataManager.getUser(message.author.id);
     if (!user) {
         return message.reply(`You need to register first! Use ${prefix}register`);
     }
     try {
-        const maxTime = 60 * 1000; // 20 seconds
-
-        // Read the database
-        const database = fileManagement.readFile("./db/tebakgambar.json");
-        const databaseJSON = JSON.parse(database);
-        // Check if there's an active game first
+        const maxTime = 60 * 1000; // 60 seconds
+        const database = JSON.parse(fileManagement.readFile("./db/tebakgambar.json"));
         const activeGame = this.tbgSession.get(message.channel.id);
 
-        // Define startNewGame function in the correct scope
         const startNewGame = async () => {
-            // Start new game
-            const randomIndex = Math.floor(Math.random() * databaseJSON.length);
-            const question = databaseJSON[randomIndex];
+            const randomIndex = Math.floor(Math.random() * database.length);
+            const question = database[randomIndex];
 
-            // Convert image URL to buffer for direct sending
-            const imageResponse = await axios.get(question.img, {
-                responseType: "arraybuffer"
-            });
+            const imageResponse = await axios.get(question.img, { responseType: "arraybuffer" });
             const imageBuffer = Buffer.from(imageResponse.data);
             const imageFile = new AttachmentBuilder(imageBuffer, { name: "tebakgambar.png" });
 
-            // Store the question data in memory
             this.tbgSession.set(message.channel.id, {
                 questionIndex: randomIndex,
                 answer: question.jawaban,
@@ -1993,86 +1982,69 @@ class Games {
             const tgEmbed = new EmbedBuilder()
                 .setTitle('🎮 Tebak Gambar')
                 .setColor('#00FF00')
-                .setDescription(`Silakan tebak gambarnya!
-
-Butuh Clue? ${prefix}tg clue
-
-Untuk menjawab gunakan ${prefix}tg <jawaban>`)
+                .setDescription(`Silakan tebak gambarnya!\n\nWaktu: ${maxTime / 1000} detik.\n\nButuh Clue? ${prefix}tg clue\nUntuk menjawab gunakan ${prefix}tg <jawaban>.`)
                 .setFooter({ text: 'Created by Nanami', iconURL: client.user.displayAvatarURL() });
 
-            // Send the image
-            await message.reply({
+            const countdownMessage = await message.reply({
                 files: [imageFile],
                 embeds: [tgEmbed]
             });
 
-            // Start the timer
-            setTimeout(() => {
-                const ongoingGame = this.tbgSession.get(message.channel.id);
-                if (ongoingGame && ongoingGame.timestamp + maxTime <= Date.now()) {
+            // Start countdown
+            let remainingTime = maxTime / 1000; // in seconds
+            const interval = setInterval(() => {
+                remainingTime -= 1;
+                if (remainingTime > 0) {
+                    countdownMessage.edit(`⏳ Waktu tersisa: ${remainingTime} detik. Segera tebak gambarnya!`);
+                } else {
+                    clearInterval(interval);
                     this.tbgSession.delete(message.channel.id);
-                    message.channel.send('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru dengan mengetikkan perintah yang sesuai.');
+                    countdownMessage.edit('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru. \nJawaban : ' + question.jawaban);
                 }
-            }, maxTime);
+            }, 1000);
         };
 
-        // If there's no guess and no active game, start a new one
         if (!guess) {
-            // If there's already an active game, remind the player
             if (activeGame) {
                 return message.reply('Ada permainan yang sedang berlangsung! Silakan tebak gambarnya!');
             }
-
             return await startNewGame();
         }
 
-        // If there's a guess but no active game, start new game
         if (!activeGame) {
             return await startNewGame();
         }
 
-        // Handle the guess
-        const normalizedGuess = guess.toUpperCase().trim();
-        const normalizedAnswer = activeGame.answer.toUpperCase().trim();
-
         if (clue) {
-            const clueTbg = new EmbedBuilder()
+            const clueEmbed = new EmbedBuilder()
                 .setTitle('🎮 Tebak Gambar - Clue')
                 .setColor('#00FF00')
-                .setDescription(`Clue: ${this.tbgSession.get(message.channel.id).clue}`);
-            return message.reply({ embeds: [clueTbg] });
+                .setDescription(`Clue: ${activeGame.clue}`);
+            return message.reply({ embeds: [clueEmbed] });
         }
 
         if (jawab) {
-          if (message.author.id !== config.ownerId[0]) {
-              return message.reply("You don't have permission to use this command.");
-          } else {
-              // Hapus pesan asli untuk menjaga kerahasiaan
-              message.delete();
-      
-              // dm owner 
-              const owner = client.users.cache.get(config.ownerId[0]);
-              const jawabTbg = new EmbedBuilder()
-                  .setTitle('🎮 Tebak Gambar - Jawaban')
-                  .setColor('#00FF00')
-                  .setDescription(`Jawaban: ${this.tbgSession.get(message.channel.id).answer}`);
-              owner.send({ embeds: [jawabTbg] });
-          }
-      }
-      
-      
+            if (message.author.id !== config.ownerId[0]) {
+                return message.reply("You don't have permission to use this command.");
+            } else {
+                const owner = await client.users.fetch(config.ownerId[0]);
+                const answerEmbed = new EmbedBuilder()
+                    .setTitle('🎮 Tebak Gambar - Jawaban')
+                    .setColor('#00FF00')
+                    .setDescription(`Jawaban: ${activeGame.answer}`);
+                return owner.send({ embeds: [answerEmbed] });
+            }
+        }
+
+        const normalizedGuess = guess.toUpperCase().trim();
+        const normalizedAnswer = activeGame.answer.toUpperCase().trim();
 
         if (normalizedGuess === normalizedAnswer) {
-            // Get reward amount
             const reward = 10000;
-
-            // Update user balance
             dataManager.updateBalance(message.author.id, reward);
-
-            // Clear the active game from memory
             this.tbgSession.delete(message.channel.id);
 
-            const tbgEmbed = new EmbedBuilder()
+            const winEmbed = new EmbedBuilder()
                 .setTitle('🎮 Tebak Gambar')
                 .setColor('#00FF00')
                 .setDescription('🎉 Selamat! Jawaban kamu benar!')
@@ -2081,7 +2053,7 @@ Untuk menjawab gunakan ${prefix}tg <jawaban>`)
                     { name: 'Hadiah', value: `${formatBalance(reward)}`, inline: true },
                     { name: 'Saldo Kamu', value: `${formatBalance(user.balance)}`, inline: true }
                 );
-            return message.reply({ embeds: [tbgEmbed] });
+            return message.reply({ embeds: [winEmbed] });
         } else {
             await message.delete();
             return message.channel.send(`❌ Maaf, ${message.author}, jawaban kamu salah. Coba lagi!`);
@@ -2091,6 +2063,7 @@ Untuk menjawab gunakan ${prefix}tg <jawaban>`)
         return message.reply('Terjadi kesalahan saat memproses permainan.');
     }
 }
+
 
 }
 // set new class instance
