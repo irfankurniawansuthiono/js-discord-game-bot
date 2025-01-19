@@ -1965,6 +1965,7 @@ class Games {
         const activeGame = this.tbgSession.get(message.channel.id);
 
         const startNewGame = async () => {
+            const startMessage = await message.reply("<a:loading:1330226649169399882> loading...");
             const randomIndex = Math.floor(Math.random() * database.length);
             const question = database[randomIndex];
 
@@ -1972,12 +1973,17 @@ class Games {
             const imageBuffer = Buffer.from(imageResponse.data);
             const imageFile = new AttachmentBuilder(imageBuffer, { name: "tebakgambar.png" });
 
-            this.tbgSession.set(message.channel.id, {
+            let interval; // Declare interval here so it can be accessed in the game session
+
+            const gameSession = {
                 questionIndex: randomIndex,
                 answer: question.jawaban,
                 clue: question.deskripsi,
-                timestamp: Date.now()
-            });
+                timestamp: Date.now(),
+                interval: null // Add interval to the session
+            };
+
+            this.tbgSession.set(message.channel.id, gameSession);
 
             const tgEmbed = new EmbedBuilder()
                 .setTitle('🎮 Tebak Gambar')
@@ -1985,23 +1991,33 @@ class Games {
                 .setDescription(`Silakan tebak gambarnya!\n\nWaktu: ${maxTime / 1000} detik.\n\nButuh Clue? ${prefix}tg clue\nUntuk menjawab gunakan ${prefix}tg <jawaban>.`)
                 .setFooter({ text: 'Created by Nanami', iconURL: client.user.displayAvatarURL() });
 
-            const countdownMessage = await message.reply({
+            const countdownMessage = await startMessage.edit({
                 files: [imageFile],
-                embeds: [tgEmbed]
+                embeds: [tgEmbed],
+                content: "Tebak gambar dimulai!"
             });
 
             // Start countdown
             let remainingTime = maxTime / 1000; // in seconds
-            const interval = setInterval(() => {
+            interval = setInterval(() => {
                 remainingTime -= 1;
-                if (remainingTime > 0) {
-                    countdownMessage.edit(`⏳ Waktu tersisa: ${remainingTime} detik. Segera tebak gambarnya!`);
-                } else {
+                
+                // Kirim pesan setiap 10 detik
+                if (remainingTime % 10 === 0 && remainingTime > 0) {
+                    message.channel.send(`Waktu tersisa: ${remainingTime} detik`);
+                }
+                
+                // Cek apakah waktu sudah habis
+                if (remainingTime <= 0) {
                     clearInterval(interval);
                     this.tbgSession.delete(message.channel.id);
-                    countdownMessage.edit('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru. \nJawaban : ' + question.jawaban);
+                    countdownMessage.edit('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru.');
+                    message.channel.send('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru. \nJawaban : ' + question.jawaban);
                 }
             }, 1000);
+
+            // Store the interval in the game session
+            gameSession.interval = interval;
         };
 
         if (!guess) {
@@ -2040,7 +2056,12 @@ class Games {
         const normalizedAnswer = activeGame.answer.toUpperCase().trim();
 
         if (normalizedGuess === normalizedAnswer) {
-            const reward = 10000;
+            // Clear the interval when answer is correct
+            if (activeGame.interval) {
+                clearInterval(activeGame.interval);
+            }
+            
+            const reward = 1000;
             dataManager.updateBalance(message.author.id, reward);
             this.tbgSession.delete(message.channel.id);
 
@@ -2063,9 +2084,8 @@ class Games {
         return message.reply('Terjadi kesalahan saat memproses permainan.');
     }
 }
-
-
 }
+
 // set new class instance
 const discordFormat = new DiscordFormat();
 const dataManager = new DataManager();
@@ -2073,7 +2093,6 @@ const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const gamesManagement = new Games();
-// Games
 
 
 const ownerHelperFirewall = (authorId, message) => {
@@ -2595,14 +2614,6 @@ const commands = {
                **Platform:** ${process.platform}
                **Architecture:** ${process.arch}
                **Process ID:** ${process.pid}`,
-          inline: false,
-        },
-        {
-          name: "🎮 Games Available",
-          value: `• Coin Flip (2x multiplier)
-               • Number Guess (5x multiplier)
-               • Dice Roll (8x multiplier)
-               • Slots (10x multiplier)`,
           inline: false,
         },
         {
