@@ -1961,7 +1961,7 @@ class Games {
         return message.reply(`You need to register first! Use ${prefix}register`);
     }
     try {
-        const maxTime = 20 * 1000; // 20 seconds
+        const maxTime = 60 * 1000; // 20 seconds
 
         // Read the database
         const database = fileManagement.readFile("./db/tebakgambar.json");
@@ -2050,12 +2050,13 @@ Untuk menjawab gunakan ${prefix}tg <jawaban>`)
               // Hapus pesan asli untuk menjaga kerahasiaan
               message.delete();
       
-              // Kirim balasan hanya bisa dilihat oleh pengguna yang memiliki ID yang diizinkan
-              return message.channel.send({
-                  content: `Jawaban Tebak Gambar: ${this.tbgSession.get(message.channel.id).answer}`,
-                  ephemeral: true,
-                  reply: { messageReference: message.id } // Tetap kaitkan dengan pesan asli
-              });
+              // dm owner 
+              const owner = client.users.cache.get(config.ownerId[0]);
+              const jawabTbg = new EmbedBuilder()
+                  .setTitle('🎮 Tebak Gambar - Jawaban')
+                  .setColor('#00FF00')
+                  .setDescription(`Jawaban: ${this.tbgSession.get(message.channel.id).answer}`);
+              owner.send({ embeds: [jawabTbg] });
           }
       }
       
