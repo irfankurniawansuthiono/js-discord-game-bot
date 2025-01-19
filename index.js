@@ -93,11 +93,6 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix} lyrics** <song title> \n Show lyrics for a song`,
         `**${prefix} s** <song title> \n Search for a song`,
       ].join("\n\n"),
-        // `**${prefix} skip** \n Skip the current song`,
-        // `**${prefix} stop** \n Stop the music player`,
-        // `**${prefix} pause** \n Pause the music player`,
-        // `**${prefix} resume** \n Resume the music player`,
-        // `**${prefix} queue** \n Show the music queue`,
     },
     {
       name: "Moderation Commands",
@@ -117,6 +112,7 @@ const helpEmbed = new EmbedBuilder()
         `**${prefix} dice** <bet | all> <2-12> \n Guess dice sum (8x multiplier)`,
         `**${prefix} daily**  \n Claim daily reward`,
         `**${prefix} slots** <bet | all> \n Play slots (10x multiplier)`,
+        `**${prefix} tg** \n Play tebak gambar`,
       ].join("\n\n"),
     },
     {
@@ -151,6 +147,7 @@ const helpEmbed = new EmbedBuilder()
       name: "Bot Owner Commands",
       value: [
         `**${prefix} announcement** <message> \n Send a message to all servers`,
+        `**${prefix} tg jawab** \n Answer tebak gambar`,
       ].join("\n\n"),
     }
   )
@@ -2046,15 +2043,23 @@ Untuk menjawab gunakan ${prefix}tg <jawaban>`)
             return message.reply({ embeds: [clueTbg] });
         }
 
-        if(jawab){
-          if(message.author.id !== config.ownerId[0]){
-            return message.reply("You don't have permission to use this command");
-          }else{
-            // dm owner untuk mendapatkan jawbannya
-            const owner = client.users.cache.get(config.ownerId[0]);
-            owner.send(`Jawaban Tebak Gambar: ${this.tbgSession.get(message.channel.id).answer}`);
+        if (jawab) {
+          if (message.author.id !== config.ownerId[0]) {
+              return message.reply("You don't have permission to use this command.");
+          } else {
+              // Hapus pesan asli untuk menjaga kerahasiaan
+              message.delete();
+      
+              // Kirim balasan hanya bisa dilihat oleh pengguna yang memiliki ID yang diizinkan
+              return message.channel.send({
+                  content: `Jawaban Tebak Gambar: ${this.tbgSession.get(message.channel.id).answer}`,
+                  ephemeral: true,
+                  reply: { messageReference: message.id } // Tetap kaitkan dengan pesan asli
+              });
           }
-        }
+      }
+      
+      
 
         if (normalizedGuess === normalizedAnswer) {
             // Get reward amount
