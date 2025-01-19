@@ -97,7 +97,7 @@ const helpEmbed = new EmbedBuilder()
     {
       name: "Moderation Commands",
       value: [`**${prefix} rbc** \n Delete all bot messages in channel`,
-        `**${prefix} setnick** <@user> \n Set user's nickname`
+        `**${prefix} nick** <@user> \n Set user's nickname`
       ].join(
         "\n\n"
       ),
