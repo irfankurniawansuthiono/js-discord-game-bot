@@ -1261,15 +1261,6 @@ class DataManager {
     return true;
   }
 }
-
-// set new class instance
-const discordFormat = new DiscordFormat();
-const dataManager = new DataManager();
-const apiManagement = new ApiManagement();
-const voiceManager = new VoiceManager();
-const fileManagement = new FileManagement();
-const gamesManagement = new Games();
-// Games
 class Games {
   constructor() {
     this.tbgSession = new Map();
@@ -2096,6 +2087,15 @@ Untuk menjawab gunakan ${prefix}tg <jawaban>`)
 }
 
 }
+// set new class instance
+const discordFormat = new DiscordFormat();
+const dataManager = new DataManager();
+const apiManagement = new ApiManagement();
+const voiceManager = new VoiceManager();
+const fileManagement = new FileManagement();
+const gamesManagement = new Games();
+// Games
+
 
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
