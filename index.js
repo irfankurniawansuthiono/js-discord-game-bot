@@ -11,7 +11,7 @@ import {
   PermissionsBitField,
   AttachmentBuilder,
 } from "discord.js";
-import { Player, useMainPlayer, useQueue, useTimeline } from "discord-player";
+import { Player, QueueRepeatMode, useMainPlayer, useQueue, useTimeline } from "discord-player";
 import { YoutubeiExtractor } from "discord-player-youtubei";
 import { DefaultExtractors } from "@discord-player/extractor";
 import FormData from "form-data";
@@ -39,7 +39,7 @@ const config = {
   ],
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1329992333994758247",
-  defaultPrefix: "N!",
+  defaultPrefix: "!",
   startingBalance: 10000,
   dataFile: "./players.json",
 };
@@ -110,9 +110,10 @@ const createHelpEmbed = (page = 1, user) => {
             "`📝 lyrics <song title>` - Show song lyrics",
             "`📝 syncedlyrics <song title>` - Show synced lyrics",
             "`🔍 s <song>` - Search for a song",
-            // "`🔊 volume <0-100>` - Set volume",
             "`⏩ skip` - Skip song",
             "`⏯️ pause` - Pause music",
+            "`🔁 loop <queue|track|off|autplay>` - looping the music",
+            "`🎶 q` - Show current queue",
             "`▶️ resume` - Resume music",
             "`🎶 np` - Now playing",
           ].join("\n"),
@@ -238,6 +239,174 @@ class VoiceManager {
     this.voiceConnections = new Map();
     this.audioPlayers = new Map();
   }
+  async queueMusic(message) {
+    try {
+      const queue = useQueue(message.guild.id);
+      if(!queue) return message.reply({content: '❌ No music in queue.'});
+      const currentQueue = queue.tracks.toArray();
+
+      if (currentQueue.length > 10) {
+        let currentPage = 1;
+        const pageSize = 10;
+        const totalPages = Math.ceil(currentQueue.length / pageSize);
+
+        // Fungsi untuk mendapatkan lagu di halaman tertentu
+        const getPageSongs = (pageNumber) => {
+          const start = (pageNumber - 1) * pageSize;
+          const end = start + pageSize;
+          return currentQueue
+            .slice(start, end)
+            .map((track, index) => `${start + index + 1}. ${track.title}`)
+            .join('\n');
+        };
+
+        // Buat embed awal
+        const embed = new EmbedBuilder()
+          .setColor("#FFF000")
+          .setTitle('🎵 Music Queue')
+          .setDescription(getPageSongs(currentPage))
+          .setFooter({
+            text: `Page ${currentPage}/${totalPages} • Requested by ${message.author.tag}`,
+            iconURL: message.author.displayAvatarURL()
+          });
+
+        // Buat row button
+        const row = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId('prev')
+              .setLabel('Previous')
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(currentPage === 1),
+            new ButtonBuilder()
+              .setCustomId('next')
+              .setLabel('Next')
+              .setStyle(ButtonStyle.Secondary)
+              .setDisabled(currentPage === totalPages),
+            new ButtonBuilder()
+              .setCustomId('close')
+              .setLabel('Close')
+              .setStyle(ButtonStyle.Danger)
+          );
+
+        // Kirim pesan awal
+        const queueMsg = await message.reply({ 
+          embeds: [embed],
+          components: [row]
+        });
+
+        // Buat collector
+        const collector = queueMsg.createMessageComponentCollector({ 
+          time: 60000,
+          filter: i => i.user.id === message.author.id
+        });
+
+        collector.on('collect', async (interaction) => {
+          // Handle button clicks
+          if (interaction.customId === 'prev') {
+            if (currentPage > 1) currentPage--;
+          } else if (interaction.customId === 'next') {
+            if (currentPage < totalPages) currentPage++;
+          } else if (interaction.customId === 'close') {
+            await queueMsg.delete().catch(() => {});
+            return collector.stop();
+          }
+
+          // Update embed
+          embed.setDescription(getPageSongs(currentPage));
+          embed.setFooter({
+            text: `Page ${currentPage}/${totalPages} • Requested by ${message.author.tag}`,
+            iconURL: message.author.displayAvatarURL()
+          });
+
+          // Update button states
+          row.components[0].setDisabled(currentPage === 1);
+          row.components[1].setDisabled(currentPage === totalPages);
+
+          // Update message
+          await interaction.update({ 
+            embeds: [embed],
+            components: [row]
+          });
+        });
+
+        collector.on('end', () => {
+          if (!queueMsg.deleted) {
+            row.components.forEach(button => button.setDisabled(true));
+            queueMsg.edit({ components: [row] }).catch(() => {});
+          }
+        });
+
+      } else {
+        // Jika lagu 10 atau kurang
+        const embed = new EmbedBuilder()
+          .setColor("#FFF000")
+          .setTitle('🎵 Music Queue')
+          .setDescription(
+            currentQueue
+              .map((track, index) => `${index + 1}. ${track.title}`)
+              .join('\n')
+          )
+          .setFooter({
+            text: `Requested by ${message.author.tag}`,
+            iconURL: message.author.displayAvatarURL()
+          });
+
+        await message.reply({ embeds: [embed] });
+      }
+
+    } catch (error) {
+      console.error('Error in queueMusic:', error);
+      return message.reply({
+        content: '❌ An error occurred while displaying the queue.'
+      });
+    }
+}
+async loopMusic(message, option) {
+  try {
+    // Mendapatkan queue untuk server saat ini
+    const queue = useQueue(message.guild.id);
+    if (!queue || !queue.isPlaying()) {
+      return message.reply("❌ No music is currently playing!");
+    }
+
+    // Tentukan mode loop berdasarkan opsi yang diberikan
+    let repeatMode;
+    switch (option) {
+      case 'queue':
+        repeatMode = QueueRepeatMode.QUEUE;
+        break;
+      case 'track':
+        repeatMode = QueueRepeatMode.TRACK;
+        break;
+      case 'off':
+        repeatMode = QueueRepeatMode.OFF;
+        break;
+      case 'autoplay':
+        repeatMode = QueueRepeatMode.AUTOPLAY;
+        break;
+      default:
+        return message.reply(`❌ Invalid option: \`${option}\`. Available options: queue, track, off, autoplay.`);
+    }
+
+    // Menerapkan mode loop
+    queue.setRepeatMode(repeatMode);
+
+    // Membalas dengan konfirmasi mode loop
+    const modeText = {
+      [QueueRepeatMode.QUEUE]: "🔄 Looping the entire queue.",
+      [QueueRepeatMode.TRACK]: "🔂 Looping the current track.",
+      [QueueRepeatMode.OFF]: "❌ Looping is now disabled.",
+      [QueueRepeatMode.AUTOPLAY]: "🎵 Autoplay mode enabled.",
+    };
+
+    return message.reply(modeText[repeatMode]);
+  } catch (error) {
+    console.error("Error in loopMusic:", error);
+    return message.reply("❌ An error occurred while setting the loop mode.");
+  }
+}
+
 
   async getSyncedLyrics(message, title) {
     try {
@@ -527,7 +696,7 @@ class VoiceManager {
       message.reply(`❌ Error: ${error.message || "Failed to play music"}`);
     }
   }
-
+  
   // Helper method for cleanup
   cleanupConnection(guildId) {
     const connection = this.voiceConnections.get(guildId);
@@ -680,17 +849,9 @@ class VoiceManager {
   // Method untuk leave voice channel
   async leaveVoice(message) {
     const guildId = message.guild.id;
-    const connection = this.voiceConnections.get(guildId);
-
+    const connection = useQueue(guildId);
     if (connection) {
-      const player = this.audioPlayers.get(guildId);
-      if (player) {
-        player.stop();
-        this.audioPlayers.delete(guildId);
-      }
-
-      connection.destroy();
-      this.voiceConnections.delete(guildId);
+      connection.delete()
       message.reply("👋 Left the voice channel");
     } else {
       message.reply("I am not in a voice channel");
@@ -2615,7 +2776,7 @@ class Games {
         if (activeGame.timerMessage) {
           await activeGame.timerMessage.delete().catch(() => {});
         }
-
+        this.tbgSession.delete(message.channel.id);
         const reward = 1000;
         dataManager.updateBalance(message.author.id, reward);
         this.clSession.delete(message.channel.id);
@@ -2685,10 +2846,20 @@ const guildAdmin = (message) => {
 };
 
 const commands = {
+  loop:async(message, args)=>{
+    const option = args[1]
+    if(!option){
+      return message.reply(`Usage: ${prefix} loop <off | track | queue | autoplay>`);
+    }
+    await voiceManager.loopMusic(message, option);
+  },
+  q: async (message)=>{
+    await voiceManager.queueMusic(message);
+  },
   karaoke: async (message,args)=>{
     const title = args.slice(1).join(" ");
     await voiceManager.playMusic(message, title);
-    await voiceManager.getSyncedLyrics(message, title);
+      await voiceManager.getSyncedLyrics(message, title);
   },
   skip: (message) => {
     voiceManager.skipMusic(message);
@@ -2793,8 +2964,8 @@ const commands = {
       );
     }
 
-    // Validate image size (maximum 500KB)
-    if (attachment.size > 5 * 1024) {
+    // Validate image size (maximum 5MB)
+    if (attachment.size > 5 * 1024 * 1024) {
       return message.reply(
         "❌ Image size is too large! Maximum size is 500KB."
       );
@@ -3563,14 +3734,10 @@ const commands = {
   },
   announcement: async (message, args) => {
     // Cek permission
-    if (!message.member.permissions.has("ADMINISTRATOR")) {
-      return message.reply(
-        "❌ Anda tidak memiliki izin untuk menggunakan command ini!"
-      );
-    }
+    if(message.author.id !== config.ownerId[0]) return message.reply("❌ You don't have permission to use this command!");
     // Cek jika tidak ada pesan yang akan diumumkan
     if (!args.length) {
-      return message.reply("❌ Mohon berikan pesan yang ingin diumumkan!");
+      return message.reply("❌ Please provide an announcement message!");
     }
 
     // Ambil pesan announcement
@@ -3831,7 +3998,11 @@ client.once("ready", async () => {
     // Useful for seeing what dependencies, extractors, etc are loaded
     console.log(`General player debug event: ${message}`);
   });
-
+  player.events.on('emptyChannel', (queue) => {
+    // Emitted when the voice channel has been empty for the set threshold
+    // Bot will automatically leave the voice channel with this event
+    queue.metadata.send(`Leaving because no vc activity for the past 5 minutes`);
+  });
   player.events.on("debug", async (queue, message) => {
     // Emitted when the player queue sends debug info
     // Useful for seeing what state the current queue is at
@@ -3841,7 +4012,8 @@ client.once("ready", async () => {
   player.events.on("playerError", (queue, error) => {
     console.error("Player error:", error);
     if (queue.metadata.channel) {
-      queue.metadata.channel.send(`❌ Error playing music: ${error.message}`);
+      // send the song title
+      queue.metadata.channel.send(`❌ Error playing music: ${error.message} - ${error.cause}`);
     }
   });
 
@@ -3860,25 +4032,7 @@ client.once("ready", async () => {
   });
   player.events.on("playerStart", (queue, track) => {
     if (queue.metadata.channel) {
-      const embedStartPlaying = new EmbedBuilder()
-        .setColor("#00ff00")
-        .setTitle("🎶 Now Playing")
-        .setDescription(`**${track.title}**`)
-        .addFields(
-          {
-            name: "Duration",
-            value: track.duration,
-            inline: true,
-          },
-          {
-            name: "Requested By",
-            value: track.requestedBy ?? "Unknown",
-            inline: true,
-          }
-        )
-        .setThumbnail(track.thumbnail || null)
-        .setTimestamp();
-      queue.metadata.channel.send({ embeds: [embedStartPlaying] });
+      queue.metadata.channel.send(`🎶 Now playing: ${track.title}`);
     }
   });
 
