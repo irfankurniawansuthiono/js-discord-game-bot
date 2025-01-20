@@ -415,7 +415,7 @@ async loopMusic(message, option) {
       if (!results || results.length === 0) {
         return message.reply({
           content: "❌ No lyrics found for this track.",
-          ephemeral: true,
+           
         });
       }
   
@@ -465,7 +465,7 @@ async loopMusic(message, option) {
         message.channel
           .send({
             content: "🎵 Lyrics sync ended - track finished.",
-            ephemeral: true,
+             
           })
           .catch(console.error);
       });
@@ -482,8 +482,7 @@ async loopMusic(message, option) {
     } catch (error) {
       console.error("Error in getSyncedLyrics:", error);
       return message.reply({
-        content: `❌ Failed to get synced lyrics: ${error.message}`,
-        ephemeral: true,
+        content: `❌ Failed to get synced lyrics: ${error.message}`
       });
     }
   }
@@ -497,7 +496,7 @@ async loopMusic(message, option) {
       if (!queue || !queue.isPlaying()) {
         return message.reply({
           content: "❌ No music is currently playing!",
-          ephemeral: true,
+           
         });
       }
   
@@ -506,7 +505,7 @@ async loopMusic(message, option) {
       if (!currentTrack) {
         return message.reply({
           content: "❌ No track is currently playing!",
-          ephemeral: true,
+           
         });
       }
   
@@ -561,7 +560,7 @@ async loopMusic(message, option) {
       return message.reply({
         content:
           "❌ An error occurred while getting the current track information.",
-        ephemeral: true,
+         
       });
     }
   }
@@ -792,7 +791,7 @@ async loopMusic(message, option) {
       if (!player) {
         return message.reply({
           content: "❌ No active player found in this server!",
-          ephemeral: true,
+           
         });
       }
 
@@ -802,7 +801,7 @@ async loopMusic(message, option) {
       if (!queue || !queue.isPlaying()) {
         return message.reply({
           content: "❌ No music is currently playing!",
-          ephemeral: true,
+           
         });
       }
 
@@ -834,14 +833,14 @@ async loopMusic(message, option) {
           content: `❌ Failed to ${wasPaused ? "resume" : "pause"} playback: ${
             playbackError.message
           }`,
-          ephemeral: true,
+           
         });
       }
     } catch (error) {
       console.error("Error in pauseMusic command:", error);
       return message.reply({
         content: "❌ An error occurred while trying to pause/resume the music.",
-        ephemeral: true,
+         
       });
     }
   }
