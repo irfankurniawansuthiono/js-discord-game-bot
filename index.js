@@ -144,6 +144,7 @@ const createHelpEmbed = (page = 1, user) => {
             "`📅 daily` - Daily reward",
             "`🎰 slots <bet>` - Slots (10x)",
             "`🖼️ tg` - Tebak gambar",
+            "`🎮 caklontong` - Cak lontong",
           ].join("\n"),
           inline: false,
         },
