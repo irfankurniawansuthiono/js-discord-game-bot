@@ -16,6 +16,8 @@
     "axios": "^1.7.9",
     "discord-player": "^7.1.0",
     "discord.js": "^14.17.3",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "form-data": "^4.0.1",
+    "similarity": "^1.2.1"
   }
 }

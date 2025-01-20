@@ -7,11 +7,13 @@ import {
   ButtonStyle,
   ActionRowBuilder,
   ActivityType,
+  ChannelType,
   PermissionsBitField,
   AttachmentBuilder,
 } from "discord.js";
 import { Player, useMainPlayer } from "discord-player";
-import {DefaultExtractors} from "@discord-player/extractor"
+import FormData from "form-data";
+import { DefaultExtractors } from "@discord-player/extractor";
 import {
   entersState,
   joinVoiceChannel,
@@ -19,10 +21,11 @@ import {
   createAudioResource,
   AudioPlayerStatus,
   VoiceConnectionStatus,
-  NoSubscriberBehavior, 
+  NoSubscriberBehavior,
   StreamType,
 } from "@discordjs/voice";
 import fs from "fs";
+import similarity from "similarity";
 
 const cooldowns = new Map();
 const COOLDOWN_DURATION = 5 * 1000; // 5 seconds
@@ -42,6 +45,8 @@ const config = {
     "1107212927536201738",
     "534661318385336321",
   ],
+  guildBaseServerID: "1329992328550682774",
+  announcementChannelID: "1329992333994758247",
   defaultPrefix: "N!",
   startingBalance: 10000,
   dataFile: "./players.json",
@@ -62,97 +67,140 @@ await player.extractors.loadMulti(DefaultExtractors);
 let prefix = config.defaultPrefix;
 
 // help embed
-const helpEmbed = new EmbedBuilder()
-  .setColor("#FF0000")
-  .setTitle("Nanami Commands")
-  .setDescription("Available commands:")
-  .addFields(
-    {
-      name: "Basic Commands",
-      value: [
-        `**${prefix} register** \n Create new account`,
-        `**${prefix} help** \n Show this message`,
-        `**${prefix} profile** \n Alias for balance`,
-        `**${prefix} ownerinfo** \n Show bot owner information`,
-        `**${prefix} botinfo** \n Show your bot information`,
-        `**${prefix} ttfind** <prompt> \n Search for TikTok videos`,
-        `**${prefix} ttinfo** <tiktok url> \n Show TikTok video information`,
-        `**${prefix} ttdown** <tiktok url> \n Download TikTok video`,
-        `**${prefix} ytdown** <youtube url> \n Download YouTube videos`,
-        `**${prefix} iginfo** <instagram url> \n Show Instagram video information`,
-        `**${prefix} igdown** <instagram url> \n Download Instagram videos`,
-        `**${prefix} spdown** <spotify url> \n Download Spotify song`,
-      ].join("\n\n"),
-    },
-    {
-      name: "Music Commands",
-      value: [
-        `**${prefix} play** <song title> \n Play a song in the voice channel`,
-        `**${prefix} join** \n Join the voice channel`,
-        `**${prefix} leave** \n Leave the voice channel`,
-        `**${prefix} lyrics** <song title> \n Show lyrics for a song`,
-        `**${prefix} s** <song title> \n Search for a song`,
-      ].join("\n\n"),
-    },
-    {
-      name: "Moderation Commands",
-      value: [`**${prefix} rbc** \n Delete all bot messages in channel`,
-        `**${prefix} nick** <@user> \n Set user's nickname`
-      ].join(
-        "\n\n"
-      ),
+const createHelpEmbed = (page = 1, user) => {
+  // Tambahkan parameter user
+  const embedColors = {
+    1: "#FF69B4", // Pink untuk Basic & Tools
+    2: "#9B59B6", // Purple untuk Music & Moderation
+    3: "#F1C40F", // Gold untuk Games & Social
+    4: "#E74C3C", // Red untuk Owner Commands
+  };
 
+  const pages = {
+    1: {
+      title: "📚 Basic Commands & Tools",
+      fields: [
+        {
+          name: "🎯 Basic Commands",
+          value: [
+            "`🔹 register` - Create new account",
+            "`🔹 help` - Show this message",
+            "`🔹 profile` - View your profile/balance",
+            "`🔹 ownerinfo` - Show bot owner information",
+            "`🔹 botinfo` - Show bot information",
+          ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "🛠️ Tools",
+          value: [
+            "`🎥 ttfind <prompt>` - Search TikTok videos",
+            "`📱 ttinfo <url>` - TikTok video information",
+            "`⬇️ ttdown <url>` - Download TikTok video",
+            "`📺 ytdown <url>` - Download YouTube videos",
+            "`📸 iginfo <url>` - Instagram info",
+            "`📥 igdown <url>` - Download Instagram content",
+            "`🎵 spdown <url>` - Download Spotify song",
+            "`🖼️ remini` - Generate HD image",
+          ].join("\n"),
+          inline: false,
+        },
+      ],
     },
-    {
-      name: "Games",
-      value: [
-        `**${prefix} flip** <bet | all> <h/t> \n Flip a coin (2x multiplier)`,
-        `**${prefix} guess** <bet | all> <1-10> \n Guess a number (5x multiplier)`,
-        `**${prefix} bj** <bet | all> \n Play blackjack (5x multiplier)`,
-        `**${prefix} dice** <bet | all> <2-12> \n Guess dice sum (8x multiplier)`,
-        `**${prefix} daily**  \n Claim daily reward`,
-        `**${prefix} slots** <bet | all> \n Play slots (10x multiplier)`,
-        `**${prefix} tg** \n Play tebak gambar`,
-      ].join("\n\n"),
+    2: {
+      title: "🎵 Music & Moderation",
+      fields: [
+        {
+          name: "🎼 Music Commands",
+          value: [
+            "`🎵 play <song>` - Play a song",
+            "`➡️ join` - Join voice channel",
+            "`⬅️ leave` - Leave voice channel",
+            "`📝 lyrics <song>` - Show song lyrics",
+            "`🔍 s <song>` - Search for a song",
+          ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "⚔️ Moderation",
+          value: [
+            "`🗑️ rbc` - Delete bot messages",
+            "`📝 nick <@user>` - Set user nickname",
+          ].join("\n"),
+          inline: false,
+        },
+      ],
     },
-    {
-      name: "Social",
-      value: [
-        `**${prefix} give** <@user> <amount> \n Give money to user`,
-        `**${prefix} rank** \n Show top players`,
-        `**${prefix} invite** \n Invite Nanami to your server`,
-        `**${prefix} profile** <@user?> \n Show user profile`,
-        `**${prefix} rob** <@user> \n Rob a user`,
-      ].join("\n\n"),
+    3: {
+      title: "🎮 Games & Social",
+      fields: [
+        {
+          name: "🎲 Games",
+          value: [
+            "`🎲 flip <bet> <h/t>` - Coin flip (2x)",
+            "`🔢 guess <bet> <1-10>` - Number guess (5x)",
+            "`♠️ bj <bet>` - Blackjack (5x)",
+            "`🎲 dice <bet> <2-12>` - Dice game (8x)",
+            "`📅 daily` - Daily reward",
+            "`🎰 slots <bet>` - Slots (10x)",
+            "`🖼️ tg` - Tebak gambar",
+          ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "👥 Social",
+          value: [
+            "`💝 give <@user> <amount>` - Give money",
+            "`📊 rank` - Show top players",
+            "`📨 invite` - Invite Nanami",
+            "`👤 profile [@user]` - Show profile",
+            "`🦹 rob <@user>` - Rob a user",
+          ].join("\n"),
+          inline: false,
+        },
+      ],
     },
-    {
-      name: "Owner Commands",
-      value: [
-        `**${prefix} setbalance** <@user> \n Set user's balance`,
-       
-        `**${prefix} giveowner** <amount> \n Give money to bot owner`,
-        `**${prefix} setprefix** <prefix> \n Set bot prefix`,
-        `**${prefix} setstatus** <status> \n Set bot status`,
-        `**${prefix} registeruser** \n Register a user`,
-        `**${prefix} say** \n say message to current channel`,
-        `**${prefix} rbc** \n Delete all bot messages in channel`,
-        `**${prefix} sendto** <#channel/@user> <message> \n Send a message to a channel or DM a user`,
-        `**${prefix} spamsendto** <ammount> <#channel/@user> <message> \n Send ammount of message to a channel or DM a user`,
-        `**${prefix} spamsay** <ammount> <message> \n Send ammount of message to a channel or DM a user`,
-        `**${prefix} resetplayer** <@user> \n reset player's data`,
-        `**${prefix} resetap** \n reset all player's data`,
-      ].join("\n\n"),
+    4: {
+      title: "⚡ Owner Commands",
+      fields: [
+        {
+          name: "🛠️ Owner Commands",
+          value: [
+            "`💰 setbalance <@user>` - Set balance",
+            "`📢 ga <message>` - Guild announcement",
+            "`💸 giveowner <amount>` - Give to owner",
+            "`⚙️ setprefix <prefix>` - Set prefix",
+            "`🔄 setstatus <status>` - Set status",
+          ].join("\n"),
+          inline: false,
+        },
+        {
+          name: "🔒 Bot Owner Commands",
+          value: [
+            "`📣 announcement <msg>` - Global announcement",
+            "`✅ tg jawab` - Answer tebak gambar",
+          ].join("\n"),
+          inline: false,
+        },
+      ],
     },
-    {
-      name: "Bot Owner Commands",
-      value: [
-        `**${prefix} announcement** <message> \n Send a message to all servers`,
-        `**${prefix} tg jawab** \n Answer tebak gambar`,
-      ].join("\n\n"),
-    }
-  )
-  .setFooter({ text: "Nanami Help Menu" })
-  .setTimestamp();
+  };
+
+  const embed = new EmbedBuilder()
+    .setColor(embedColors[page])
+    .setTitle(`Nanami Help Menu - ${pages[page].title}`)
+    .setDescription(
+      `**Page ${page}/4**\nGunakan tombol di bawah untuk navigasi\n\nPrefix: \`${prefix}\``
+    )
+    .addFields(pages[page].fields)
+    .setFooter({
+      text: `Requested by ${user.tag} • Page ${page}/4`,
+      iconURL: user.displayAvatarURL(),
+    })
+    .setTimestamp();
+
+  return embed;
+};
 
 // class discord
 class DiscordFormat {
@@ -182,8 +230,8 @@ class DiscordFormat {
 }
 class VoiceManager {
   constructor() {
-      this.voiceConnections = new Map();
-      this.audioPlayers = new Map();
+    this.voiceConnections = new Map();
+    this.audioPlayers = new Map();
   }
 
   async searchMusic(message, query) {
@@ -191,239 +239,244 @@ class VoiceManager {
       const player = useMainPlayer();
       const results = await player.search(query, {
         requestedBy: message.author,
-      })
+      });
 
       if (results.tracks.length === 0) {
-        return message.reply('❌ No results found!');
+        return message.reply("❌ No results found!");
       }
 
       // return 10 song
       const embed = new EmbedBuilder()
-        .setColor('#00ff00')
-        .setTitle('🎵 Search Results')
-        .setDescription(results.tracks.slice(0, 10).map((track, index) => `${index + 1}. ${track.title}`).join('\n'))
+        .setColor("#00ff00")
+        .setTitle("🎵 Search Results")
+        .setDescription(
+          results.tracks
+            .slice(0, 10)
+            .map((track, index) => `${index + 1}. ${track.title}`)
+            .join("\n")
+        )
         .setTimestamp();
 
       message.reply({ embeds: [embed] });
     } catch (error) {
-      console.error('Error in searchMusic:', error);
-      message.reply('❌ Error searching music! Please try again.');
+      console.error("Error in searchMusic:", error);
+      message.reply("❌ Error searching music! Please try again.");
     }
   }
 
   async getLyrics(message, title) {
     try {
       const player = useMainPlayer();
-      const lyrics = await player.lyrics.search({q:title});
+      const lyrics = await player.lyrics.search({ q: title });
 
       if (!lyrics || lyrics.length <= 0) {
-        return message.reply('❌ No lyrics found!');
+        return message.reply("❌ No lyrics found!");
       }
       const trimmedLyrics = lyrics[0].plainLyrics.substring(0, 1997);
       const embed = new EmbedBuilder()
-        .setColor('#00ff00')
+        .setColor("#00ff00")
         .setTitle(`🎵 ${lyrics[0].trackName ?? title}`)
         .setThumbnail(lyrics[0].thumbnail ?? message.author.displayAvatarURL())
         .setAuthor({
-          name: lyrics[0]?.artist?.name ?? title,  // Gunakan nullish coalescing operator (??) untuk memberikan fallback jika undefined atau null
-          iconURL: lyrics[0]?.artist?.image ?? message.author.displayAvatarURL(),  // Ganti dengan URL gambar default jika artist.image tidak ada
-          url: lyrics[0]?.artist?.url ?? 'https://irfanks.site',  // Ganti dengan URL default atau link yang diinginkan jika artist.url tidak ada
-      })      
+          name: lyrics[0]?.artist?.name ?? title, // Gunakan nullish coalescing operator (??) untuk memberikan fallback jika undefined atau null
+          iconURL:
+            lyrics[0]?.artist?.image ?? message.author.displayAvatarURL(), // Ganti dengan URL gambar default jika artist.image tidak ada
+          url: lyrics[0]?.artist?.url ?? "https://irfanks.site", // Ganti dengan URL default atau link yang diinginkan jika artist.url tidak ada
+        })
         .setDescription(
-          trimmedLyrics.length === 1997 ? `${trimmedLyrics}...` : trimmedLyrics,
+          trimmedLyrics.length === 1997 ? `${trimmedLyrics}...` : trimmedLyrics
         )
         .setTimestamp();
 
       message.reply({ embeds: [embed] });
     } catch (error) {
-      console.error('Error in getLyrics:', error);
-      message.reply('❌ Error getting lyrics! Please try again.');
+      console.error("Error in getLyrics:", error);
+      message.reply("❌ Error getting lyrics! Please try again.");
     }
-
   }
   async playMusic(message, q) {
     try {
-
       const guildId = message.guild.id;
-        const voiceChannel = message.member.voice.channel;
+      const voiceChannel = message.member.voice.channel;
       // Check if the bot is already playing in a different voice channel
-  if (
-    message.guild.members.me.voice.channel &&
-    message.guild.members.me.voice.channel !== voiceChannel
-  ) {
-    return message.reply(
-      'I am already playing in a different voice channel!',
-    );
-  }
- 
-  // Check if the bot has permission to join the voice channel
-  if (
-    !message.guild.members.me.permissions.has(
-      PermissionsBitField.Flags.Connect,
-    )
-  ) {
-    return message.reply(
-      'I do not have permission to join your voice channel!',
-    );
-  }
- 
-  // Check if the bot has permission to speak in the voice channel
-  if (
-    !message.guild.members.me
-      .permissionsIn(voiceChannel)
-      .has(PermissionsBitField.Flags.Speak)
-  ) {
-    return message.reply(
-      'I do not have permission to speak in your voice channel!',
-    );
-  }
-  // Check if the user is in a voice channel
-        if (!message.member?.voice?.channel) {
-            return message.reply('You need to be in a voice channel first!');
-        }
+      if (
+        message.guild.members.me.voice.channel &&
+        message.guild.members.me.voice.channel !== voiceChannel
+      ) {
+        return message.reply(
+          "I am already playing in a different voice channel!"
+        );
+      }
 
-        
-        const loadingMsg = await message.reply('<a:loading:1330226649169399882> Loading music...');
+      // Check if the bot has permission to join the voice channel
+      if (
+        !message.guild.members.me.permissions.has(
+          PermissionsBitField.Flags.Connect
+        )
+      ) {
+        return message.reply(
+          "I do not have permission to join your voice channel!"
+        );
+      }
 
-        try {
-          const player = useMainPlayer();
+      // Check if the bot has permission to speak in the voice channel
+      if (
+        !message.guild.members.me
+          .permissionsIn(voiceChannel)
+          .has(PermissionsBitField.Flags.Speak)
+      ) {
+        return message.reply(
+          "I do not have permission to speak in your voice channel!"
+        );
+      }
+      // Check if the user is in a voice channel
+      if (!message.member?.voice?.channel) {
+        return message.reply("You need to be in a voice channel first!");
+      }
+
+      const loadingMsg = await message.reply(
+        "<a:loading:1330226649169399882> Loading music..."
+      );
+
+      try {
+        const player = useMainPlayer();
         // Play the song in the voice channel
         const result = await player.play(voiceChannel, q, {
           nodeOptions: {
             metadata: { channel: message.channel }, // Store text channel as metadata on the queue
           },
         });
- 
-       // Reply to the user that the song has been added to the queue
-  await loadingMsg.edit(`${result.track.title} has been added to the queue!`);
 
-  // Event handlers
-  player.on('playerError', (error) => {
-    console.error('Player error:', error);
-    message.channel.send(`❌ Error playing music: ${error.message}`);
-  });
+        // Reply to the user that the song has been added to the queue
+        await loadingMsg.edit(
+          `${result.track.title} has been added to the queue!`
+        );
 
-  player.on('error', (error) => {
-    console.error('Error event:', error);
-    message.channel.send(`❌ Error: ${error.message}`);
-  });
+        // Event handlers
+        player.on("playerError", (error) => {
+          console.error("Player error:", error);
+          message.channel.send(`❌ Error playing music: ${error.message}`);
+        });
 
-  player.on(AudioPlayerStatus.Playing, () => {
-    loadingMsg.edit(`🎶 Now playing: ${result.track.title}`);
-  });
+        player.on("error", (error) => {
+          console.error("Error event:", error);
+          message.channel.send(`❌ Error: ${error.message}`);
+        });
 
-  player.on(AudioPlayerStatus.Idle, () => {
-    connection.destroy();
-    this.voiceConnections.delete(guildId);
-  });
+        player.on(AudioPlayerStatus.Playing, () => {
+          loadingMsg.edit(`🎶 Now playing: ${result.track.title}`);
+        });
 
-  // Debugging events
-  player.on('stateChange', (oldState, newState) => {
-    console.log(`Connection state changed from ${oldState.status} to ${newState.status}`);
-  });
+        player.on(AudioPlayerStatus.Idle, () => {
+          connection.destroy();
+          this.voiceConnections.delete(guildId);
+        });
 
-  // Store connection for cleanup
-  this.voiceConnections.set(guildId, player);
-    // Reply to the user that the song has been added to the queue
-    return loadingMsg.edit(
-      `${result.track.title} has been added to the queue!`,
-    );
-        } catch (innerError) {
-            console.error('Inner error:', innerError);
-            await loadingMsg.edit(`❌ Error: ${innerError.message}`);
-            this.cleanupConnection(guildId);
-        }
-      }catch (error) {
-        console.error('Error in Play Music:', error);
-        message.reply(`❌ Error: ${error.message || 'Failed to play music'}`);
+        // Debugging events
+        player.on("stateChange", (oldState, newState) => {
+          console.log(
+            `Connection state changed from ${oldState.status} to ${newState.status}`
+          );
+        });
+
+        // Store connection for cleanup
+        this.voiceConnections.set(guildId, player);
+        // Reply to the user that the song has been added to the queue
+        return loadingMsg.edit(
+          `${result.track.title} has been added to the queue!`
+        );
+      } catch (innerError) {
+        console.error("Inner error:", innerError);
+        await loadingMsg.edit(`❌ Error: ${innerError.message}`);
+        this.cleanupConnection(guildId);
+      }
+    } catch (error) {
+      console.error("Error in Play Music:", error);
+      message.reply(`❌ Error: ${error.message || "Failed to play music"}`);
     }
   }
 
-
-
-// Helper method for cleanup
-cleanupConnection(guildId) {
+  // Helper method for cleanup
+  cleanupConnection(guildId) {
     const connection = this.voiceConnections.get(guildId);
     if (connection) {
-        connection.destroy();
-        this.voiceConnections.delete(guildId);
+      connection.destroy();
+      this.voiceConnections.delete(guildId);
     }
-}
+  }
 
-// Helper method for cleanup
-cleanupConnection(guildId) {
+  // Helper method for cleanup
+  cleanupConnection(guildId) {
     const connection = this.voiceConnections.get(guildId);
     if (connection) {
-        connection.destroy();
-        this.voiceConnections.delete(guildId);
+      connection.destroy();
+      this.voiceConnections.delete(guildId);
     }
-}
+  }
 
-// Helper method for cleanup
-cleanupExistingConnection(guildId) {
+  // Helper method for cleanup
+  cleanupExistingConnection(guildId) {
     const existingConnection = this.voiceConnections.get(guildId);
     const existingPlayer = this.audioPlayers.get(guildId);
 
     if (existingPlayer) {
-        existingPlayer.stop();
-        this.audioPlayers.delete(guildId);
+      existingPlayer.stop();
+      this.audioPlayers.delete(guildId);
     }
 
     if (existingConnection) {
-        existingConnection.destroy();
-        this.voiceConnections.delete(guildId);
+      existingConnection.destroy();
+      this.voiceConnections.delete(guildId);
     }
-}
-
-
+  }
 
   async joinVoice(message) {
-      const guildId = message.guild.id;
-      const voiceChannel = message.member.voice.channel;
-      
-      if (voiceChannel) {
-          const connection = joinVoiceChannel({
-              channelId: voiceChannel.id,
-              guildId: guildId,
-              adapterCreator: message.guild.voiceAdapterCreator,
-          });
-          this.voiceConnections.set(guildId, connection);
-          message.reply('👋 Joined voice channel');
-      } else {
-          message.reply('You need to be in a voice channel first!');
-      }
+    const guildId = message.guild.id;
+    const voiceChannel = message.member.voice.channel;
+
+    if (voiceChannel) {
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: guildId,
+        adapterCreator: message.guild.voiceAdapterCreator,
+      });
+      this.voiceConnections.set(guildId, connection);
+      message.reply("👋 Joined voice channel");
+    } else {
+      message.reply("You need to be in a voice channel first!");
+    }
   }
   // Method untuk stop musik
   async stop(message) {
-      const guildId = message.guild.id;
-      const player = this.audioPlayers.get(guildId);
-      
-      if (player) {
-          player.stop();
-          message.reply('⏹️ Stopped playing music');
-      } else {
-          message.reply('Nothing is playing right now');
-      }
+    const guildId = message.guild.id;
+    const player = this.audioPlayers.get(guildId);
+
+    if (player) {
+      player.stop();
+      message.reply("⏹️ Stopped playing music");
+    } else {
+      message.reply("Nothing is playing right now");
+    }
   }
 
   // Method untuk leave voice channel
   async leaveVoice(message) {
-      const guildId = message.guild.id;
-      const connection = this.voiceConnections.get(guildId);
-      
-      if (connection) {
-          const player = this.audioPlayers.get(guildId);
-          if (player) {
-              player.stop();
-              this.audioPlayers.delete(guildId);
-          }
-          
-          connection.destroy();
-          this.voiceConnections.delete(guildId);
-          message.reply('👋 Left the voice channel');
-      } else {
-          message.reply('I am not in a voice channel');
+    const guildId = message.guild.id;
+    const connection = this.voiceConnections.get(guildId);
+
+    if (connection) {
+      const player = this.audioPlayers.get(guildId);
+      if (player) {
+        player.stop();
+        this.audioPlayers.delete(guildId);
       }
+
+      connection.destroy();
+      this.voiceConnections.delete(guildId);
+      message.reply("👋 Left the voice channel");
+    } else {
+      message.reply("I am not in a voice channel");
+    }
   }
 }
 
@@ -464,6 +517,99 @@ class ApiManagement {
       console.error("Error in aiResponse command:", error);
       return message.reply(
         "There was an error processing your request, please try again later."
+      );
+    }
+  }
+  async remini(message, image) {
+    try {
+      // Mengirim pesan loading
+      const reminiMessage = await message.reply(
+        "<a:loading:1330226649169399882> Generating HD Image..."
+      );
+
+      // Get original image
+      const imageBuffer = await axios.get(image, {
+        responseType: "arraybuffer",
+      });
+
+      // Upload to CDN
+      const form = new FormData();
+      form.append("file", imageBuffer.data, "image.png");
+
+      const uploadResponse = await axios.post(
+        "https://cdn.itzky.us.kg/",
+        form,
+        {
+          headers: form.getHeaders(),
+        }
+      );
+
+      if (!uploadResponse.data?.fileUrl) {
+        return reminiMessage.edit(
+          "❌ Failed to upload image to CDN. Please try again."
+        );
+      }
+
+      try {
+        // Process with Remini API
+        const response = await axios.get(
+          `https://api.itzky.us.kg/tools/remini?url=${uploadResponse.data.fileUrl}&apikey=${this.apiKey}`
+        );
+
+        if (!response.data) {
+          return reminiMessage.edit(
+            "❌ Invalid response from Remini API. Please try again."
+          );
+        }
+
+        // Get enhanced image
+        const enhancedImageBuffer = await axios.get(response.data.result, {
+          responseType: "arraybuffer",
+        });
+
+        // Create Discord attachment
+        const imageBuilderResult = new AttachmentBuilder(
+          enhancedImageBuffer.data,
+          {
+            name: "remini.png",
+          }
+        );
+
+        // Create embed
+        const reminiEmbed = new EmbedBuilder()
+          .setColor("#00FF00")
+          .setTitle("📸 Enhanced Image")
+          .setImage("attachment://remini.png")
+          .setFooter({
+            text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg",
+          })
+          .setTimestamp();
+
+        const downloadPhotoButton = new ButtonBuilder()
+          .setURL(response.data.result)
+          .setLabel("Download")
+          .setStyle(ButtonStyle.Link);
+        const rowBuilder = new ActionRowBuilder().addComponents(
+          downloadPhotoButton
+        );
+
+        // Send final response
+        await reminiMessage.edit({
+          embeds: [reminiEmbed],
+          files: [imageBuilderResult],
+          components: [rowBuilder],
+          content: "✨ Here's your HD Image!",
+        });
+      } catch (error) {
+        console.error("Error in Remini API processing:", error);
+        await reminiMessage.edit(
+          "❌ Error processing image. Please try again later."
+        );
+      }
+    } catch (error) {
+      console.error("Error in remini command:", error);
+      await message.reply(
+        "❌ There was an error processing your request. Please try again later."
       );
     }
   }
@@ -1073,7 +1219,10 @@ class DataManager {
       this.saveData();
 
       // Send result message
-      await robMsg.edit({ embeds: [robEmbedHelper], content: "Robbing Result" });
+      await robMsg.edit({
+        embeds: [robEmbedHelper],
+        content: "Robbing Result",
+      });
 
       // Return updated user objects
       return {
@@ -1261,6 +1410,7 @@ class DataManager {
 class Games {
   constructor() {
     this.tbgSession = new Map();
+    this.clSession = new Map();
   }
   static async blackjack(message, bet) {
     // Check cooldown
@@ -1953,137 +2103,322 @@ class Games {
     }
   }
 
-  // Make it a regular method instead of static
+  async cakLontong (message, guess, jawab){
+    const user = dataManager.getUser(message.author.id);
+    if (!user) {
+      return message.reply(`You need to register first! Use ${prefix}register`);
+    }
+    try {
+      const maxTime = 60 * 1000; // 60 seconds
+      const database = JSON.parse(
+        fileManagement.readFile("./db/caklontong.json")
+      );
+      const activeGame = this.clSession.get(message.channel.id);
+
+      const startNewGame = async () => {
+        const startMessage = await message.reply(
+          "<a:loading:1330226649169399882> loading..."
+        );
+        const randomIndex = Math.floor(Math.random() * database.length);
+        const question = database[randomIndex];
+
+        let interval; // Declare interval here so it can be accessed in the game session
+
+        const gameSession = {
+          questionIndex: randomIndex,
+          answer: question.jawaban,
+          timestamp: Date.now(),
+          interval: null, // Add interval to the session
+        };
+
+        this.clSession.set(message.channel.id, gameSession);
+
+        const clEmbed = new EmbedBuilder()
+          .setTitle("🎮 Cak Lontong")
+          .setColor("#00FF00")
+          .setDescription(
+            `${question.soal}\n\nWaktu: ${
+              maxTime / 1000
+            } detik.\n\nUntuk menjawab gunakan \n${prefix}clt <jawaban>.`
+          )
+          .setFooter({
+            text: "Created by Nanami",
+            iconURL: client.user.displayAvatarURL(),
+          });
+
+        const countdownMessage = await startMessage.edit({
+          embeds: [clEmbed],
+        });
+
+        // Start countdown
+        let remainingTime = maxTime / 1000; // in seconds
+        interval = setInterval(() => {
+          remainingTime -= 1;
+
+          // Kirim pesan setiap 10 detik
+          if (remainingTime % 10 === 0 && remainingTime > 0) {
+            message.channel.send(
+              `:hourglass_flowing_sand: Waktu game Cak Lontong tersisa: ${remainingTime} detik`
+            );
+          }
+
+          // Cek apakah waktu sudah habis
+          if (remainingTime <= 0) {
+            clearInterval(interval);
+            this.clSession.delete(message.channel.id);
+            countdownMessage.edit(
+              "⏰ Waktu game Cak Lontong habis! Permainan telah berakhir. Silakan mulai permainan baru."
+            );
+            const embed = new EmbedBuilder()
+              .setTitle("🎮 Cak Lontong")
+              .setColor("#00FF00")
+              .setDescription(`Jawaban: ${question.jawaban}`);
+            message.channel.send({
+              embeds: [embed],
+              content:
+                "⏰ Waktu game Cak Lontong habis! Permainan telah berakhir. Silakan mulai permainan baru.",
+            });
+          }
+        }, 1000);
+
+        // Store the interval in the game session
+        gameSession.interval = interval;
+      };
+
+      if (!guess) {
+        if (activeGame) {
+          return message.reply(
+            "Ada permainan Cak Lontong yang sedang berlangsung! Silakan tebak gambarnya!"
+          );
+        }
+        return await startNewGame();
+      }
+
+      if (!activeGame) {
+        return await startNewGame();
+      }
+
+      if (jawab) {
+        if (message.author.id !== config.ownerId[0]) {
+          return message.reply(
+            "You don't have permission to use this command."
+          );
+        } else {
+          const owner = await client.users.fetch(config.ownerId[0]);
+          const answerEmbed = new EmbedBuilder()
+            .setTitle("🎮 Cak Lontong - Jawaban")
+            .setColor("#00FF00")
+            .setDescription(`Jawaban: ${activeGame.answer}`);
+          return owner.send({ embeds: [answerEmbed] });
+        }
+      }
+
+      const normalizedGuess = guess.toUpperCase().trim();
+      const normalizedAnswer = activeGame.answer.toUpperCase().trim();
+
+      if (normalizedGuess === normalizedAnswer) {
+        // Clear the interval when answer is correct
+        if (activeGame.interval) {
+          clearInterval(activeGame.interval);
+        }
+
+        const reward = 1000;
+        dataManager.updateBalance(message.author.id, reward);
+        this.tbgSession.delete(message.channel.id);
+
+        const winEmbed = new EmbedBuilder()
+          .setTitle("🎮 Cak Lontong")
+          .setColor("#00FF00")
+          .setDescription("🎉 Selamat! Jawaban kamu benar!")
+          .addFields(
+            { name: "Jawaban", value: normalizedAnswer, inline: true },
+            { name: "Hadiah", value: `${formatBalance(reward)}`, inline: true },
+            {
+              name: "Saldo Kamu",
+              value: `${formatBalance(user.balance)}`,
+              inline: true,
+            }
+          );
+        return message.reply({ embeds: [winEmbed] });
+      } else if (similarity(normalizedGuess, normalizedAnswer)) {
+        await message.delete();
+        return message.channel.send(
+          `❌ Maaf, ${message.author}, jawaban kamu hampir benar. Coba lagi!`
+        );
+      }
+    } catch (error) {
+      console.error("Error in tebakGambar:", error);
+      return message.reply("Terjadi kesalahan saat memproses permainan.");
+    }
+  }
   async tebakGambar(message, guess, clue, jawab) {
     const user = dataManager.getUser(message.author.id);
     if (!user) {
-        return message.reply(`You need to register first! Use ${prefix}register`);
+      return message.reply(`You need to register first! Use ${prefix}register`);
     }
     try {
-        const maxTime = 60 * 1000; // 60 seconds
-        const database = JSON.parse(fileManagement.readFile("./db/tebakgambar.json"));
-        const activeGame = this.tbgSession.get(message.channel.id);
+      const maxTime = 60 * 1000; // 60 seconds
+      const database = JSON.parse(
+        fileManagement.readFile("./db/tebakgambar.json")
+      );
+      const activeGame = this.tbgSession.get(message.channel.id);
 
-        const startNewGame = async () => {
-            const startMessage = await message.reply("<a:loading:1330226649169399882> loading...");
-            const randomIndex = Math.floor(Math.random() * database.length);
-            const question = database[randomIndex];
+      const startNewGame = async () => {
+        const startMessage = await message.reply(
+          "<a:loading:1330226649169399882> loading..."
+        );
+        const randomIndex = Math.floor(Math.random() * database.length);
+        const question = database[randomIndex];
 
-            const imageResponse = await axios.get(question.img, { responseType: "arraybuffer" });
-            const imageBuffer = Buffer.from(imageResponse.data);
-            const imageFile = new AttachmentBuilder(imageBuffer, { name: "tebakgambar.png" });
+        // Get enhanced image
+        const imageBuffer = await axios.get(question.img, {
+          responseType: "arraybuffer",
+        });
 
-            let interval; // Declare interval here so it can be accessed in the game session
+        // Create Discord attachment
+        const imageBuilderResult = new AttachmentBuilder(imageBuffer.data, {
+          name: "tebakgambar.png",
+        });
+        let interval; // Declare interval here so it can be accessed in the game session
 
-            const gameSession = {
-                questionIndex: randomIndex,
-                answer: question.jawaban,
-                clue: question.deskripsi,
-                timestamp: Date.now(),
-                interval: null // Add interval to the session
-            };
-
-            this.tbgSession.set(message.channel.id, gameSession);
-
-            const tgEmbed = new EmbedBuilder()
-                .setTitle('🎮 Tebak Gambar')
-                .setColor('#00FF00')
-                .setDescription(`Silakan tebak gambarnya!\n\nWaktu: ${maxTime / 1000} detik.\n\nButuh Clue? ${prefix}tg clue\nUntuk menjawab gunakan ${prefix}tg <jawaban>.`)
-                .setFooter({ text: 'Created by Nanami', iconURL: client.user.displayAvatarURL() });
-
-            const countdownMessage = await startMessage.edit({
-                files: [imageFile],
-                embeds: [tgEmbed],
-                content: "Tebak gambar dimulai!"
-            });
-
-            // Start countdown
-            let remainingTime = maxTime / 1000; // in seconds
-            interval = setInterval(() => {
-                remainingTime -= 1;
-                
-                // Kirim pesan setiap 10 detik
-                if (remainingTime % 10 === 0 && remainingTime > 0) {
-                    message.channel.send(`Waktu tersisa: ${remainingTime} detik`);
-                }
-                
-                // Cek apakah waktu sudah habis
-                if (remainingTime <= 0) {
-                    clearInterval(interval);
-                    this.tbgSession.delete(message.channel.id);
-                    countdownMessage.edit('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru.');
-                    message.channel.send('⏰ Waktu habis! Permainan telah berakhir. Silakan mulai permainan baru. \nJawaban : ' + question.jawaban);
-                }
-            }, 1000);
-
-            // Store the interval in the game session
-            gameSession.interval = interval;
+        const gameSession = {
+          questionIndex: randomIndex,
+          answer: question.jawaban,
+          clue: question.deskripsi,
+          timestamp: Date.now(),
+          interval: null, // Add interval to the session
         };
 
-        if (!guess) {
-            if (activeGame) {
-                return message.reply('Ada permainan yang sedang berlangsung! Silakan tebak gambarnya!');
-            }
-            return await startNewGame();
-        }
+        this.tbgSession.set(message.channel.id, gameSession);
 
-        if (!activeGame) {
-            return await startNewGame();
-        }
+        const tgEmbed = new EmbedBuilder()
+          .setTitle("🎮 Tebak Gambar")
+          .setColor("#00FF00")
+          .setImage("attachment://tebakgambar.png") // Gunakan attachment://namafile.png
+          .setDescription(
+            `Silakan tebak gambarnya!\n\nWaktu: ${
+              maxTime / 1000
+            } detik.\n\nButuh Clue? ${prefix}tg clue\nUntuk menjawab gunakan \n${prefix}tg <jawaban>.`
+          )
+          .setFooter({
+            text: "Created by Nanami",
+            iconURL: client.user.displayAvatarURL(),
+          });
 
-        if (clue) {
-            const clueEmbed = new EmbedBuilder()
-                .setTitle('🎮 Tebak Gambar - Clue')
-                .setColor('#00FF00')
-                .setDescription(`Clue: ${activeGame.clue}`);
-            return message.reply({ embeds: [clueEmbed] });
-        }
+        const countdownMessage = await startMessage.edit({
+          embeds: [tgEmbed],
+          files: [imageBuilderResult],
+        });
 
-        if (jawab) {
-            if (message.author.id !== config.ownerId[0]) {
-                return message.reply("You don't have permission to use this command.");
-            } else {
-                const owner = await client.users.fetch(config.ownerId[0]);
-                const answerEmbed = new EmbedBuilder()
-                    .setTitle('🎮 Tebak Gambar - Jawaban')
-                    .setColor('#00FF00')
-                    .setDescription(`Jawaban: ${activeGame.answer}`);
-                return owner.send({ embeds: [answerEmbed] });
-            }
-        }
+        // Start countdown
+        let remainingTime = maxTime / 1000; // in seconds
+        interval = setInterval(() => {
+          remainingTime -= 1;
 
-        const normalizedGuess = guess.toUpperCase().trim();
-        const normalizedAnswer = activeGame.answer.toUpperCase().trim();
+          // Kirim pesan setiap 10 detik
+          if (remainingTime % 10 === 0 && remainingTime > 0) {
+            message.channel.send(
+              `:hourglass_flowing_sand: Waktu game Tebak Gambar tersisa: ${remainingTime} detik`
+            );
+          }
 
-        if (normalizedGuess === normalizedAnswer) {
-            // Clear the interval when answer is correct
-            if (activeGame.interval) {
-                clearInterval(activeGame.interval);
-            }
-            
-            const reward = 1000;
-            dataManager.updateBalance(message.author.id, reward);
+          // Cek apakah waktu sudah habis
+          if (remainingTime <= 0) {
+            clearInterval(interval);
             this.tbgSession.delete(message.channel.id);
+            countdownMessage.edit(
+              "⏰ Waktu untuk game Tebak Gambar habis! Permainan telah berakhir. Silakan mulai permainan baru."
+            );
+            const embed = new EmbedBuilder()
+              .setTitle("🎮 Tebak Gambar")
+              .setColor("#00FF00")
+              .setDescription(`Jawaban: ${question.jawaban}`);
+            message.channel.send({
+              embeds: [embed],
+              content:
+                "⏰ Waktu untuk game Tebak Gambar habis! Permainan telah berakhir. Silakan mulai permainan baru.",
+            });
+          }
+        }, 1000);
 
-            const winEmbed = new EmbedBuilder()
-                .setTitle('🎮 Tebak Gambar')
-                .setColor('#00FF00')
-                .setDescription('🎉 Selamat! Jawaban kamu benar!')
-                .addFields(
-                    { name: 'Jawaban', value: normalizedAnswer, inline: true },
-                    { name: 'Hadiah', value: `${formatBalance(reward)}`, inline: true },
-                    { name: 'Saldo Kamu', value: `${formatBalance(user.balance)}`, inline: true }
-                );
-            return message.reply({ embeds: [winEmbed] });
-        } else {
-            await message.delete();
-            return message.channel.send(`❌ Maaf, ${message.author}, jawaban kamu salah. Coba lagi!`);
+        // Store the interval in the game session
+        gameSession.interval = interval;
+      };
+
+      if (!guess) {
+        if (activeGame) {
+          return message.reply(
+            "Ada permainan Tebak Gambar yang sedang berlangsung! Silakan tebak gambarnya!"
+          );
         }
+        return await startNewGame();
+      }
+
+      if (!activeGame) {
+        return await startNewGame();
+      }
+
+      if (clue) {
+        const clueEmbed = new EmbedBuilder()
+          .setTitle("🎮 Tebak Gambar - Clue")
+          .setColor("#00FF00")
+          .setDescription(`Clue: ${activeGame.clue}`);
+        return message.reply({ embeds: [clueEmbed] });
+      }
+
+      if (jawab) {
+        if (message.author.id !== config.ownerId[0]) {
+          return message.reply(
+            "You don't have permission to use this command."
+          );
+        } else {
+          const owner = await client.users.fetch(config.ownerId[0]);
+          const answerEmbed = new EmbedBuilder()
+            .setTitle("🎮 Tebak Gambar - Jawaban")
+            .setColor("#00FF00")
+            .setDescription(`Jawaban: ${activeGame.answer}`);
+          return owner.send({ embeds: [answerEmbed] });
+        }
+      }
+
+      const normalizedGuess = guess.toUpperCase().trim();
+      const normalizedAnswer = activeGame.answer.toUpperCase().trim();
+
+      if (normalizedGuess === normalizedAnswer) {
+        // Clear the interval when answer is correct
+        if (activeGame.interval) {
+          clearInterval(activeGame.interval);
+        }
+
+        const reward = 1000;
+        dataManager.updateBalance(message.author.id, reward);
+        this.tbgSession.delete(message.channel.id);
+
+        const winEmbed = new EmbedBuilder()
+          .setTitle("🎮 Tebak Gambar")
+          .setColor("#00FF00")
+          .setDescription("🎉 Selamat! Jawaban kamu benar!")
+          .addFields(
+            { name: "Jawaban", value: normalizedAnswer, inline: true },
+            { name: "Hadiah", value: `${formatBalance(reward)}`, inline: true },
+            {
+              name: "Saldo Kamu",
+              value: `${formatBalance(user.balance)}`,
+              inline: true,
+            }
+          );
+        return message.reply({ embeds: [winEmbed] });
+      } else if (similarity(normalizedGuess, normalizedAnswer)) {
+        await message.delete();
+        return message.channel.send(
+          `❌ Maaf, ${message.author}, jawaban kamu hampir benar. Coba lagi!`
+        );
+      }
     } catch (error) {
-        console.error('Error in tebakGambar:', error);
-        return message.reply('Terjadi kesalahan saat memproses permainan.');
+      console.error("Error in tebakGambar:", error);
+      return message.reply("Terjadi kesalahan saat memproses permainan Tebak Gambar.");
     }
-}
+  }
 }
 
 // set new class instance
@@ -2094,7 +2429,6 @@ const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const gamesManagement = new Games();
 
-
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
     message.reply("This command is only available to the bot owner!");
@@ -2102,7 +2436,124 @@ const ownerHelperFirewall = (authorId, message) => {
   }
   return true;
 };
+
 const commands = {
+  clt: async(message, args)=>{
+    const guess = args.slice(1).join(" ");
+    const jawab = args[1] === "jawab";
+    await gamesManagement.cakLontong(message, guess, jawab);
+  },
+  ga: async (message, args) => {
+    try {
+      // Check if the user is authorized to use this command
+      if (!ownerHelperFirewall(message.author.id, message)) return;
+
+      // Get the announcement message
+      const announcement = args.slice(1).join(" ");
+      if (!announcement) {
+        return message.reply("❌ Please provide an announcement message.");
+      }
+
+      // Fetch the announcement channel using the correct config property
+      const channelId = config.announcementChannelID; // Fixed: Using correct config property
+
+      // Validate channel ID
+      if (!channelId) {
+        return message.reply(
+          "❌ Configuration error: Missing announcement channel ID."
+        );
+      }
+      const announcementEmbed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle("📢 Pengumuman")
+        .setDescription(announcement)
+        .setThumbnail(client.user.displayAvatarURL())
+        .setTimestamp()
+        .setFooter({
+          text: `Diumumkan oleh ${message.author.tag}`,
+          iconURL: message.author.displayAvatarURL(),
+        });
+      try {
+        // Fetch the announcement channel
+        const channel = await client.channels.fetch(channelId);
+
+        // Validate if the channel exists and is a text channel
+        if (!channel || !channel.isTextBased()) {
+          return message.reply(
+            "❌ The specified channel does not exist or is not a text channel."
+          );
+        }
+
+        // Send the announcement
+        const sentMessage = await channel.send({
+          embeds: [announcementEmbed],
+          allowedMentions: { parse: ["users", "roles"] }, // Safer mention handling
+        });
+
+        // Try to crosspost if it's an announcement channel
+        if (channel.type === ChannelType.GuildAnnouncement) {
+          await sentMessage.crosspost();
+          await message.reply(
+            "✅ Announcement successfully sent and published!"
+          );
+        } else {
+          await message.reply("✅ Announcement successfully sent!");
+        }
+      } catch (channelError) {
+        return message.reply(
+          "❌ Failed to access the announcement channel. Please check channel permissions."
+        );
+      }
+    } catch (error) {
+      console.error("Error in 'ga' command:", error);
+      await message.reply(
+        "❌ An error occurred while sending the announcement. Please check the console for details."
+      );
+    }
+  },
+  remini: async (message, args) => {
+    if (message.attachments.size === 0) {
+      return message.reply("❌ Please upload the image you want to process!");
+    }
+
+    // Coba cari attachment tanpa memperhatikan description dulu
+    const attachment = message.attachments.find((att) =>
+      att.contentType?.startsWith("image/")
+    );
+
+    if (!attachment) {
+      return message.reply(
+        "❌ Image not found! Make sure:\n" +
+          "1. The uploaded file is an image\n" +
+          "2. The image format is supported (JPG, PNG, WEBP)"
+      );
+    }
+
+    // Validate image size (maximum 10MB)
+    if (attachment.size > 500 * 1024) {
+      return message.reply(
+        "❌ Image size is too large! Maximum size is 500KB."
+      );
+    }
+
+    // Validate image format
+    const validFormats = ["image/jpeg", "image/png", "image/webp"];
+    if (!validFormats.includes(attachment.contentType)) {
+      return message.reply(
+        "❌ Unsupported image format! Use JPG, PNG, or WEBP."
+      );
+    }
+
+    // Jika semua validasi berhasil, proses gambar
+    try {
+      await apiManagement.remini(message, attachment.url);
+    } catch (error) {
+      console.error("Remini processing error:", error);
+      return message.reply(
+        "❌ An error occurred while processing the image. Please try again."
+      );
+    }
+  },
   tg: async (message, args) => {
     const guess = args.slice(1).join(" ");
     const clue = args[1] === "clue" ? true : false;
@@ -2519,8 +2970,64 @@ const commands = {
       message.channel.send(text);
     }
   },
-  help: (message) => {
-    return message.reply({ embeds: [helpEmbed] });
+  help: async (message) => {
+    let currentPage = 1;
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("first")
+        .setLabel("⏪")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("prev")
+        .setLabel("◀️")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("next")
+        .setLabel("▶️")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("last")
+        .setLabel("⏩")
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    const helpMessage = await message.reply({
+      embeds: [createHelpEmbed(currentPage, message.author)], // Kirim message.author
+      components: [buttons],
+    });
+
+    const collector = helpMessage.createMessageComponentCollector({
+      filter: (i) => i.user.id === message.author.id,
+      time: 60000,
+    });
+
+    collector.on("collect", async (interaction) => {
+      switch (interaction.customId) {
+        case "first":
+          currentPage = 1;
+          break;
+        case "prev":
+          currentPage = currentPage > 1 ? currentPage - 1 : 4;
+          break;
+        case "next":
+          currentPage = currentPage < 4 ? currentPage + 1 : 1;
+          break;
+        case "last":
+          currentPage = 4;
+          break;
+      }
+
+      await interaction.update({
+        embeds: [createHelpEmbed(currentPage, interaction.user)], // Gunakan interaction.user
+        components: [buttons],
+      });
+    });
+
+    collector.on("end", () => {
+      buttons.components.forEach((button) => button.setDisabled(true));
+      helpMessage.edit({ components: [buttons] });
+    });
   },
   rob: async (message, args) => {
     const userMention = message.mentions.users.first();
@@ -2785,40 +3292,79 @@ const commands = {
     }
   },
   announcement: async (message, args) => {
-    // Cek apakah yang mengirim pesan adalah pemilik bot
-    if (message.author.id !== config.ownerId[0]) {
+    // Cek permission
+    if (!message.member.permissions.has("ADMINISTRATOR")) {
       return message.reply(
-        "Anda tidak memiliki izin untuk mengirim pengumuman."
+        "❌ Anda tidak memiliki izin untuk menggunakan command ini!"
       );
     }
+    // Cek jika tidak ada pesan yang akan diumumkan
+    if (!args.length) {
+      return message.reply("❌ Mohon berikan pesan yang ingin diumumkan!");
+    }
 
-    // Mengirim balasan kepada pengguna yang mengirim command
-    message.reply("Mengirim pengumuman...");
+    // Ambil pesan announcement
+    const announcementMessage = args.slice(1).join(" ");
 
-    // Mengambil semua server yang dimasuki bot
-    const servers = client.guilds.cache.map((guild) => guild.id);
+    // Buat embed untuk pengumuman
+    const announcementEmbed = new EmbedBuilder()
+      .setColor("#FF0000")
+      .setTitle("📢 Pengumuman")
+      .setDescription(announcementMessage)
+      .setTimestamp()
+      .setFooter({
+        text: `Diumumkan oleh ${message.author.tag}`,
+        iconURL: message.author.displayAvatarURL(),
+      });
 
-    for (const serverId of servers) {
-      const server = client.guilds.cache.get(serverId);
-      if (!server) continue;
+    // Kirim status awal
+    const statusMessage = await message.channel.send(
+      "📤 Mengirim pengumuman..."
+    );
 
-      // Mencari role @everyone
-      const everyoneRole = server.roles.cache.find(
-        (role) => role.name === "@everyone"
-      );
-      if (!everyoneRole) continue;
+    let successCount = 0;
+    let failCount = 0;
 
-      // Mencari channel yang bisa mengirim pesan
-      const everyoneChannel = server.channels.cache.find(
-        (channel) =>
-          channel.type === "GUILD_TEXT" &&
-          channel.permissionsFor(everyoneRole).has("SEND_MESSAGES")
-      );
+    // Iterate melalui semua server
+    try {
+      for (const guild of message.client.guilds.cache.values()) {
+        try {
+          // Cari channel yang cocok untuk pengumuman
+          const channel = guild.channels.cache.find(
+            (channel) =>
+              channel.type === 0 && // 0 adalah GUILD_TEXT
+              channel
+                .permissionsFor(guild.members.me)
+                .has(["SendMessages", "ViewChannel"])
+          );
 
-      // Jika channel ditemukan, kirim pengumuman
-      if (everyoneChannel) {
-        everyoneChannel.send(args.slice(1).join(" "));
+          if (channel) {
+            //tag everyone
+            await channel.send({ embeds: [announcementEmbed] });
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          console.error(`Gagal mengirim ke server ${guild.name}:`, error);
+          failCount++;
+        }
       }
+
+      // Update status akhir
+      const totalServers = message.client.guilds.cache.size;
+      await statusMessage.edit(
+        `✅ Pengumuman telah dikirim!\n\n` +
+          `📊 Statistik:\n` +
+          `- Berhasil: ${successCount} server\n` +
+          `- Gagal: ${failCount} server\n` +
+          `- Total server: ${totalServers}`
+      );
+    } catch (error) {
+      console.error("Kesalahan saat mengirim pengumuman:", error);
+      await statusMessage.edit(
+        "❌ Terjadi kesalahan saat mengirim pengumuman."
+      );
     }
   },
   take: async (message, args) => {
@@ -3008,9 +3554,8 @@ client.once("ready", () => {
   client.user.setPresence({
     activities: [
       {
-        name: "N!help",
+        name: `${prefix}help`,
         type: ActivityType.Listening,
-        state: "Join our server for more!",
       },
     ],
     status: "online",
@@ -3030,7 +3575,6 @@ client.on("messageCreate", async (message) => {
     const prompt = message.content
       .slice(message.content.indexOf(">") + 1)
       .trim();
-    console.log(prompt);
     await apiManagement.aiResponse(message, prompt);
   }
 
