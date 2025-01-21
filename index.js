@@ -19,6 +19,18 @@ import { joinVoiceChannel } from "@discordjs/voice";
 import fs from "fs";
 import similarity from "similarity";
 
+// public function
+const formatClockHHMMSS = (milliseconds) => {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours
+    .toString()
+    .padStart(2, "0")}:${minutes.toString()}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+};
 const cooldowns = new Map();
 const COOLDOWN_DURATION = 5 * 1000; // 5 seconds
 const formatBalance = (amount) =>
@@ -39,6 +51,7 @@ const config = {
   ],
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1329992333994758247",
+  bugReportChannelID: "1331221345010188350",
   defaultPrefix: "!",
   startingBalance: 10000,
   dataFile: "./players.json",
@@ -80,6 +93,7 @@ const createHelpEmbed = (page = 1, user) => {
             "`🔹 botinfo` - Show bot information",
             "`🔹 ping` - Check bot latency",
             "`🔹 sc` - Bot Source Code",
+            "`🐛 bugreport` - Report a BUG!",
           ].join("\n"),
           inline: false,
         },
@@ -234,6 +248,31 @@ class DiscordFormat {
     } catch (error) {
       console.error("Error saat mengubah nickname:", error);
       message.channel.send("Terjadi kesalahan saat mencoba mengubah nickname.");
+    }
+  }
+
+  async bugReport(message, bug) {
+    const replyMessage = await message.reply(`<a:loading:1088606970756005120> Sending bug report.. (Thx for reporting!)\n\nYou can also participate in the development of this bot by contributing to the source code (${prefix}sc)`);
+    try {
+      const channel = message.guild.channels.cache.get(config.bugReportChannelID);
+      if (!channel) {
+        return replyMessage.edit("Bug Report channel not found.");
+      }
+      const getOwnerBot = message.guild.members.cache.get(config.ownerId[0]);
+      const embed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle("🐛 Bug Report")
+        .setDescription(bug)
+        .setFooter({
+          text: `Reported by ${message.author.tag}`,
+          iconURL: message.author.displayAvatarURL(),
+        })
+        .setTimestamp();
+      channel.send({ embeds: [embed], content: `${getOwnerBot}` });
+      replyMessage.edit("🐛 Bug report has been sent!");
+    } catch (error) {
+      console.error("Error saat mengirim bug report:", error);
+      message.channel.send("❌ There was an error while sending bug report.");
     }
   }
 }
@@ -1024,64 +1063,71 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const reminiMessage = await message.reply(
-        "<a:loading:1330226649169399882> Generating HD Image..."
+        "<a:loading:1330226649169399882> Processing Image..."
       );
-
-      // Get original image
-      const imageBuffer = await axios.get(image, {
-        responseType: "arraybuffer",
-      });
-
-      // Upload to CDN
-      const form = new FormData();
-      form.append("file", imageBuffer.data, "image.png");
-
-      const uploadResponse = await axios.post(
-        "https://cdn.itzky.us.kg/",
-        form,
-        {
-          headers: form.getHeaders(),
-        }
-      );
-
-      if (!uploadResponse.data?.fileUrl) {
-        return reminiMessage.edit(
-          "❌ Failed to upload image to CDN. Please try again."
-        );
-      }
 
       try {
-        // Process with Remini API
-        const response = await axios.get(
-          `https://api.itzky.us.kg/tools/remini?url=${uploadResponse.data.fileUrl}&apikey=${this.apiKey}`
+        // Get original image
+        const imageResponse = await axios.get(image, {
+          responseType: "arraybuffer"
+        });
+
+        const form = new FormData();
+        form.append("file", Buffer.from(imageResponse.data), {
+          filename: "image.png",
+          contentType: "image/png"
+        });
+
+        await reminiMessage.edit("<a:loading:1330226649169399882> Uploading Image...");
+        const uploadResponse = await axios.post(
+          "https://cdn.itzky.us.kg/",
+          form,
+          {
+            headers: {
+              ...form.getHeaders()
+            }
+          }
         );
 
-        if (!response.data) {
-          return reminiMessage.edit(
-            "❌ Invalid response from Remini API. Please try again."
+        if (!uploadResponse.data?.fileUrl) {
+          return await reminiMessage.edit(
+            "❌ Failed to upload image to CDN. Please try again."
           );
         }
 
+        // Process with Remini API
+        await reminiMessage.edit("<a:loading:1330226649169399882> Generating HD Image...");
+        const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
+        const response = await axios.get(
+          `https://api.itzky.us.kg/tools/remini?url=${encodedUrl}&apikey=${this.apiKey}`
+        );
+
+        if (!response.data || !response.data.result) {
+          return await reminiMessage.edit(
+            "❌ Invalid response from Remini API. Please try again."
+          );
+        }else if (!response.data.result.status){
+          return await reminiMessage.edit(
+            "❌ Failed to process image, because the server is unable to process a request because it's too large" //413 code 
+          );
+        }
         // Get enhanced image
-        const enhancedImageBuffer = await axios.get(response.data.result, {
-          responseType: "arraybuffer",
+        await reminiMessage.edit("<a:loading:1330226649169399882> Building Image...");
+        const enhancedImageResponse = await axios.get(response.data.result, {
+          responseType: "arraybuffer"
         });
 
-        // Create Discord attachment
-        const imageBuilderResult = new AttachmentBuilder(
-          enhancedImageBuffer.data,
-          {
-            name: "remini.png",
-          }
-        );
+        // Create Discord attachment using the buffer directly
+        const attachment = new AttachmentBuilder(Buffer.from(enhancedImageResponse.data), {
+          name: "remini.png"
+        });
 
         // Create embed
         const reminiEmbed = new EmbedBuilder()
           .setColor("#00FF00")
           .setTitle("📸 Enhanced Image")
-          .setImage("attachment://remini.png")
           .setFooter({
-            text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg",
+            text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg"
           })
           .setTimestamp();
 
@@ -1089,26 +1135,25 @@ class ApiManagement {
           .setURL(response.data.result)
           .setLabel("Download")
           .setStyle(ButtonStyle.Link);
-        const rowBuilder = new ActionRowBuilder().addComponents(
-          downloadPhotoButton
-        );
+        const rowBuilder = new ActionRowBuilder().addComponents(downloadPhotoButton);
 
         // Send final response
         await reminiMessage.edit({
           embeds: [reminiEmbed],
-          files: [imageBuilderResult],
+          files: [attachment],
           components: [rowBuilder],
-          content: "✨ Here's your HD Image!",
+          content: "✨ Here's your HD Image!"
         });
+
       } catch (error) {
-        console.error("Error in Remini API processing:", error);
+        console.error("Error in image processing:", error);
         await reminiMessage.edit(
           "❌ Error processing image. Please try again later."
         );
       }
     } catch (error) {
       console.error("Error in remini command:", error);
-      await message.reply(
+      await message.channel.send(
         "❌ There was an error processing your request. Please try again later."
       );
     }
@@ -1179,54 +1224,48 @@ class ApiManagement {
     }
   }
   async instagramDownload(message, url) {
-    // Validasi URL Instagram
     if (!url || !url.startsWith("https://www.instagram.com/")) {
       return message.reply("Please provide a valid Instagram URL.");
     }
 
     try {
-      // Mengirim pesan loading
       const igMessage = await message.reply(
-        "<a:loading:1330226649169399882> Downloading..."
+        "<a:loading:1330226649169399882> Processing..."
       );
 
-      // Mengambil data video dari API
       const response = await axios.get(
-        `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+        `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`,
+        { timeout: 10000 }
       );
       const data = response.data;
 
-      // Validasi response data
       if (!data || !data.result) {
         return igMessage.edit(
-          "There was an error processing your request, please try again later."
+          "❌ Failed to fetch Instagram content. Please try again later."
         );
       }
 
+      await igMessage.edit("<a:loading:1330226649169399882> Downloading...");
       const videoInfo = data.result;
-      const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
+      const mediaUrl = videoInfo.medias && videoInfo.medias[0].url;
       const videoTitle = videoInfo.title;
       const videoThumbnail = videoInfo.thumbnail;
-      const videoType = videoInfo.medias.find(
-        (media) => media.type === "video"
-      );
+      const isVideo = videoInfo.medias.some(media => media.type === "video");
 
-      // Unduh video dari URL tanpa watermark
-      const fileResponse = await axios.get(videoUrl, {
-        responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
-      });
+      if (!mediaUrl) {
+        return igMessage.edit("❌ No media URL found in the response.");
+      }
 
-      const fileBuffer = Buffer.from(fileResponse.data, "binary"); // Konversi ke buffer
-      const fileAttachment = new AttachmentBuilder(fileBuffer, {
-        name: videoType ? "video.mp4" : "image.jpg",
-      });
+      // Check file size before downloading
+      const headResponse = await axios.head(mediaUrl);
+      const fileSize = parseInt(headResponse.headers['content-length']);
+      const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 
-      // Membuat Embed untuk menampilkan informasi video Instagram
+      // Create the base embed
       const igEmbed = new EmbedBuilder()
         .setColor("#FFFF00")
         .setTitle("Instagram Download")
-        .setDescription(`${videoTitle}`)
-        .setURL(videoUrl)
+        .setDescription(videoTitle)
         .setThumbnail(videoThumbnail)
         .setFooter({
           text: "Downloaded via https://api.itzky.us.kg",
@@ -1234,22 +1273,70 @@ class ApiManagement {
         })
         .setTimestamp();
 
-      // Mengirim embed ke pengguna dengan URL video
-      if (videoUrl) {
-        // Edit pesan dengan embed dan tombol
+      // If file is too large or URL is too long, handle differently
+      if (fileSize > MAX_FILE_SIZE || mediaUrl.length > 512) {
+        igEmbed.setDescription(`${videoTitle}\n\n${fileSize > MAX_FILE_SIZE ? 
+          `File size (${(fileSize / 1024 / 1024).toFixed(2)}MB) exceeds Discord's limit.\n` : 
+          ''}The download link will be sent in a follow-up message.`);
+
         await igMessage.edit({
-          embeds: [igEmbed],
-          files: [fileAttachment],
-          content: "Here's your file!",
+          content: "✨ Here's your Instagram content!",
+          embeds: [igEmbed]
         });
-      } else {
-        // Jika tidak ada URL video, beri tahu pengguna
-        return igMessage.edit("No video found for the given Instagram URL.");
+
+        // Send the URL in a separate message that can be easily copied
+        return message.channel.send(`Download Link:\n${mediaUrl}`);
       }
+
+      await igMessage.edit("<a:loading:1330226649169399882> Building...");
+      
+      const fileResponse = await axios.get(mediaUrl, {
+        responseType: "arraybuffer",
+        timeout: 30000,
+        maxContentLength: MAX_FILE_SIZE,
+        validateStatus: (status) => status === 200
+      });
+
+      const fileBuffer = Buffer.from(fileResponse.data);
+      const fileAttachment = new AttachmentBuilder(fileBuffer, {
+        name: isVideo ? "instagram_video.mp4" : "instagram_image.jpg",
+      });
+
+      // Create download button only if URL is within Discord's limit
+      const components = mediaUrl.length <= 512 ? [
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel('Download Original')
+            .setURL(mediaUrl)
+            .setStyle(ButtonStyle.Link)
+        )
+      ] : [];
+
+      // Send the final message
+      await igMessage.edit({
+        content: "✨ Here's your Instagram content!",
+        embeds: [igEmbed],
+        files: [fileAttachment],
+        components: components
+      });
+
     } catch (error) {
-      console.error("Error in instagram Download command:", error);
+      console.error("Error in Instagram Download command:", error);
+      
+      if (error.code === 'ECONNABORTED' || error.name === 'AbortError') {
+        return message.reply(
+          "❌ The download timed out. The file might be too large or the server is busy. Please try again later."
+        );
+      }
+      
+      if (error.response?.status === 413) {
+        return message.reply(
+          "❌ The file is too large to process. Please try a different post."
+        );
+      }
+      
       return message.reply(
-        "There was an error processing your Instagram file request, please try again later."
+        "❌ There was an error processing your Instagram content. Please try again later."
       );
     }
   }
@@ -1278,6 +1365,7 @@ class ApiManagement {
         );
       }
 
+      igMessage.edit("<a:loading:1330226649169399882> Processing...");
       const videoInfo = data.result;
       const videoUrl = videoInfo.medias && videoInfo.medias[0].url; // URL video pertama
       const videoTitle = videoInfo.title;
@@ -1297,7 +1385,6 @@ class ApiManagement {
           }\n\n${videoType ? `**Duration**: ${videoDuration} seconds}` : ""}
             `
         )
-        .setURL(videoUrl)
         .setThumbnail(videoThumbnail)
         .setFooter({ text: "Nanami" })
         .setTimestamp();
@@ -1500,135 +1587,354 @@ class ApiManagement {
   }
   async tiktokDownload(message, url) {
     try {
-      // Validasi URL TikTok
-      if (
-        !url.startsWith("https://vm.tiktok.com/") &&
-        !url.startsWith("https://vt.tiktok.com/") &&
-        !url.startsWith("https://www.tiktok.com/")
-      ) {
+      // Validate TikTok URL
+      const validDomains = ["vm.tiktok.com", "vt.tiktok.com", "www.tiktok.com"];
+      const isValidUrl = validDomains.some(domain => url.startsWith(`https://${domain}/`));
+      
+      if (!isValidUrl) {
         return message.reply("Please provide a valid TikTok URL.");
       }
-
-      // Mengirimkan pesan loading
+  
+      // Send loading message
       const tiktokMessage = await message.reply(
-        "<a:loading:1330226649169399882> Downloading..."
+        "<a:loading:1330226649169399882> Connecting to server..."
       );
-
-      // Mengambil data video dari API
+  
+      // Fetch video data with timeout
       const response = await axios.get(
-        `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
+        `https://api.itzky.us.kg/download/tiktok?url=${encodeURIComponent(url)}&apikey=${this.apiKey}`,
+        { timeout: 10000 } // 10 second timeout
       );
 
-      const data = response.data;
-      if (!data || !data.result || !data.result.data || !data.result.data[0]) {
+      const { result } = response.data;
+      if (!result?.data?.[0]) {
         return tiktokMessage.edit(
-          "Failed to fetch video data. Please try again later."
+          "❌ Failed to fetch video data. Please try again later."
         );
       }
 
-      // Pilih URL video tanpa watermark
-      const videoUrl = data.result.data.find(
-        (item) => item.type === "nowatermark"
-      ).url;
-      const videoTitle = data.result.title;
-      const videoAuthor = data.result.author.nickname;
-      const videoViews = data.result.stats.views;
-      const videoLikes = data.result.stats.likes;
+      await tiktokMessage.edit("<a:loading:1330226649169399882> Processing video...");
+      
+      // Get video URLs and check their lengths
+      const normalVideo = result.data.find(item => item.type === "nowatermark")?.url;
+      const hdVideo = result.data.find(item => item.type === "nowatermark_hd")?.url;
 
-      // Unduh video dari URL tanpa watermark
+      // Check if URLs are within Discord's limit
+      const normalUrlValid = normalVideo && normalVideo.length <= 512;
+      const hdUrlValid = hdVideo && hdVideo.length <= 512;
+
+      // Select video URL for download (prefer HD)
+      const videoUrl = hdVideo || normalVideo || result.data[0].url;
+
+      // Check file size before downloading
+      try {
+        const headResponse = await axios.head(videoUrl, { timeout: 5000 });
+        const fileSize = parseInt(headResponse.headers['content-length']);
+        const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB Discord limit
+
+        if (fileSize > MAX_FILE_SIZE) {
+          const embed = new EmbedBuilder()
+            .setColor("#FF4500")
+            .setTitle("TikTok Video")
+            .setDescription(`Video size (${(fileSize / 1024 / 1024).toFixed(2)}MB) exceeds Discord's limit.\nUse the download buttons below to get the video.`)
+            .setAuthor({
+              name: result.author?.nickname || "Unknown Author",
+              iconURL: result.author?.avatar || null,
+            })
+            .setThumbnail(result.cover || null)
+            .setTimestamp();
+
+          // Create buttons only for valid URLs
+          const buttons = [];
+          if (normalUrlValid) {
+            buttons.push(
+              new ButtonBuilder()
+                .setLabel("Download No WM")
+                .setStyle(ButtonStyle.Link)
+                .setURL(normalVideo)
+            );
+          }
+          if (hdUrlValid) {
+            buttons.push(
+              new ButtonBuilder()
+                .setLabel("Download No WM HD")
+                .setStyle(ButtonStyle.Link)
+                .setURL(hdVideo)
+            );
+          }
+
+          // If URLs are too long, send them in a separate message
+          let componentsArray = [];
+          if (buttons.length > 0) {
+            componentsArray = [new ActionRowBuilder().addComponents(buttons)];
+          }
+
+          await tiktokMessage.edit({
+            content: "Video is too large for Discord!",
+            embeds: [embed],
+            components: componentsArray
+          });
+
+          // If URLs are too long, send them separately
+          if (!normalUrlValid && normalVideo) {
+            await message.channel.send(`Normal Quality Download Link:\n${normalVideo}`);
+          }
+          if (!hdUrlValid && hdVideo) {
+            await message.channel.send(`HD Quality Download Link:\n${hdVideo}`);
+          }
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking file size:", error);
+      }
+
+      // Download video if size is acceptable
+      await tiktokMessage.edit("<a:loading:1330226649169399882> Downloading...");
       const videoResponse = await axios.get(videoUrl, {
-        responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
+        responseType: "arraybuffer",
+        timeout: 30000, // 30 second timeout
       });
 
-      const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
-      const videoAttachment = new AttachmentBuilder(videoBuffer, {
-        name: "tiktok-video.mp4",
+      const videoFile = new AttachmentBuilder(Buffer.from(videoResponse.data), {
+        name: "tiktok.mp4"
       });
 
-      // Buat embed untuk informasi video
+      // Create embed
       const embed = new EmbedBuilder()
         .setColor("#FF4500")
         .setTitle("TikTok Video Downloaded!")
-        .setDescription(videoTitle)
-        .setAuthor({ name: videoAuthor, iconURL: data.result.author.avatar })
-        .setThumbnail(data.result.cover)
+        .setDescription(result.title || "TikTok Video")
+        .setAuthor({
+          name: result.author?.nickname || "Unknown Author",
+          iconURL: result.author?.avatar || null,
+        })
+        .setThumbnail(result.cover || null)
         .addFields(
-          { name: "Views", value: videoViews.toString(), inline: true },
-          { name: "Likes", value: videoLikes.toString(), inline: true }
-        )
-        .setFooter({
-          text: "Downloaded via https://api.itzky.us.kg",
-          iconURL: "https://example.com/icon.png",
-        });
+          { name: "Views", value: (result.stats?.views || "0").toString(), inline: true },
+          { name: "Likes", value: (result.stats?.likes || "0").toString(), inline: true }
+        );
 
-      // Mengirimkan video dan embed ke channel
+      if (result.duration) {
+        embed.addFields({
+          name: "Duration",
+          value: result.duration.toString(),
+          inline: true,
+        });
+      }
+
+      // Create buttons only for valid URLs
+      const buttons = [];
+      if (normalUrlValid) {
+        buttons.push(
+          new ButtonBuilder()
+            .setLabel("Download No WM")
+            .setStyle(ButtonStyle.Link)
+            .setURL(normalVideo)
+        );
+      }
+      if (hdUrlValid) {
+        buttons.push(
+          new ButtonBuilder()
+            .setLabel("Download No WM HD")
+            .setStyle(ButtonStyle.Link)
+            .setURL(hdVideo)
+        );
+      }
+
+      let componentsArray = [];
+      if (buttons.length > 0) {
+        componentsArray = [new ActionRowBuilder().addComponents(buttons)];
+      }
+
+      // Send final messages
       await tiktokMessage.edit({
         content: "Download complete! 🎉",
         embeds: [embed],
-        files: [videoAttachment],
+        components: componentsArray
       });
+
+      // Send video in separate message
+      await message.channel.send({
+        content: "Here's your TikTok video!",
+        files: [videoFile]
+      });
+
+      // Send any long URLs separately
+      if (!normalUrlValid && normalVideo) {
+        await message.channel.send(`Normal Quality Download Link:\n${normalVideo}`);
+      }
+      if (!hdUrlValid && hdVideo) {
+        await message.channel.send(`HD Quality Download Link:\n${hdVideo}`);
+      }
+
     } catch (error) {
       console.error("Error while downloading TikTok video:", error);
-      message.reply(
-        "An error occurred while processing your request. Please try again later."
-      );
+      
+      let errorMessage = "❌ An error occurred while processing your request. Please try again later.";
+      
+      if (error.code === "ECONNABORTED") {
+        errorMessage = "❌ Download timed out. The video might be too large or the server is slow.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "❌ Video not found. It might have been deleted or made private.";
+      } else if (error.code === 50035) {
+        errorMessage = "❌ The download URL is too long for Discord. Please try a different video.";
+      }
+  
+      try {
+        await message.reply(errorMessage);
+      } catch (replyError) {
+        console.error("Error sending error message:", replyError);
+      }
     }
   }
+  
   async tiktokSearch(message, prompt) {
     try {
+      // Send loading message
       const tiktokMessage = await message.reply(
         "<a:loading:1330226649169399882> Searching..."
       );
-      const response = await axios.get(
-        `https://api.itzky.us.kg/search/tiktok?apikey=bartarenang&query=${prompt}`
-      );
-      const data = response.data;
 
-      if (data) {
-        // Unduh video dari URL tanpa watermark
-        const videoResponse = await axios.get(data.result.no_watermark, {
-          responseType: "arraybuffer", // Penting agar data diterima dalam bentuk buffer
+      // Fetch video data with timeout
+      const response = await axios.get(
+        `https://api.itzky.us.kg/search/tiktok?apikey=${this.apiKey}&query=${encodeURIComponent(prompt)}`,
+        { timeout: 10000 } // 10 second timeout
+      );
+
+      const { result } = response.data;
+      
+      // Validate response data
+      if (!result || !result.no_watermark) {
+        return tiktokMessage.edit("❌ No results found for the given query.");
+      }
+
+      await tiktokMessage.edit("<a:loading:1330226649169399882> Processing video...");
+
+      // Check if URL is within Discord's limit
+      const urlValid = result.no_watermark.length <= 512;
+
+      // Check file size before downloading
+      try {
+        const headResponse = await axios.head(result.no_watermark, { timeout: 5000 });
+        const fileSize = parseInt(headResponse.headers['content-length']);
+        const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB Discord limit
+
+        if (fileSize > MAX_FILE_SIZE) {
+          const embed = new EmbedBuilder()
+            .setColor("#FF4500")
+            .setTitle(`TikTok Search Result for "${prompt}"`)
+            .setDescription(`Video size (${(fileSize / 1024 / 1024).toFixed(2)}MB) exceeds Discord's limit.\nUse the download button below to get the video.`)
+            .setThumbnail(result.cover || null)
+            .setTimestamp();
+
+          // Create button for valid URL
+          const buttons = [];
+          if (urlValid) {
+            buttons.push(
+              new ButtonBuilder()
+                .setLabel("Download Video")
+                .setStyle(ButtonStyle.Link)
+                .setURL(result.no_watermark)
+            );
+          }
+
+          let componentsArray = [];
+          if (buttons.length > 0) {
+            componentsArray = [new ActionRowBuilder().addComponents(buttons)];
+          }
+
+          await tiktokMessage.edit({
+            content: "Video is too large for Discord!",
+            embeds: [embed],
+            components: componentsArray
+          });
+
+          // If URL is too long, send it separately
+          if (!urlValid) {
+            await message.channel.send(`Download Link:\n${result.no_watermark}`);
+          }
+          return;
+        }
+
+        // Download video if size is acceptable
+        await tiktokMessage.edit("<a:loading:1330226649169399882> Downloading...");
+        
+        const videoResponse = await axios.get(result.no_watermark, {
+          responseType: "arraybuffer",
+          timeout: 30000, // 30 second timeout
         });
 
-        const videoBuffer = Buffer.from(videoResponse.data, "binary"); // Konversi ke buffer
+        const videoFile = new AttachmentBuilder(Buffer.from(videoResponse.data), {
+          name: "tiktok.mp4"
+        });
 
-        // Buat embed untuk informasi video
+        // Create embed
         const embed = new EmbedBuilder()
-          .setTitle(`Tiktok Search Result for "${prompt}"`)
-          .setThumbnail(data.result.cover)
-          .setColor("#FFFF00")
-          .setDescription(`${data.result.title}`)
-          .setURL(data.result.no_watermark)
+          .setColor("#FF4500")
+          .setTitle(`TikTok Search Result for "${prompt}"`)
+          .setDescription(result.title || "TikTok Video")
+          .setThumbnail(result.cover || null)
+          .setURL(result.no_watermark)
           .setFooter({
             text: "Downloaded via https://api.itzky.us.kg",
             iconURL: message.author.displayAvatarURL(),
           })
           .setTimestamp();
-        // Kirim video sebagai lampiran (attachment)
-        const videoAttachment = new AttachmentBuilder(videoBuffer, {
-          name: "tiktok-video.mp4", // Nama file video
-        });
 
-        const musicDownloadButton = new ButtonBuilder()
-          .setStyle(ButtonStyle.Link)
-          .setLabel("Download Sound")
-          .setURL(data.result.music);
+        // Create button for valid URL
+        const buttons = [];
+        if (urlValid) {
+          buttons.push(
+            new ButtonBuilder()
+              .setLabel("Download Video")
+              .setStyle(ButtonStyle.Link)
+              .setURL(result.no_watermark)
+          );
+        }
 
-        const row = new ActionRowBuilder().addComponents(musicDownloadButton);
+        let componentsArray = [];
+        if (buttons.length > 0) {
+          componentsArray = [new ActionRowBuilder().addComponents(buttons)];
+        }
+
+        // Send final messages
         await tiktokMessage.edit({
           content: "Here's your video!",
-          components: [row],
-          embeds: [embed], // Tambahkan embed ke pesan
-          files: [videoAttachment], // Kirim video sebagai lampiran
+          embeds: [embed],
+          components: componentsArray,
+          files: [videoFile]
         });
+
+        // Send long URL separately if needed
+        if (!urlValid) {
+          await message.channel.send(`Download Link:\n${result.no_watermark}`);
+        }
+
+      } catch (error) {
+        console.error("Error checking file size:", error);
+        throw error;
       }
+
     } catch (error) {
-      console.error("Error saat mencari video TikTok:", error);
-      return message.reply(
-        "Terjadi kesalahan saat memproses permintaanmu, silakan coba lagi nanti."
-      );
+      console.error("Error while processing TikTok search request:", error);
+      
+      let errorMessage = "❌ An error occurred while processing your request. Please try again later.";
+      
+      if (error.code === "ECONNABORTED") {
+        errorMessage = "❌ Search timed out. Please try again later.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "❌ No results found for the given query.";
+      } else if (error.code === 50035) {
+        errorMessage = "❌ The download URL is too long for Discord. Please try a different video.";
+      }
+
+      try {
+        await message.reply(errorMessage);
+      } catch (replyError) {
+        console.error("Error sending error message:", replyError);
+      }
     }
-  }
+}
 }
 
 class FileManagement {
@@ -1877,6 +2183,7 @@ class DataManager {
         totalEarnings: 0,
         lastDaily: null,
       },
+      lastBugReport: null,
     };
     this.saveData();
     return this.users[userId];
@@ -1936,6 +2243,9 @@ class Games {
 
     // Handle "all-in" bet
     if (bet === "all") {
+      if(user.balance <= 0){
+        return message.reply("You don't have any balance to bet!");
+      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
@@ -2232,7 +2542,6 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-    if(isNaN(bet)) return message.reply("Please enter a valid bet amount!");
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
       const remainingTime = Math.ceil(
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
@@ -2253,9 +2562,13 @@ class Games {
 
     // Handle "all-in" bet
     if (bet === "all") {
+      if(user.balance <= 0){
+        return message.reply("You don't have any balance to bet!");
+      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
+      if(isNaN(bet)) return message.reply("Please enter a valid bet amount!");
     }
 
     if (bet > user.balance) {
@@ -2402,6 +2715,9 @@ class Games {
 
     // Handle "all-in" bet
     if (bet === "all") {
+      if(user.balance <= 0){
+        return message.reply("You don't have any balance to bet!");
+      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
@@ -2486,6 +2802,9 @@ class Games {
       return message.reply(`You need to register first! Use ${prefix}register`);
     }
     if (bet === "all") {
+      if(user.balance <= 0){
+        return message.reply("You don't have any balance to bet!");
+      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
@@ -2557,6 +2876,9 @@ class Games {
       return message.reply(`You need to register first! Use ${prefix}register`);
     }
     if (bet === "all") {
+      if(user.balance <= 0){
+        return message.reply("You don't have any balance to bet!");
+      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
@@ -2965,6 +3287,25 @@ const guildAdmin = (message) => {
 };
 
 const commands = {
+  bugreport: async (message, args) => {
+    if(message.author.id === config.ownerId[0]){
+      return await discordFormat.bugReport(message, args.slice(1).join(" "));
+    }
+    // set cooldown 3 hours
+    const cooldown = 3 * 60 * 60 * 1000;
+    const lastUsed = dataManager.users[message.author.id]?.lastBugReport;
+    if (lastUsed && Date.now() - lastUsed < cooldown) {
+      return message.reply(
+        `Please wait ${formatClockHHMMSS(lastUsed)} seconds before using this command again.`
+      );
+    }
+    dataManager.users[message.author.id].lastBugReport = Date.now();
+    const bug = args.slice(1).join(" ");
+    if (!bug) {
+      return message.reply("❌ Please provide a bug report.");
+    }
+    await discordFormat.bugReport(message, bug);
+  },
   loop:async(message, args)=>{
     const option = args[1]
     if(!option){
@@ -3019,12 +3360,12 @@ const commands = {
       }
       const announcementEmbed = new EmbedBuilder()
         .setColor("#FF0000")
-        .setTitle("📢 Pengumuman")
+        .setTitle("📢 ANNOUNCEMENT")
         .setDescription(announcement)
         .setThumbnail(client.user.displayAvatarURL())
         .setTimestamp()
         .setFooter({
-          text: `Diumumkan oleh ${message.author.tag}`,
+          text: `Announced by ${message.author.tag}`,
           iconURL: message.author.displayAvatarURL(),
         });
       try {
@@ -3083,10 +3424,10 @@ const commands = {
       );
     }
 
-    // Validate image size (maximum 5MB)
-    if (attachment.size > 5 * 1024 * 1024) {
+    // Validate image size (maximum 2MB)
+    if (attachment.size > 2 * 1024 * 1024) {
       return message.reply(
-        "❌ Image size is too large! Maximum size is 500KB."
+        "❌ Image size is too large! Maximum size is 2MB."
       );
     }
 
@@ -3255,7 +3596,7 @@ const commands = {
     }
     const user = dataManager.createUser(mention.id);
     return message.reply(
-      `Welcome! ${mention.username} start with $${user.balance}.`
+      `Welcome! ${mention} start with $${user.balance}.`
     );
   },
   register: (message) => {
@@ -4079,17 +4420,6 @@ const commands = {
     const now = Date.now();
     const lastDaily = dataManager.users[message.author.id].lastDaily;
     if (lastDaily && now - lastDaily < setCD) {
-      const formatClockHHMMSS = (milliseconds) => {
-        const totalSeconds = Math.floor(milliseconds / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-        return `${hours
-          .toString()
-          .padStart(2, "0")}:${minutes.toString()}:${seconds
-          .toString()
-          .padStart(2, "0")}`;
-      };
       const timeLeft = lastDaily + setCD - now;
       return message.reply(
         `You can claim your daily reward again in ${formatClockHHMMSS(
@@ -4141,21 +4471,16 @@ client.once("ready", async () => {
   await player.extractors.loadMulti(DefaultExtractors);
   player.extractors.register(YoutubeiExtractor, {});
 
-  player.on("debug", async (message) => {
-    // Emitted when the player sends debug info
-    // Useful for seeing what dependencies, extractors, etc are loaded
-    console.log(`General player debug event: ${message}`);
-  });
   player.events.on('emptyChannel', (queue) => {
     // Emitted when the voice channel has been empty for the set threshold
     // Bot will automatically leave the voice channel with this event
     queue.metadata.send(`Leaving because no vc activity for the past 5 minutes`);
   });
-  player.events.on("debug", async (queue, message) => {
-    // Emitted when the player queue sends debug info
-    // Useful for seeing what state the current queue is at
-    console.log(`Player debug event: ${message}`);
-  });
+  // player.events.on("debug", async (queue, message) => {
+  //   // Emitted when the player queue sends debug info
+  //   // Useful for seeing what state the current queue is at
+  //   console.log(`Player debug event: ${message}`);
+  // });
   // Set up global player event listeners
   player.events.on("playerError", (queue, error) => {
     console.error("Player error:", error);
