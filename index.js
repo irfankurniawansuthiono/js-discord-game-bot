@@ -19,7 +19,6 @@ import { joinVoiceChannel } from "@discordjs/voice";
 import fs from "fs";
 import similarity from "similarity";
 
-// public function
 const formatClockHHMMSS = (milliseconds) => {
   const totalSeconds = Math.floor(milliseconds / 1000);
   const hours = Math.floor(totalSeconds / 3600);
