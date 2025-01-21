@@ -103,18 +103,19 @@ const createHelpEmbed = (page = 1, user) => {
         {
           name: "🎼 Music Commands",
           value: [
-            "`🎵 play <song>` - Play a song",
+            "`🎵 play/p <song>` - Play a song",
             "`🎤 karaoke <song title>` - playing song and show synced lyrics",
             "`➡️ join` - Join voice channel",
             "`⬅️ leave` - Leave voice channel",
             "`📝 lyrics <song title>` - Show song lyrics",
-            "`📝 syncedlyrics <song title>` - Show synced lyrics",
+            "`📝 syncedlyrics/sl <song title>` - Show synced lyrics",
             "`🔍 s <song>` - Search for a song",
             "`⏩ skip` - Skip song",
             "`⏯️ pause` - Pause music",
             "`🔁 loop <queue|track|off|autplay>` - looping the music",
             "`🎶 q` - Show current queue",
             "`▶️ resume` - Resume music",
+            "`🔀 sf` - Shuffle current queue",
             "`🎶 np` - Now playing",
           ].join("\n"),
           inline: false,
@@ -241,10 +242,27 @@ class VoiceManager {
   }
   async queueMusic(message) {
     try {
+// Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
+
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
       const queue = useQueue(message.guild.id);
       if(!queue) return message.reply({content: '❌ No music in queue.'});
       const currentQueue = queue.tracks.toArray();
-
+      if(currentQueue.length === 0) return message.reply({content: '❌ No music in queue.'});
       if (currentQueue.length > 10) {
         let currentPage = 1;
         const pageSize = 10;
@@ -362,8 +380,63 @@ class VoiceManager {
       });
     }
 }
+async shuffleMusic(message) {
+  try {
+// Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
+
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
+    // Get the queue for the current guild
+    const queue = useQueue(message.guild.id);
+
+    if (!queue || !queue.isPlaying()) { 
+      return message.reply("❌ No music is currently playing!");
+    } else if (queue.tracks.length < 2) {
+      return message.reply("❌ The queue must have at least 2 tracks to shuffle!");
+    }
+
+    // Shuffle the queue
+    queue.toggleShuffle();
+
+    // Send a success message
+    return message.reply("✅ The queue has been shuffled!");
+  } catch (error) {
+    console.error("Error in shuffleMusic:", error);
+    return message.reply({  content: '❌ An error occurred while shuffling the queue.' });
+  }
+}
 async loopMusic(message, option) {
   try {
+  // Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
+
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
     // Mendapatkan queue untuk server saat ini
     const queue = useQueue(message.guild.id);
     if (!queue || !queue.isPlaying()) {
@@ -410,6 +483,23 @@ async loopMusic(message, option) {
 
   async getSyncedLyrics(message, title) {
     try {
+// Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
+
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
       // Cari lirik berdasarkan judul lagu
       const results = await player.lyrics.search({ q: title });
       if (!results || results.length === 0) {
@@ -461,13 +551,7 @@ async loopMusic(message, option) {
   
       // Tangani ketika track selesai diputar
       player.events.on("playerFinish", () => {
-        unsubscribe(); // Berhenti memantau perubahan lirik
-        message.channel
-          .send({
-            content: "🎵 Lyrics sync ended - track finished.",
-             
-          })
-          .catch(console.error);
+        unsubscribe();
       });
   
       // Kirim pesan awal
@@ -749,6 +833,7 @@ async loopMusic(message, option) {
 
   async skipMusic(message) {
     try {
+
       // Get the player instance for the guild
       const player = useMainPlayer(message.guild.id);
 
@@ -757,7 +842,23 @@ async loopMusic(message, option) {
           content: "❌ No active player found in this server!",
         });
       }
+// Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
 
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
       // Get the queue for the current guild
       const queue = player.nodes.get(message.guild.id);
 
@@ -785,6 +886,7 @@ async loopMusic(message, option) {
   }
   async pauseMusic(message) {
     try {
+      
       // Get the player instance for the guild
       const player = useMainPlayer(message.guild.id);
 
@@ -794,6 +896,24 @@ async loopMusic(message, option) {
            
         });
       }
+
+// Check if the user is in a voice channel
+if (!message.member.voice.channel) {
+  return message.reply({
+    content: "❌ You need to be in a voice channel first!"
+  });
+}
+
+// Get the user's voice channel and the bot's voice channel
+const userVoiceChannel = message.member.voice.channel;
+const botVoiceChannel = message.guild.members.me.voice.channel;
+
+// Check if the bot is in a voice channel and if it's the same as the user's
+if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+  return message.reply({
+    content: "❌ You need to be in the same voice channel with the bot!"
+  });
+}
 
       // Get the queue for the current guild
       const queue = player.nodes.get(message.guild.id);
@@ -3001,6 +3121,13 @@ const commands = {
     const title = args.slice(1).join(" ");
     await voiceManager.getLyrics(message, title);
   },
+  sl: async (message, args) => {
+    if (args.length < 2) {
+      return message.reply(`Usage: ${prefix}syncedlyrics <song title>`);
+    }
+    const title = args.slice(1).join(" ");    
+    await voiceManager.getSyncedLyrics(message, title);
+  },
   syncedlyrics: async (message, args) => {
     if (args.length < 2) {
       return message.reply(`Usage: ${prefix}syncedlyrics <song title>`);
@@ -3010,7 +3137,16 @@ const commands = {
   },
   s: async (message, args) => {
     const q = args.slice(1).join(" ");
+    if((args.length < 2) || !q) return message.reply(`Usage: ${prefix}s <search query>`);
     await voiceManager.searchMusic(message, q);
+  },
+  sf: async (message, args) => {
+    await voiceManager.shuffleMusic(message);
+  },
+  p: async (message, args) => {
+    const q = args.slice(1).join(" ");
+    if((args.length < 2) || !q) return message.reply(`Usage: ${prefix}p <search query>`);
+    await voiceManager.playMusic(message, q);
   },
   play: async (message, args) => {
     if (args.length < 2) {
@@ -3177,6 +3313,8 @@ const commands = {
 
     // Special badge for owner
     if (config.ownerId.includes(message.author.id)) {
+      profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
+    }else if (config.ownerId.includes(isUserMentioned.id)) {
       profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
     }
 
