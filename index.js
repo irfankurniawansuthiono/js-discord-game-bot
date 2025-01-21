@@ -78,6 +78,8 @@ const createHelpEmbed = (page = 1, user) => {
             "`🔹 profile` - View your profile/balance",
             "`🔹 ownerinfo` - Show bot owner information",
             "`🔹 botinfo` - Show bot information",
+            "`🔹 ping` - Check bot latency",
+            "`🔹 sc` - Bot Source Code",
           ].join("\n"),
           inline: false,
         },
@@ -1433,9 +1435,7 @@ class ApiManagement {
       if (
         !data ||
         !data.result ||
-        !data.result.author ||
-        !data.result.stats ||
-        !data.result.music_info
+        !data.result.author
       ) {
         return tiktokMessage.edit(
           "Failed to fetch video data. Please try again later."
@@ -2232,7 +2232,7 @@ class Games {
     // Check cooldown
     const lastUsed = cooldowns.get(message.author.id);
     const now = Date.now();
-
+    if(isNaN(bet)) return message.reply("Please enter a valid bet amount!");
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
       const remainingTime = Math.ceil(
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
@@ -4106,6 +4106,17 @@ const commands = {
     }
     dataManager.users[message.author.id].lastDaily = now;
   },
+  sc:async (message) => {
+    // click this button to direct github
+    const button = new ButtonBuilder()
+      .setStyle(ButtonStyle.Link)
+      .setLabel("Click Me")
+      .setURL("https://github.com/irfankurniawansuthiono/js-discord-game-bot");
+    message.reply({
+      content: "GitHub Repository\nDon't Forget To 🌟 The Repository!",
+      components: [new ActionRowBuilder().addComponents(button)],
+    });
+    },
   resetplayer: async (message) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     try {
