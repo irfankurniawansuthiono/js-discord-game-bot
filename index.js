@@ -409,6 +409,10 @@ const commands = {
       return message.reply(`Usage: ${prefix}setbalance <user> <amount>`);
     }
     const user = message.mentions.users.first();
+    const getUser = dataManager.getUser(user.id);
+    if(!getUser) {
+      return message.reply(`${discordEmotes.error} User not found. please register them first!`);
+    }
     const amount = parseInt(args[2]);
     if (isNaN(amount) || amount <= 0) {
       return message.reply("Please enter a valid amount.");
