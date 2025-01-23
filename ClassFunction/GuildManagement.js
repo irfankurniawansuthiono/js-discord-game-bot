@@ -1,15 +1,24 @@
 import { config } from "../config.js";
 import fs from "fs";
 import Canvas from "canvas";
-
+import GuildSetupManager from "./GuildSetupManager.js";
 class GuildManagement {
     constructor() {
         if (!GuildManagement.instance) {
             this.guildData = {};
             this.loadData();
+            this.client = null;
+            this.setupManager = new GuildSetupManager(this);
             GuildManagement.instance = this;
         }
         return GuildManagement.instance;
+    }
+
+    setClient(client) {
+        if (!this.client) {
+            this.client = client;
+            this.setupManager.setClient(client);
+        }
     }
 
     saveData() {
@@ -59,6 +68,22 @@ class GuildManagement {
         this.guildData[guildId].welcome.welcomeMessage = welcomeMessage;
         this.saveData();
         return this.guildData[guildId];
+    }
+    unlockChannel(guildId, channel) {
+        return channel.permissionOverwrites.create(guildId, {
+            SendMessages: true
+        })
+    }
+    
+
+    async setupGuild(client, guildId, channelName = 'Bot Community') {
+        if (!this.client) this.setClient(client);
+        return this.setupManager.setupGuild(client, guildId, channelName);
+    }
+    lockChannel(guildId, channel) {
+        return channel.permissionOverwrites.create(guildId, {
+            SendMessages: false
+        })
     }
     disableWelcomeMessage(guildId) {
         if (!this.guildData[guildId]) {

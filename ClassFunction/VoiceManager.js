@@ -323,6 +323,9 @@ class VoiceManager {
             content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
           });
         }
+  
+        // Get the player instance for the guild
+        const player = useMainPlayer(message.guild.id);
         // Cari lirik berdasarkan judul lagu
         const results = await player.lyrics.search({ q: title });
         if (!results || results.length === 0) {

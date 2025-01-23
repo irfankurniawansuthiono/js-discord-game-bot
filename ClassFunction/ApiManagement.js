@@ -17,6 +17,106 @@ class ApiManagement {
         }
         return ApiManagement.instance;
     }
+    async removeBackground(message, image) {
+      try {
+        // Mengirim pesan loading
+        const removebgMessage = await message.reply(
+          `${discordEmotes.loading} Processing Image...`
+        );
+        
+        try {
+          // Get original image
+          const imageResponse = await axios.get(image, {
+            responseType: "arraybuffer",
+          });
+  
+          const form = new FormData();
+          form.append("file", Buffer.from(imageResponse.data), {
+            filename: "image.png",
+            contentType: "image/png",
+          });
+  
+          await removebgMessage.edit(`${discordEmotes.loading} Uploading Image...`);
+          const uploadResponse = await axios.post(
+            "https://cdn.itzky.us.kg/",
+            form,
+            {
+              headers: {
+                ...form.getHeaders(),
+              },
+            }
+          );
+  
+          if (!uploadResponse.data?.fileUrl) {
+            return await removebgMessage.edit(
+              `${discordEmotes.error} Failed to upload image to CDN. Please try again.`
+            );
+          }
+  
+          // Process with Remini API
+          await removebgMessage.edit(
+            `${discordEmotes.loading} Generating Transparent Image...`
+          );
+          const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
+          const response = await axios.get(
+            `https://api.itzky.us.kg/tools/removebg?url=${encodedUrl}&apikey=${this.apiKey}`
+          );
+          if (!response.data && !response.data.status !== 200) {
+            return await removebgMessage.edit(
+              `${discordEmotes.error} Invalid response from Remini API. Please try again.`
+            );
+          }
+          // Get enhanced image
+          await removebgMessage.edit(`${discordEmotes.loading} Building Image...`);
+          const enhancedImageResponse = await axios.get(response.data.result, {
+            responseType: "arraybuffer",
+          });
+  
+          // Create Discord attachment using the buffer directly
+          const attachment = new AttachmentBuilder(
+            Buffer.from(enhancedImageResponse.data),
+            {
+              name: "removebg.png",
+            }
+          );
+  
+          // Create embed
+          const reminiEmbed = new EmbedBuilder()
+            .setColor("#00FF00")
+            .setTitle("📸 Transparent Image")
+            .setFooter({
+              text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg",
+            })
+            .setTimestamp();
+  
+          const downloadPhotoButton = new ButtonBuilder()
+            .setURL(response.data.result)
+            .setLabel("Download")
+            .setStyle(ButtonStyle.Link);
+          const rowBuilder = new ActionRowBuilder().addComponents(
+            downloadPhotoButton
+          );
+  
+          // Send final response
+          await removebgMessage.edit({
+            embeds: [reminiEmbed],
+            files: [attachment],
+            components: [rowBuilder],
+            content: "✨ Here's your Transparent Image!",
+          });
+        } catch (error) {
+          console.error("Error in image processing:", error);
+          await removebgMessage.edit(
+            `${discordEmotes.error} Error processing image. Please try again later.`
+          );
+        }
+      } catch (error) {
+        console.error("Error in removebg command:", error);
+        await message.channel.send(
+          `${discordEmotes.error} There was an error processing your request. Please try again later.`
+        );
+      }
+    }
     async stylizeText(message, text) {
         try {
             // Fetch the stylized text
@@ -88,6 +188,7 @@ class ApiManagement {
             },
           }
         );
+        console.log(response.data)
   
         // const responseEmbed = new EmbedBuilder()
         //   // warna kuning
@@ -111,7 +212,7 @@ class ApiManagement {
         const reminiMessage = await message.reply(
           `${discordEmotes.loading} Processing Image...`
         );
-  
+        
         try {
           // Get original image
           const imageResponse = await axios.get(image, {

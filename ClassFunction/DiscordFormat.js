@@ -17,6 +17,42 @@ class DiscordFormat {
       }
       return DiscordFormat.instance;
     }
+    setupGuild(message, channelName) {
+      const guildId = message.guild.id;
+      return guildManagement.setupGuild(message.client, guildId, channelName);
+  }
+    async unlockChannel(message) {
+      try {
+        const guildId = message.guild.id;
+        const channel = message.channel;
+        guildManagement.unlockChannel(guildId, channel);
+        const embedBuilder = new EmbedBuilder()
+            .setColor("#00FF00")
+            .setDescription(`Channel ${message.channel} has been unlocked by ${message.author}`);
+        return message.channel.send({ embeds: [embedBuilder] });
+      } catch (error) {
+        console.error("Error unlocking channel:", error);
+        return message.reply(
+          `${discordEmotes.error} An error occurred while unlocking the channel. Please try again later.`
+        );
+            }
+    }
+    async lockChannel(message) {
+      try {
+        const guildId = message.guild.id;
+        const channel = message.channel;
+        guildManagement.lockChannel(guildId, channel);
+        const embedBuilder = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setDescription(`Channel ${message.channel} has been locked by ${message.author}`);
+        return message.channel.send({ embeds: [embedBuilder] });
+      } catch (error) {
+        console.error("Error locking channel:", error);
+        return message.reply(
+          `${discordEmotes.error} An error occurred while locking the channel. Please try again later.`
+        );
+      }
+    }
     async disableWelcomeMessage(guildId, message) {
       try {
         guildManagement.disableWelcomeMessage(guildId);

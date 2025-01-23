@@ -95,7 +95,7 @@ const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
-const guildManagement = new GuildManagement();
+const guildManagement = new GuildManagement(client);
 const gamesManagement = new Games();
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
@@ -338,6 +338,11 @@ const commands = {
     const clue = args[1] === "clue" ? true : false;
     const jawab = args[1] === "jawab" ? true : false;
     await gamesManagement.tebakGambar(message, guess, clue, jawab);
+  },
+  tben: async (message, args) => {
+    const guess = args.slice(1).join(" ");
+    const jawab = args[1] === "jawab" ? true : false;
+    await gamesManagement.tebakBendera(message, guess, jawab);
   },
   lyrics: async (message, args) => {
     if (args.length < 2) {
@@ -1295,6 +1300,78 @@ const commands = {
       return message.reply("An error occurred while processing the command.");
     }
   },
+  lock: async (message) => {
+    if(!guildAdmin(message)) return;
+    try {
+      await discordFormat.lockChannel(message);
+    } catch (error) {
+      console.error("Error in lock command:", error);
+    }
+  },
+  unlock: async (message) => {
+    if(!guildAdmin(message)) return;
+    try {
+      await discordFormat.unlockChannel(message);
+    } catch (error) {
+      console.error("Error in unlock command:", error);
+    }
+  },
+  setupguild: async (message, args) => {
+    if(!ownerHelperFirewall(message.author.id, message)) return;
+    try {
+      const channelName = args.length > 0 ? args.join(" ") : "Bot Community";
+      await discordFormat.setupGuild(message, channelName);
+    } catch (error) {
+      console.error("Error in createGuildChannel command:", error);
+      // Optionally send an error message to the channel
+      message.reply(`Setup failed: ${error.message}`);
+    }
+},
+  removebg: async (message, args) => {
+    if (message.attachments.size === 0) {
+      return message.reply(
+        `${discordEmotes.error} Please upload the image you want to process!`
+      );
+    }
+
+    // Coba cari attachment tanpa memperhatikan description dulu
+    const attachment = message.attachments.find((att) =>
+      att.contentType?.startsWith("image/")
+    );
+
+    if (!attachment) {
+      return message.reply(
+        `${discordEmotes.error} Image not found! Make sure:\n` +
+          "1. The uploaded file is an image\n" +
+          "2. The image format is supported (JPG, PNG, WEBP)"
+      );
+    }
+
+    // Validate image size (maximum 2MB)
+    if (attachment.size > 2 * 1024 * 1024) {
+      return message.reply(
+        `${discordEmotes.error} Image size is too large! Maximum size is 2MB.`
+      );
+    }
+
+    // Validate image format
+    const validFormats = ["image/jpeg", "image/png", "image/webp"];
+    if (!validFormats.includes(attachment.contentType)) {
+      return message.reply(
+        `${discordEmotes.error} Unsupported image format! Use JPG, PNG, or WEBP.`
+      );
+    }
+
+    // Jika semua validasi berhasil, proses gambar
+    try {
+      await apiManagement.removeBackground(message, attachment.url);
+    } catch (error) {
+      console.error("Remini processing error:", error);
+      return message.reply(
+        `${discordEmotes.error} An error occurred while processing the image. Please try again.`
+      );
+    }
+  },
   disablewelcome: async (message) => {
     if(!guildAdmin(message)) return;
     try {
@@ -1428,6 +1505,7 @@ const commands = {
 // Event Handlers
 const player = new Player(client);
 client.once("ready", async () => {
+  guildManagement.setClient(client)
   console.log(`Bot logged in as ${client.user.tag}`);
   // Configure player and load extractors
   await player.extractors.loadMulti(DefaultExtractors);
