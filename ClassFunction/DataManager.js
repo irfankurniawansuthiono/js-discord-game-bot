@@ -7,8 +7,12 @@ import { formatBalance } from "../index.js";
 const dataFile = config.dataFile
 class DataManager {
   constructor() {
-    this.users = {};
-    this.loadData();
+    if (!DataManager.instance) {
+        this.users = {};
+        this.loadData();
+        DataManager.instance = this;
+      }
+      return DataManager.instance;
   }
   setBalance(user, balance) {
     this.users[user.id].balance = balance;
@@ -203,17 +207,8 @@ class DataManager {
             this.users[userId] = {};
           }
           
-          // Merge existing user data with loaded data
-          this.users[userId] = {
-            balance: data[userId].balance || config.startingBalance,
-            stats: data[userId].stats || {
-              gamesPlayed: 0,
-              gamesWon: 0,
-              totalEarnings: 0,
-              lastDaily: null,
-            },
-            lastBugReport: data[userId].lastBugReport || null
-          };
+          // Update user data
+          Object.assign(this.users[userId], data[userId]);
         }
       }
       this.saveData();
@@ -237,7 +232,7 @@ class DataManager {
   }
 
   createUser(userId) {
-    const newUser = {
+    this.users[userId] = {
       balance: config.startingBalance,
       stats: {
         gamesPlayed: 0,
@@ -245,9 +240,7 @@ class DataManager {
         totalEarnings: 0,
         lastDaily: null,
       },
-      lastBugReport: null,
     };
-    this.users[userId] = newUser;
     this.saveData();
     return this.users[userId];
   }
