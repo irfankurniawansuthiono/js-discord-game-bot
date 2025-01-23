@@ -14,7 +14,7 @@ import {
 import { YoutubeiExtractor } from "discord-player-youtubei";
 import { DefaultExtractors } from "@discord-player/extractor";
 import { ApiManagement } from "./ClassFunction/ApiManagement.js";
-import { Games } from "./ClassFunction/Gamesmanagement.js";
+import { Games } from "./ClassFunction/GamesManagement.js";
 import { DataManager } from "./ClassFunction/DataManager.js";
 import { DiscordFormat } from "./ClassFunction/DiscordFormat.js";
 import { FileManagement } from "./ClassFunction/FileMangement.js";
@@ -89,7 +89,7 @@ const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
-const gamesManagement = new Games();
+const gamesManagement = new GamesManagement();
 
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
