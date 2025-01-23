@@ -233,7 +233,6 @@ class DataManager {
   }
 
   getUser(userId) {
-    this.loadData()
     return this.users[userId];
   }
 

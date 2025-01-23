@@ -541,7 +541,7 @@ const commands = {
     }
   },
   purge: async (message, args) => {
-    if(!guildAdmin) return;
+    if(!guildAdmin(message)) return;
     const amount = parseInt(args[1]);
     if (!amount || amount <= 0 ) {
       return message.reply(`Usage: ${prefix}purge <amount>`);
@@ -557,7 +557,7 @@ const commands = {
     }
   },
   rbc: async (message) => {
-    if (!guildAdmin) return;
+    if (!guildAdmin(message)) return;
     try {
       // Delete the command message first
       await message.delete().catch(console.error);
@@ -626,7 +626,7 @@ const commands = {
     return Games.numberGuess(message, bet, guess);
   },
   nick: (message, args) => {
-    if (!ownerHelperFirewall(message.author.id, message)) return;
+    if(!guildAdmin(message)) return;
     if(args.length < 3) return message.reply(`Usage: ${prefix}nick <@user> <new nickname>`);
     const mention = message.mentions.users.first();
     const newNick = args.slice(2).join(" ");
@@ -1182,7 +1182,7 @@ const commands = {
     }
   },
   nuke: async (message) => {
-    if(!guildAdmin) return;
+    if(!guildAdmin(message)) return;
     try {
       await discordFormat.nukeChannel(message);
     } catch (error) {
