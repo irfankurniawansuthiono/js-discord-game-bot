@@ -9,7 +9,7 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "start": "node  --env-file=.env index.js"
+    "start": "node --env-file=.env index.js"
   },
   "dependencies": {
     "@discordjs/voice": "^0.18.0",
@@ -19,6 +19,7 @@
     "discord.js": "^14.17.3",
     "ffmpeg-static": "^5.2.0",
     "form-data": "^4.0.1",
+    "jsdom": "^26.0.0",
     "similarity": "^1.2.1"
   }
 }
