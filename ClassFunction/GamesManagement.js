@@ -11,7 +11,10 @@ import { config, discordEmotes } from "../config.js";
 import similarity from "similarity";
 import { formatBalance } from "../index.js";
 import { DataManager } from "./DataManager.js";
+import {FileManagement} from "./FileManagement.js";
 
+const prefix = config.defaultPrefix;
+const fileManagement = new FileManagement();
 const dataManager = new DataManager();
 const cooldowns = new Map();
 const COOLDOWN_DURATION = 5 * 1000; // 5 seconds

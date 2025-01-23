@@ -17,7 +17,7 @@ import { ApiManagement } from "./ClassFunction/ApiManagement.js";
 import { Games } from "./ClassFunction/GamesManagement.js";
 import { DataManager } from "./ClassFunction/DataManager.js";
 import { DiscordFormat } from "./ClassFunction/DiscordFormat.js";
-import { FileManagement } from "./ClassFunction/FileMangement.js";
+import { FileManagement } from "./ClassFunction/FileManagement.js";
 import { VoiceManager } from "./ClassFunction/VoiceManager.js";
 import { pages, config, discordEmotes } from "./config.js";
 
