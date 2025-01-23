@@ -5,15 +5,12 @@ import {
   ActionRowBuilder,
   PermissionsBitField,
 } from "discord.js";
-import fs from "fs";
 import {
   QueueRepeatMode,
   useMainPlayer,
   useQueue,
-  onBeforeCreateStream
 } from "discord-player";
 import { discordEmotes } from "../config.js";
-import { joinVoiceChannel } from "@discordjs/voice";
 class VoiceManager {
     constructor() {
         this.voiceConnections = new Map();
@@ -544,7 +541,12 @@ class VoiceManager {
         try {
           const guildId = message.guild.id;
           const voiceChannel = message.member.voice.channel;
-      
+           // Regex untuk mendeteksi semua tautan YouTube
+          // const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/;
+
+          // if (youtubeRegex.test(message.content)) {
+          //     return message.reply('❌ This bot does not support YouTube links yet.');
+          // }
           // Basic checks
           if (!voiceChannel) {
             return message.reply("You need to be in a voice channel first!");
