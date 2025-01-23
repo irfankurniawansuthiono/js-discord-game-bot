@@ -145,7 +145,6 @@ class ApiManagement {
           const response = await axios.get(
             `https://api.itzky.us.kg/tools/remini?url=${encodedUrl}&apikey=${this.apiKey}`
           );
-          console.log(response.data);
           if (!response.data && !response.data.status !== 200) {
             return await reminiMessage.edit(
               `${discordEmotes.error} Invalid response from Remini API. Please try again.`

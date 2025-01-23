@@ -18,7 +18,6 @@ const fileManagement = new FileManagement();
 const dataManager = new DataManager();
 const cooldowns = new Map();
 const COOLDOWN_DURATION = 5 * 1000; // 5 seconds
-
 class Games {
     constructor() {
       this.tbgSession = new Map();
@@ -740,7 +739,7 @@ class Games {
       try {
         const maxTime = 60 * 1000; // 60 seconds
         const database = JSON.parse(
-          fileManagement.readFile("./db/caklontong.json")
+          fileManagement.readFile("../db/caklontong.json")
         );
         const activeGame = this.clSession.get(message.channel.id);
   
@@ -896,7 +895,7 @@ class Games {
       try {
         const maxTime = 60 * 1000; // 60 seconds
         const database = JSON.parse(
-          fileManagement.readFile("./db/tebakgambar.json")
+          fileManagement.readFile("../db/tebakgambar.json")
         );
         const activeGame = this.tbgSession.get(message.channel.id);
   

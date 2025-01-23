@@ -4,6 +4,7 @@ import {
 import { config } from "../config.js";
 import fs from "fs";
 import { formatBalance } from "../index.js";
+const dataFile = config.dataFile
 class DataManager {
   constructor() {
     this.users = {};
@@ -193,20 +194,27 @@ class DataManager {
   }
   loadData() {
     try {
-      if (fs.existsSync(config.dataFile)) {
-        const data = JSON.parse(fs.readFileSync(config.dataFile, "utf8"));
-        // Ensure all users have the required stats structure
-        Object.keys(data).forEach((userId) => {
-          if (!data[userId].stats) {
-            data[userId].stats = {
+      if (fs.existsSync(dataFile)) {
+        const data = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+        
+        // Update or create users dynamically
+        for (const userId in data) {
+          if (!this.users[userId]) {
+            this.users[userId] = {};
+          }
+          
+          // Merge existing user data with loaded data
+          this.users[userId] = {
+            balance: data[userId].balance || config.startingBalance,
+            stats: data[userId].stats || {
               gamesPlayed: 0,
               gamesWon: 0,
               totalEarnings: 0,
               lastDaily: null,
-            };
-          }
-        });
-        this.users = data;
+            },
+            lastBugReport: data[userId].lastBugReport || null
+          };
+        }
       }
       this.saveData();
     } catch (error) {
@@ -218,18 +226,19 @@ class DataManager {
 
   saveData() {
     try {
-      fs.writeFileSync(config.dataFile, JSON.stringify(this.users, null, 4));
+      fs.writeFileSync(dataFile, JSON.stringify(this.users, null, 4));
     } catch (error) {
       console.error("Error saving data:", error);
     }
   }
 
   getUser(userId) {
+    this.loadData()
     return this.users[userId];
   }
 
   createUser(userId) {
-    this.users[userId] = {
+    const newUser = {
       balance: config.startingBalance,
       stats: {
         gamesPlayed: 0,
@@ -239,6 +248,7 @@ class DataManager {
       },
       lastBugReport: null,
     };
+    this.users[userId] = newUser;
     this.saveData();
     return this.users[userId];
   }

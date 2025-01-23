@@ -7,6 +7,7 @@ import {
   ActionRowBuilder,
   ActivityType,
   ChannelType,
+  PermissionsBitField,
 } from "discord.js";
 import {
   Player,
@@ -90,7 +91,6 @@ const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const gamesManagement = new Games();
-
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
     message.reply("This command is only available to the bot owner!");
@@ -100,13 +100,13 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 
 const guildAdmin = (message) => {
-  if (!message.member.permissions.has("ADMINISTRATOR")) {
-    message.reply(
-      `${discordEmotes.error} Anda tidak memiliki izin ADMINISTRATOR untuk menggunakan command ini!`
-    );
+  if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    message.reply("You do not have permission to use this command.");
+    return false;
   }
   return true;
 };
+
 
 const commands = {
   volume: (message, args) => {
@@ -520,6 +520,41 @@ const commands = {
     }
 
     return message.reply({ embeds: [profileEmbed] });
+  },
+  kick: async (message, args) => {
+
+    // cek permission
+    if (!guildAdmin(message)) return
+    ;
+    if (args.length < 2) { 
+      return message.reply(`Usage: ${prefix}kick <@user>`);
+    }
+    const mentionedUser = message.mentions.users.first();
+    if (!mentionedUser) {
+      return message.reply("Please mention a user to kick.");
+    }
+    try {
+      await discordFormat.kickUser(message, mentionedUser);
+    } catch (error) {
+      console.error("Error in kick command:", error);
+      return message.reply("An error occurred while kicking the user.");
+    }
+  },
+  purge: async (message, args) => {
+    if(!guildAdmin) return;
+    const amount = parseInt(args[1]);
+    if (!amount || amount <= 0 ) {
+      return message.reply(`Usage: ${prefix}purge <amount>`);
+    }
+    if(amount > 1000) {
+      return message.reply(`You can't purge that much messages! Max 1000 messages.`);
+    }
+    try {
+      await discordFormat.deleteMessages(message, amount);
+    } catch (error) {
+      console.error("Error in purge command:", error);
+      return message.reply("An error occurred while deleting messages.");
+    }
   },
   rbc: async (message) => {
     if (!guildAdmin) return;
@@ -1133,17 +1168,25 @@ const commands = {
       // Update status akhir
       const totalServers = message.client.guilds.cache.size;
       await statusMessage.edit(
-        `✅ Pengumuman telah dikirim!\n\n` +
+        `✅ Announcement has been sent!\n\n` +
           `📊 Statistik:\n` +
           `- Berhasil: ${successCount} server\n` +
           `- Gagal: ${failCount} server\n` +
           `- Total server: ${totalServers}`
       );
     } catch (error) {
-      console.error("Kesalahan saat mengirim pengumuman:", error);
+      console.error("Error sending announcement:", error);
       await statusMessage.edit(
         `${discordEmotes.error} Terjadi kesalahan saat mengirim pengumuman.`
       );
+    }
+  },
+  nuke: async (message) => {
+    if(!guildAdmin) return;
+    try {
+      await discordFormat.nukeChannel(message);
+    } catch (error) {
+      console.error("Error in nuke command:", error);
     }
   },
   take: async (message, args) => {
@@ -1396,10 +1439,10 @@ client.once("ready", async () => {
   });
 });
 
-// this is the entrypoint for discord-player based application
-
+client.on("guildMemberAdd", async (member) => {
+  console.log(`Member joined: ${member.user.tag}`);
+});
 client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
   // jika bot di tag dan di reply dia akan menjalankan fungsi AI
   const getMessageMention = message.mentions.users.first();
   const getBotReplied =
@@ -1415,7 +1458,6 @@ client.on("messageCreate", async (message) => {
   if (!message.content.startsWith(prefix)) return;
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
   const command = args[0].toLowerCase();
-
   if (commands[command]) {
     try {
       await commands[command](message, args);

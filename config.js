@@ -12,12 +12,14 @@ const config = {
   bugReportChannelID: "1331221345010188350",
   defaultPrefix: "!",
   startingBalance: 10000,
+  guildFile: "./guilds.json",
   dataFile: "./players.json",
 };
 
 const discordEmotes = {
   loading: "<a:loading:1330226649169399882>",
   error: "<a:error:1331479515515457536>",
+  success: "<a:success:1331856899070496819>",
 };
 
 const pages = {
@@ -84,6 +86,12 @@ const pages = {
           value: [
             "`🗑️ rbc` - Delete bot messages",
             "`📝 nick <@user>` - Set user nickname",
+            // "`🔒 lock` - Lock the channel",
+            // "`🔓 unlock` - Unlock the channel",
+            "` 🗑️ purge <amount>` - Delete messages, max 100 purge",
+            "`🔨 kick <@user>` - Kick a user",
+            "`<:nuclear:1331864094306996307> nuke` - Nuke the channel",
+            // "`🔨 ban <@user>` - Ban a user",
           ].join("\n"),
           inline: false,
         },
