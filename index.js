@@ -89,7 +89,7 @@ const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
-const gamesManagement = new GamesManagement();
+const gamesManagement = new Games();
 
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
