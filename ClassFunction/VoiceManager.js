@@ -545,7 +545,7 @@ class VoiceManager {
           // const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/;
 
           // if (youtubeRegex.test(message.content)) {
-          //     return message.reply(`${discordEmotes.error} This bot does not support YouTube links yet.);
+          //     return message.reply(`${discordEmotes.error} This bot does not support YouTube links yet.`);
           // }
           // Basic checks
           if (!voiceChannel) {
