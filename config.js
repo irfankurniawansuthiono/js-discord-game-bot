@@ -91,6 +91,8 @@ const pages = {
             "` 🗑️ purge <amount>` - Delete messages, max 100 purge",
             "`🔨 kick <@user>` - Kick a user",
             "`☢️ nuke` - Nuke the channel",
+            "`📝 setwelcome <channel>` - Set welcome message",
+            "`📝 disablewelcome` - Disable welcome message",
             // "`🔨 unban <@user>` - Unban a user",
             // "`🔨 warn <@user>` - Warn a user",
             // "`🔨 unmute <@user>` - Unmute a user",

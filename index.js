@@ -20,6 +20,7 @@ import { DataManager } from "./ClassFunction/DataManager.js";
 import { DiscordFormat } from "./ClassFunction/DiscordFormat.js";
 import { FileManagement } from "./ClassFunction/FileManagement.js";
 import { VoiceManager } from "./ClassFunction/VoiceManager.js";
+import GuildManagement from "./ClassFunction/GuildManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
@@ -51,10 +52,14 @@ export const client = new Client({
   intents: [
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
   ],
 });
+
+
 
 let prefix = config.defaultPrefix;
 
@@ -90,6 +95,7 @@ const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
+const guildManagement = new GuildManagement();
 const gamesManagement = new Games();
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
@@ -109,6 +115,25 @@ const guildAdmin = (message) => {
 
 
 const commands = {
+  setwelcome: async (message, args) => {
+    try {
+        // Cek apakah pengguna memiliki izin admin
+        if (!guildAdmin(message)) {
+            return message.reply("You do not have permission to use this command.");
+        }
+
+        // Cek apakah channel disebutkan
+        const channel = message.mentions.channels.first();
+        if (!channel) {
+            return message.reply("Please mention a valid channel.");
+        }
+        discordFormat.setWelcomeMessage(message.guild.id, channel.id, message);
+    } catch (error) {
+        console.error("Error setting welcome message channel:", error);
+        return message.reply("An error occurred while setting the welcome message channel. Please try again later.");
+    }
+},
+
   volume: (message, args) => {
     const volume = parseInt(args[1]);
     if (isNaN(volume) || volume < 0 || volume > 100) {
@@ -1270,7 +1295,14 @@ const commands = {
       return message.reply("An error occurred while processing the command.");
     }
   },
-
+  disablewelcome: async (message) => {
+    if(!guildAdmin(message)) return;
+    try {
+      await discordFormat.disableWelcomeMessage(message.guild.id);
+    } catch (error) {
+      console.error("Error in disableWelcome command:", error);
+    }
+  },
   sendto: async (message, args) => {
     // Delete the original command message for cleanliness
     try {
@@ -1368,6 +1400,29 @@ const commands = {
       return message.reply("An error occurred while processing the command.");
     }
   },
+  tw: async (message) => {
+    if(!guildAdmin(message)) return;
+    
+    try {
+        // Get the first mentioned user or use the message author if no mention
+        const mentionedUser = message.mentions.users.first() || message.author;
+
+        // Call sendWelcomeMessage with test mode enabled
+        await guildManagement.sendWelcomeMessage(
+            client, 
+            message.guild.id, 
+            mentionedUser, 
+            true  // Enable test mode
+        );
+
+        message.reply("Welcome message test sent successfully!");
+    } catch (error) {
+        console.error("Error in welcome test command:", error);
+        return message.reply("An error occurred while testing the welcome message.");
+    }
+},
+
+
 };
 
 // Event Handlers
@@ -1438,9 +1493,9 @@ client.once("ready", async () => {
     status: "online",
   });
 });
-
 client.on("guildMemberAdd", async (member) => {
   console.log(`Member joined: ${member.user.tag}`);
+  guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
 client.on("messageCreate", async (message) => {
   // jika bot di tag dan di reply dia akan menjalankan fungsi AI

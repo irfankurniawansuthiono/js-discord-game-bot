@@ -5,7 +5,9 @@ import {
 import { client } from "../index.js";
 import { config, discordEmotes } from "../config.js";
 import { DataManager } from "./DataManager.js";
+import GuildManagement from "./GuildManagement.js";
 const dataManager = new DataManager();
+const guildManagement = new GuildManagement();
 class DiscordFormat {
     constructor() {
       if (!DiscordFormat.instance) {
@@ -15,7 +17,46 @@ class DiscordFormat {
       }
       return DiscordFormat.instance;
     }
-
+    async disableWelcomeMessage(guildId, message) {
+      try {
+        guildManagement.disableWelcomeMessage(guildId);
+        return message.reply(
+          `${discordEmotes.success} Welcome message channel disabled successfully!`
+        );
+      } catch (error) {
+        console.error("Error disabling welcome message:", error);
+        return message.reply(
+          `${discordEmotes.error} An error occurred while disabling the welcome message. Please try again later.`
+        );
+      }
+    }
+    async setWelcomeMessage(guildId, channelId, message) {
+      try {
+          // Cek validitas channel ID
+          const channel = await message.guild.channels.fetch(channelId);
+          if (!channel) {
+              return message.reply(
+                  `${discordEmotes.error} Invalid channel ID. Please provide a valid channel.`
+              );
+          }
+  
+          // Atur welcome message di data
+          await guildManagement.setWelcomeMessage(guildId, channelId);
+  
+          // Konfirmasi ke pengguna
+          return message.channel.send(
+              `${discordEmotes.success} Welcome message channel set successfully for <#${channelId}>!`
+          );
+      } catch (error) {
+          console.error("Error setting welcome message:", error);
+  
+          // Kirim pesan kesalahan ke saluran pengguna
+          return message.channel.send(
+              `${discordEmotes.error} An error occurred while setting the welcome message. Please try again later.`
+          );
+      }
+  }
+  
     async deleteMessages(message, amount = 1000) {
       try {
           if (isNaN(amount) || amount < 1 || amount > 1000) {
