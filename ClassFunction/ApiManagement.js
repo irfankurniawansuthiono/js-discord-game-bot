@@ -11,7 +11,11 @@ import { discordEmotes } from "../config.js";
 import FormData from "form-data";
 class ApiManagement {
     constructor() {
-      this.apiKey = process.env.API_AI_KEY;
+        if (!ApiManagement.instance) {
+            this.apiKey = process.env.API_AI_KEY;
+            ApiManagement.instance = this;
+        }
+        return ApiManagement.instance;
     }
     async stylizeText(message, text) {
         try {

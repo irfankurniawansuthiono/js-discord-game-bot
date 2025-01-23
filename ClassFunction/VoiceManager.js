@@ -13,8 +13,13 @@ import {
 import { discordEmotes } from "../config.js";
 class VoiceManager {
     constructor() {
-        this.voiceConnections = new Map();
-        this.audioPlayers = new Map();
+        if(!VoiceManager.instance) {
+            this.voiceConnections = new Map();
+            this.audioPlayers = new Map();
+
+            VoiceManager.instance = this;
+        }
+        return VoiceManager.instance;
     }
     async setVolume(message, volume) {
         try {

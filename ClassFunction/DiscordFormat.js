@@ -8,8 +8,12 @@ import { DataManager } from "./DataManager.js";
 const dataManager = new DataManager();
 class DiscordFormat {
     constructor() {
-      this.color = "#FFF000";
-      this.title = "Nanami";
+      if (!DiscordFormat.instance) {
+        this.color = "#FFF000";
+        this.title = "Nanami";
+        DiscordFormat.instance = this;
+      }
+      return DiscordFormat.instance;
     }
 
     async deleteMessages(message, amount = 1000) {

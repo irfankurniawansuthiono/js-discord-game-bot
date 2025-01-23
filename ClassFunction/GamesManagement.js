@@ -20,8 +20,12 @@ const cooldowns = new Map();
 const COOLDOWN_DURATION = 5 * 1000; // 5 seconds
 class Games {
     constructor() {
-      this.tbgSession = new Map();
-      this.clSession = new Map();
+      if(!Games.instance) {
+        this.tbgSession = new Map();
+        this.clSession = new Map();
+        Games.instance = this;
+      }
+      return Games.instance;
     }
     static async blackjack(message, bet) {
       // Check cooldown
