@@ -1074,7 +1074,7 @@ const commands = {
   announcement: async (message, args) => {
     // Cek permission
     if (message.author.id !== config.ownerId[0])
-      return message.reply("❌ You don't have permission to use this command!");
+      return message.reply(`${discordEmotes.error} You don't have permission to use this command!`);
     // Cek jika tidak ada pesan yang akan diumumkan
     if (!args.length) {
       return message.reply(
