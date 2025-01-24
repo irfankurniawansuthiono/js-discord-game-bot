@@ -19,7 +19,7 @@ Untuk menjalankan bot ini, Anda harus memiliki akun Discord Developer Portal. Ji
 ### 1. Clone Repositori  
 Clone repositori ini ke perangkat Anda:  
 ```bash  
-git clone <URL-REPOSITORI>  
+git clone https://github.com/irfankurniawansuthiono/js-discord-game-bot.git
 cd DiscordGameBot  
 ```  
 
@@ -79,8 +79,8 @@ Kami menyambut kontribusi dari komunitas! Jika Anda memiliki ide atau peningkata
 
 ## 💬 Dukungan  
 
-Jika Anda membutuhkan bantuan, jangan ragu untuk bergabung dengan grup WhatsApp kami:  
-[Grup WhatsApp](https://chat.whatsapp.com/F8ffS5sazP60LYpG0IACEE)  
+Jika Anda membutuhkan bantuan, jangan ragu untuk bergabung dengan server Discord kami:  
+[Server Discord](https://discord.gg/9GHsXstwM9)  
 
 ---  
 
