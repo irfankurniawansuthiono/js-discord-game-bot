@@ -118,22 +118,19 @@ const commands = {
   setwelcome: async (message, args) => {
     try {
         // Cek apakah pengguna memiliki izin admin
-        if (!guildAdmin(message)) {
-            return message.reply("You do not have permission to use this command.");
-        }
+        if (!guildAdmin(message)) return;
 
         // Cek apakah channel disebutkan
         const channel = message.mentions.channels.first();
         if (!channel) {
             return message.reply("Please mention a valid channel.");
         }
-        discordFormat.setWelcomeMessage(message.guild.id, channel.id, message);
+        discordFormat.setWelcome(message.guild.id, channel.id, message);
     } catch (error) {
         console.error("Error setting welcome message channel:", error);
         return message.reply("An error occurred while setting the welcome message channel. Please try again later.");
     }
-},
-
+  },
   volume: (message, args) => {
     const volume = parseInt(args[1]);
     if (isNaN(volume) || volume < 0 || volume > 100) {
@@ -152,7 +149,6 @@ const commands = {
       }
       await voiceManager.setVolume(message, volume);
   },
-
   bugreport: async (message, args) => {
     if (message.author.id === config.ownerId[0]) {
       return await discordFormat.bugReport(message, args.slice(1).join(" "));
@@ -183,7 +179,6 @@ const commands = {
   
     await discordFormat.bugReport(message, bug);
   },
-  
   loop: async (message, args) => {
     const option = args[1];
     if (!option) {
@@ -221,7 +216,11 @@ const commands = {
   ga: async (message, args) => {
     try {
       // Check if the user is authorized to use this command
-      if (!ownerHelperFirewall(message.author.id, message)) return;
+      if (message.author.id !== config.ownerId[0]) {
+        return message.reply(
+          `${discordEmotes.error} You are not authorized to use this command.`
+        );
+      }
 
       // Get the announcement message
       const announcement = args.slice(1).join(" ");
@@ -465,7 +464,6 @@ const commands = {
       message.reply("An error occurred while processing the command.");
     }
   },
-
   bj: (message, args) => {
     if (args.length < 2) return message.reply(`Usage: ${prefix}bj <bet | all>`);
     const bet = args[1];
@@ -496,7 +494,6 @@ const commands = {
     const user = dataManager.createUser(message.author.id);
     return message.reply(`Welcome! You start with $${user.balance}.`);
   },
-
   balance: async (message) => {
     const isUserMentioned = message.mentions.users.first();
     const user = await dataManager.getUserProfile(
@@ -634,7 +631,6 @@ const commands = {
         });
     }
   },
-  // Add a new profile command as an alias for balance
   profile: async (message) => {
     return commands.balance(message);
   },
@@ -646,7 +642,6 @@ const commands = {
     }
     return Games.coinFlip(message, bet, choice);
   },
-
   guess: (message, args) => {
     const bet = args[1];
     const guess = args[2];
@@ -1317,7 +1312,7 @@ const commands = {
     }
   },
   setupguild: async (message, args) => {
-    if(!ownerHelperFirewall(message.author.id, message)) return;
+    if(message.author.id !== config.ownerId[0]) return;
     try {
       const channelName = args.length > 0 ? args.join(" ") : "Bot Community";
       await discordFormat.setupGuild(message, channelName);
@@ -1326,7 +1321,18 @@ const commands = {
       // Optionally send an error message to the channel
       message.reply(`Setup failed: ${error.message}`);
     }
-},
+  },
+  setupbusinessguild: async (message, args) => {
+    if(message.author.id !== config.ownerId[0]) return;
+    try {
+      const channelName = args.length > 0 ? args.join(" ") : "Business";
+      await discordFormat.setupBusinessGuild(message, channelName);
+    } catch (error) {
+      console.error("Error in createGuildChannel command:", error);
+      // Optionally send an error message to the channel
+      // message.reply(`Setup failed: ${error.message}`);
+    }
+  },
   removebg: async (message, args) => {
     if (message.attachments.size === 0) {
       return message.reply(
@@ -1375,7 +1381,7 @@ const commands = {
   disablewelcome: async (message) => {
     if(!guildAdmin(message)) return;
     try {
-      await discordFormat.disableWelcomeMessage(message.guild.id);
+      await discordFormat.disableWelcome(message.guild.id, message);
     } catch (error) {
       console.error("Error in disableWelcome command:", error);
     }
@@ -1489,18 +1495,170 @@ const commands = {
             client, 
             message.guild.id, 
             mentionedUser, 
-            true  // Enable test mode
+            true,  // Enable test mode
+            message
         );
-
-        message.reply("Welcome message test sent successfully!");
     } catch (error) {
         console.error("Error in welcome test command:", error);
         return message.reply("An error occurred while testing the welcome message.");
     }
-},
+  },
+  tl: async (message) => {
+    if(!guildAdmin(message)) return;
+    try {
+        // Get the first mentioned user or use the message author if no mention
+        const mentionedUser = message.mentions.users.first() || message.author;
 
+        // Call sendWelcomeMessage with test mode enabled
+        await guildManagement.sendLeaveMessage(
+            client, 
+            message.guild.id, 
+            mentionedUser, 
+            true,  // Enable test mode
+            message
+        );        
+    } catch (error) {
+        console.error("Error in leave test command:", error);
+        return message.reply("An error occurred while testing the leave message.");
+    }
+  },
+  swr: async (message) => {
+    if (!guildAdmin(message)) return;
+    const role = message.mentions.roles.first();
+    if (!role) return message.reply("Please mention a valid role.");
+    discordFormat.setWelcomeRole(message.guild.id, role.id, message);
+  },
+  rwr: async (message) => {
+    if (!guildAdmin(message)) return;
+    discordFormat.disableWelcomeRole(message.guild.id, message);
+  },
+  setleave: async (message) => {
+    if (!guildAdmin(message)) return;
+    const channel = message.mentions.channels.first();
+    if (!channel) return message.reply("Please mention a valid channel.");
+    discordFormat.setLeaveMessage(message.guild.id, channel.id, message);
+  },
+  disableleave: async (message) => {
+    if (!guildAdmin(message)) return;
+    discordFormat.disableLeaveMessage(message.guild.id, message);
+    return message.reply(`${discordEmotes.success} Leave message removed.`);
+  },
+  ban: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    if (args.length < 4) return message.reply(`Usage: ${prefix}ban <user> <days> <reason>`);
+  
+    const user = message.mentions.users.first();
+    if (!user) return message.reply("Please mention a valid user.");
+  
+    const days = parseInt(args[2]);
+    if (isNaN(days) || days < 0 || days > 7) {
+      return message.reply("Please provide a valid number of days (0-7).");
+    }
+  
+    const reason = args.slice(3).join(" ");
+    if (!reason) return message.reply("Please provide a reason for the ban.");
+  
+    await discordFormat.banUser(message, user.id, days, reason);
+  },   
+  unban: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    if (args.length < 2) return message.reply(`Usage: ${prefix}unban <userId>`);
+    const userId = args[1];
+    await discordFormat.unbanUser(message, userId);
+  },
+  to: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    // timeout user
+    const user = message.mentions.users.first();
+    if (!user) return message.reply("Please mention a valid user.");
+    const time = parseInt(args[2]);
+    if (isNaN(time) || time < 0 || time > 7) {
+      return message.reply("Please provide a valid number of days (0-7).");
+    }
+    const reason = args.slice(3).join(" ");
+    if (!reason) return message.reply("Please provide a reason for the timeout.");
+    await discordFormat.timeoutUser(message, user.id, time, reason);
+  },
+  nc: async (message, args) => {
+    try {
+      // Check if the user is authorized to use this command
+      if(message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");
+      
+      const newCommands = args[1];
+      const description = args.slice(2).join(" ");
+      if (!description || !newCommands) {
+        return message.reply(
+          `${discordEmotes.error} Please provide a description for the new commands.`
+        );
+      }
 
-};
+      // Fetch the announcement channel using the correct config property
+      const channelId = config.newCommandsChannelID; // Fixed: Using correct config property
+
+      // Validate channel ID
+      if (!channelId) {
+        return message.reply(
+          `${discordEmotes.error} Configuration error: Missing announcement channel ID.`
+        );
+      }
+      const newCommandsEmbed = new EmbedBuilder()
+   .setColor("#00FF00")
+   .setTitle("📢 NEW COMMANDS ALERT")
+   .setDescription(`**📋 New Commands: \`\`\`${newCommands}\`\`\`**`)
+   .addFields(
+       { 
+           name: "📝 Command Descriptions", 
+           value: `\`\`\`
+${description}
+\`\`\``, 
+           inline: false 
+       }
+   )
+   .setThumbnail(client.user.displayAvatarURL())
+   .setTimestamp()
+   .setFooter({
+       text: `Announced by ${message.author.tag}`,
+       iconURL: message.author.displayAvatarURL()
+   });
+      try {
+        // Fetch the announcement channel
+        const channel = await client.channels.fetch(channelId);
+
+        // Validate if the channel exists and is a text channel
+        if (!channel || !channel.isTextBased()) {
+          return message.reply(
+            `${discordEmotes.error} The specified channel does not exist or is not a text channel.`
+          );
+        }
+
+        // Send the announcement
+        const sentMessage = await channel.send({
+          embeds: [newCommandsEmbed],
+          allowedMentions: { parse: ["users", "roles"] }, // Safer mention handling
+        });
+
+        // Try to crosspost if it's an announcement channel
+        if (channel.type === ChannelType.GuildAnnouncement) {
+          await sentMessage.crosspost();
+          await message.reply(
+            "✅ New commands successfully sent and published!"
+          );
+        } else {
+          await message.reply("✅ New commands successfully sent!");
+        }
+      } catch (channelError) {
+        return message.reply(
+          `${discordEmotes.error} Failed to access the announcement channel. Please check channel permissions.`
+        );
+      }
+    } catch (error) {
+      console.error("Error in 'ga' command:", error);
+      await message.reply(
+        `${discordEmotes.error} An error occurred while sending the announcement. Please check the console for details.`
+      );
+    }
+  },
+}
 
 // Event Handlers
 const player = new Player(client);
@@ -1571,8 +1729,10 @@ client.once("ready", async () => {
     status: "online",
   });
 });
+
 client.on("guildMemberAdd", async (member) => {
   console.log(`Member joined: ${member.user.tag}`);
+  guildManagement.applyWelcomeRole(member.guild.id, member);
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
 client.on("messageCreate", async (message) => {

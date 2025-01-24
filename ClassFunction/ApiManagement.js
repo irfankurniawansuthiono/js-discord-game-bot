@@ -7,12 +7,12 @@ import {
   AttachmentBuilder,
 } from "discord.js";
 import { JSDOM } from "jsdom";
-import { discordEmotes } from "../config.js";
+import { config, discordEmotes } from "../config.js";
 import FormData from "form-data";
 class ApiManagement {
     constructor() {
         if (!ApiManagement.instance) {
-            this.apiKey = process.env.API_AI_KEY;
+            this.apiKey = config.apiKey;
             ApiManagement.instance = this;
         }
         return ApiManagement.instance;
@@ -188,15 +188,6 @@ class ApiManagement {
             },
           }
         );
-        console.log(response.data)
-  
-        // const responseEmbed = new EmbedBuilder()
-        //   // warna kuning
-        //   .setColor("#FFFF00")
-        //   .setTitle("AI Response")
-        //   .setDescription(response.data.result.answer)
-        //   .setFooter({ text: `AI Endpoint by ${response.data.creator}` })
-        //   .setTimestamp();
   
         await message.reply({ content: response.data.result.answer });
       } catch (error) {

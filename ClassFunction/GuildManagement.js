@@ -1,7 +1,10 @@
 import { config } from "../config.js";
 import fs from "fs";
-import Canvas from "canvas";
+import { createCanvas } from "canvas";
+import { loadImage } from "canvas";
+import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
+import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
 class GuildManagement {
     constructor() {
         if (!GuildManagement.instance) {
@@ -9,15 +12,35 @@ class GuildManagement {
             this.loadData();
             this.client = null;
             this.setupManager = new GuildSetupManager(this);
+            this.setupBusinessManager= new EnterpriseGuildSetupManager(this);
             GuildManagement.instance = this;
         }
         return GuildManagement.instance;
     }
-
+    createGuild(guildId) {
+        this.guildData[guildId] = {
+            welcome: {
+                welcomeMessage: null,
+                welcomeChannel: null,
+                welcomeRole: null,
+                leaveChannel: null,
+                leaveMessage: null
+            }
+        };
+        this.saveData();
+        return this.guildData[guildId];
+    }
+    removeLeaveMessage(guildId) {
+        if (this.guildData[guildId]) {
+            this.guildData[guildId].welcome.leaveMessage = null;
+            this.guildData[guildId].welcome.leaveChannel = null;
+            this.saveData();
+            return this.guildData[guildId];
+        }
+    }
     setClient(client) {
         if (!this.client) {
             this.client = client;
-            this.setupManager.setClient(client);
         }
     }
 
@@ -49,18 +72,8 @@ class GuildManagement {
         return this.guildData[guildId];
     }
 
-    createGuild(guildId) {
-        this.guildData[guildId] = {
-            welcome: {
-                welcomeMessage: null,
-                welcomeChannel: null
-            }
-        };
-        this.saveData();
-        return this.guildData[guildId];
-    }
 
-    setWelcomeMessage(guildId, channelId, welcomeMessage = null) {
+    setWelcome(guildId, channelId, welcomeMessage = null) {
         if (!this.guildData[guildId]) {
             this.createGuild(guildId);
         }
@@ -78,14 +91,18 @@ class GuildManagement {
 
     async setupGuild(client, guildId, channelName = 'Bot Community') {
         if (!this.client) this.setClient(client);
-        return this.setupManager.setupGuild(client, guildId, channelName);
+        return this.setupManager.setupBaseGuild(client, guildId, channelName);
+    }
+    async setupBusinessGuild (client, guildId, channelName = 'Business') {
+        if (!this.client) this.setClient(client);
+        return this.setupBusinessManager.setupEnterpriseGuild(client, guildId, channelName);
     }
     lockChannel(guildId, channel) {
         return channel.permissionOverwrites.create(guildId, {
             SendMessages: false
         })
     }
-    disableWelcomeMessage(guildId) {
+    disableWelcome(guildId) {
         if (!this.guildData[guildId]) {
             this.createGuild(guildId);
         }
@@ -94,89 +111,201 @@ class GuildManagement {
         this.saveData();
         return this.guildData[guildId];
     }
-    async createWelcomeBanner(username, avatarURL, memberText) {
-        if (!username || typeof username !== 'string') {
-            throw new Error('Invalid username provided');
+    disableWelcomeRole(guildId) {
+        if (!this.guildData[guildId]) {
+            this.createGuild(guildId);
         }
-    
+        this.guildData[guildId].welcome.welcomeRole = null;
+        this.saveData();
+        return this.guildData[guildId];
+    }
+    async createBanner(username, avatarURL, memberText, type, message) {
         try {
-            // Validate and normalize avatar URL
-            const safeAvatarURL = avatarURL && typeof avatarURL === 'string' 
-                ? avatarURL.replace(/\?size=\d+/, '') + '?size=256' 
-                : `./assets/default-profile.jpg`;
+            // Validasi dan normalisasi avatar URL
+            if (!avatarURL) throw new Error("Avatar URL is required.");
     
-            // Load background and avatar images concurrently
-            const [background, avatar] = await Promise.all([
-                Canvas.loadImage("./assets/welcome-banner.jpg"),
-                new Promise((resolve, reject) => {
-                    const img = new Canvas.Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = (err) => {
-                        console.error(`Failed to load avatar: ${safeAvatarURL}`, err);
-                        // Fallback to default avatar on error
-                        Canvas.loadImage("./assets/default-profile.jpg").then(resolve).catch(reject);
-                    };
-                    img.src = safeAvatarURL;
-                })
-            ]);
+            const cleanAvatarURL = avatarURL
+                .replace(/\.(webp|jpeg|jpg)$/i, '.png')
+                .replace(/\?size=\d+/, '?size=2048');
     
-            const canvas = Canvas.createCanvas(background.width, background.height);
-            const ctx = canvas.getContext("2d");
+            // Fetch avatar image
+            const avatarResponse = await fetch(cleanAvatarURL);
+            if (!avatarResponse.ok) {
+                throw new Error(`Failed to fetch avatar: ${avatarResponse.statusText}`);
+            }
     
-            // Draw background
-            ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+            const avatarBuffer = await avatarResponse.arrayBuffer();
+            const avatarBufferNode = Buffer.from(avatarBuffer);
     
-            // Draw circular avatar
-            const avatarSize = 200;
-            const avatarX = (canvas.width - avatarSize) / 2;
-            const avatarY = 50;
-            
+            // Load avatar image
+            const avatar = await loadImage(avatarBufferNode);
+    
+            // Buat kanvas
+            const canvas = createCanvas(800, 150); 
+            const ctx = canvas.getContext('2d');
+    
+            // Gambar latar belakang
+            ctx.fillStyle = '#2C2F33';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+            // Gambar lingkaran avatar
+            const avatarSize = 100;
+            const avatarX = 50;
+            const avatarY = (canvas.height - avatarSize) / 2;
+    
             ctx.save();
             ctx.beginPath();
-            ctx.arc(avatarX + avatarSize/2, avatarY + avatarSize/2, avatarSize/2, 0, Math.PI * 2);
+            ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
             ctx.closePath();
             ctx.clip();
-            
             ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
             ctx.restore();
     
-            // Add text styling
-            ctx.font = "bold 48px Arial";
-            ctx.fillStyle = "#ffff";
-            ctx.textAlign = "center";
-            
-            const text = `Welcome, ${username}!`;
-            ctx.fillText(text, canvas.width/2, 300);
-            ctx.fillText(memberText, canvas.width/2, 350);
+            // Tambahkan teks username
+            ctx.font = 'bold 30px Arial';
+            ctx.fillStyle = '#FFFFFF';   
+            ctx.textAlign = 'start';      
+            ctx.fillText(username, 200, 90); 
     
-            // Optional: Add shadow effect
-            ctx.shadowColor = 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = 10;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
+            // Tambahkan teks memberText
+            ctx.font = '20px Arial';    
+            ctx.fillStyle = '#AAAAAA';  
+            ctx.fillText(memberText, 200, 120); 
     
-            // Return image buffer
-            return canvas.toBuffer("image/png");
+            ctx.font = 'bold 35px Arial';      
+            ctx.fillStyle = '#FF0000'; 
+
+            if(type === "leave"){ 
+                ctx.fillText(`Goodbye!`, 200, 55)
+            }else{
+                ctx.fillText(`Welcome New Member!`, 200, 55)
+            };
+            return canvas.toBuffer('image/png');
         } catch (error) {
-            console.error("Welcome banner creation failed:", error);
-            throw new Error(`Failed to create welcome banner: ${error.message}`);
+            console.error("Banner creation failed:", error);
+            throw error;
         }
     }
-
-    async sendWelcomeMessage(client, guildId, user, isTest = false) {
+    async setWelcomeRole(guildId, role) {
+        try {
+            if (!this.guildData[guildId]) {
+                this.createGuild(guildId);
+            }
+            this.guildData[guildId].welcome.welcomeRole = role.id;
+            this.saveData();
+            return this.guildData[guildId];
+        } catch (error) {
+            console.error("Error setting welcome role:", error);
+            throw error;
+        }
+    }
+    setLeaveMessage(guildId, message) {
+        if (!this.guildData[guildId]) {
+            this.createGuild(guildId);
+        }
+        this.guildData[guildId].welcome.leaveChannel = message;
+        this.saveData();
+        return this.guildData[guildId];
+    }
+    disableLeaveMessage(guildId) {
+        if (!this.guildData[guildId]) {
+            this.createGuild(guildId);
+        }
+        this.guildData[guildId].welcome.leaveMessage = null;
+        this.guildData[guildId].welcome.leaveChannel = null;
+        this.saveData();
+        return this.guildData[guildId];
+    }
+    async applyWelcomeRole(guildId, member) {
+        try {
+            // Check if guild configuration exists
+            if (!this.guildData[guildId] || !this.guildData[guildId].welcome) {
+                return; // Silently return if no configuration
+            }
+    
+            const guild = await this.client.guilds.fetch(guildId);
+            const welcomeRoleId = this.guildData[guildId].welcome.welcomeRole;
+    
+            // Additional checks before applying role
+            if (!welcomeRoleId) {
+                return; // Return if no role ID is configured
+            }
+    
+            const role = guild.roles.cache.get(welcomeRoleId);
+            if (role) {
+                await member.roles.add(role);
+            }
+        } catch (error) {
+            console.error("Error applying welcome role:", error);
+            // Optionally, you can choose to not rethrow the error
+            // throw error; // Remove or comment out this line
+        }
+    }
+    getMemberCountSuffix(memberCount) {
+        if (memberCount % 10 === 1 && memberCount !== 11) return 'st';
+        if (memberCount % 10 === 2 && memberCount !== 12) return 'nd';
+        if (memberCount % 10 === 3 && memberCount !== 13) return 'rd';
+        return 'th';
+    }
+    async sendWelcomeMessage(client, guildId, user, isTest = false, message) {
         try {
             const guildConfig = this.getGuild(guildId);
+            if (!guildConfig || (!guildConfig.welcome.welcomeChannel && isTest)) {
+                return message.reply('Welcome channel is not configured in this server.');
+            }
             if (!guildConfig || !guildConfig.welcome.welcomeChannel) {
                 return;
             }
-    
             const channel = client.channels.cache.get(guildConfig.welcome.welcomeChannel);
             if (!channel) {
-                throw new Error("Welcome channel not found.");
+                return;
+            }
+
+            // Member count logic
+            const memberCount = isTest 
+                ? Math.floor(Math.random() * 100) + 1 
+                : user.guild.memberCount;
+            
+            const suffix = this.getMemberCountSuffix(memberCount);
+            const memberTextGenerated = `You are the ${memberCount}${suffix} member!`;
+
+            // Get avatar URL with PNG format
+            const avatarURL = user.displayAvatarURL().replace('.webp', '.png');
+            // Create banner
+            const banner = await this.createBanner(
+                user.username || user.user.username, 
+                avatarURL,
+                memberTextGenerated, "join", message
+            );
+
+            // Create Discord attachment
+            const attachment = new AttachmentBuilder(banner, { name: 'welcome-banner.png' });
+
+            // Send message with banner
+            await channel.send({
+                content: `Welcome to the server, ${user}! ${memberTextGenerated}`,
+                files: [attachment]
+            });
+        } catch (error) {
+            console.error('Error sending welcome message:', error);
+        }
+    }
+    async sendLeaveMessage(client, guildId, user, isTest = false, message) {
+        try {
+            const guildConfig = this.getGuild(guildId);
+            if (!guildConfig || (!guildConfig.welcome.leaveChannel && isTest)) {
+                return message.reply('Leave channel is not configured. in this server');  
+            }
+            if (!guildConfig || !guildConfig.welcome.leaveChannel){
+                return;
+            }
+            const channel = client.channels.cache.get(guildConfig.welcome.leaveChannel);
+            if (!channel) {
+                return;
             }
     
             // For test mode, use a mock member count
-            const memberCount = isTest ? Math.floor(Math.random() * 100) + 1 : user.guild.memberCount;
+            const memberCount = isTest ? Math.floor(Math.random() * 100) -1 : user.guild.memberCount + 1;
             let suffix = "th";
     
             if (memberCount % 10 === 1 && memberCount !== 11) {
@@ -186,16 +315,16 @@ class GuildManagement {
             } else if (memberCount % 10 === 3 && memberCount !== 13) {
                 suffix = "rd";
             }
-            const memberTextGenerated = `You are the ${memberCount}${suffix} member!`;
+            const memberTextGenerated = `The ${memberCount}${suffix} member has left!`;
     
-            const banner = await this.createWelcomeBanner(
+            const banner = await this.createBanner(
                 user.username || user.user.username, 
                 user.displayAvatarURL ? user.displayAvatarURL({ format: "png" }) : user.avatarURL,
-                memberTextGenerated
+                memberTextGenerated, "leave", message
             );
     
             await channel.send({
-                content: `Welcome to the server, ${user}, ${memberTextGenerated}!`,
+                content: `Bye, ${memberTextGenerated}!`,
                 files: [{ attachment: banner, name: "welcome-banner.png" }]
             });
         } catch (error) {
