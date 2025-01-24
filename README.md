@@ -90,10 +90,8 @@ Happy coding and gaming! 🎉
 1. **Langkah-Langkah Instalasi yang Detail**  
    Memastikan pengguna memahami proses instalasi dari awal hingga akhir.  
 
-2. **Dukungan dan Grup WhatsApp**  
+2. **Dukungan dan Server Discord**  
    Menambahkan detail cara mendapatkan bantuan melalui grup resmi.  
 
 3. **Struktur yang Jelas dan Menarik**  
    Membuat setiap bagian mudah dibaca dan dipahami, dengan ikon untuk meningkatkan daya tarik.  
-
-Apakah ini sesuai dengan yang Anda inginkan? 😊
