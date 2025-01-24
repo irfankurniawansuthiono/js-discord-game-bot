@@ -10,7 +10,7 @@ Ikuti langkah-langkah berikut untuk menginstal dan menjalankan bot ini:
 Untuk menjalankan bot ini, Anda harus memiliki akun Discord Developer Portal. Jika Anda belum memiliki akun, silakan daftar di [discord.com/developers](https://discord.com/developers).
 > **ℹ️ Tata Cara Pembuatan Bot**:
 > 1. Masuk ke [Discord Developer Portal](https://discord.com/developers).
-> 2. Klik "Create New App".
+> 2. Klik "New Application".
 > 3. Masukkan nama dan deskripsi untuk aplikasi Anda.
 > 4. Klik "Create".
 > 5. Klik "Copy" pada bagian "Bot > Token" untuk mendapatkan token bot Anda.
