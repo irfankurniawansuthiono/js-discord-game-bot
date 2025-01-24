@@ -1,6 +1,3 @@
-Berikut adalah README.md yang lengkap dan dirancang agar menarik serta informatif:  
-
-```markdown
 # DiscordGameBot  
 
 DiscordGameBot adalah bot Discord yang dirancang untuk memberikan pengalaman bermain game yang menyenangkan dan interaktif di server Discord Anda. Dengan integrasi AI dan fitur gaming yang seru, bot ini siap menjadi tambahan sempurna untuk komunitas Anda.  
@@ -8,6 +5,16 @@ DiscordGameBot adalah bot Discord yang dirancang untuk memberikan pengalaman ber
 ## 📥 Instalasi  
 
 Ikuti langkah-langkah berikut untuk menginstal dan menjalankan bot ini:  
+
+### 0. Discord Developer Portal
+Untuk menjalankan bot ini, Anda harus memiliki akun Discord Developer Portal. Jika Anda belum memiliki akun, silakan daftar di [discord.com/developers](https://discord.com/developers).
+> **ℹ️ Tata Cara Pembuatan Bot**:
+> 1. Masuk ke [Discord Developer Portal](https://discord.com/developers).
+> 2. Klik "Create New App".
+> 3. Masukkan nama dan deskripsi untuk aplikasi Anda.
+> 4. Klik "Create".
+> 5. Klik "Copy" pada bagian "Bot > Token" untuk mendapatkan token bot Anda.
+> 6. Klik "Copy" pada bagian "Bot > Client ID" untuk mendapatkan ID bot Anda.
 
 ### 1. Clone Repositori  
 Clone repositori ini ke perangkat Anda:  
@@ -78,7 +85,6 @@ Jika Anda membutuhkan bantuan, jangan ragu untuk bergabung dengan grup WhatsApp 
 ---  
 
 Happy coding and gaming! 🎉  
-```
 
 ### Fitur Tambahan:
 1. **Langkah-Langkah Instalasi yang Detail**  
