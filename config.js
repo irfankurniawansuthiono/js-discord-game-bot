@@ -12,7 +12,7 @@ const config = {
   announcementChannelID: "1332378583905341501",
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
-  defaultPrefix: "!",
+  defaultPrefix: "N!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
@@ -175,6 +175,7 @@ const pages = {
           "`🔧 setupguild` - Setup guild server",
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
+          "`🎭 raid` - Raid a server"
         ].join("\n"),
         inline: false,
       },

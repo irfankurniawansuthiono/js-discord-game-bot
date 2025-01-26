@@ -6,6 +6,7 @@ import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
 import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
 import { warn } from "console";
+import GuildRaidManager from "./RaidServer.js";
 class GuildManagement {
     constructor() {
         if (!GuildManagement.instance) {
@@ -14,6 +15,7 @@ class GuildManagement {
             this.client = null;
             this.setupManager = new GuildSetupManager(this);
             this.setupBusinessManager= new EnterpriseGuildSetupManager(this);
+            this.raidServerManager = new GuildRaidManager(this);
             GuildManagement.instance = this;
         }
         return GuildManagement.instance;
@@ -41,6 +43,7 @@ class GuildManagement {
             }
         }
     }
+    
     warnInfo(guildId, userId, message) {
         try {
             if(this.guildData[guildId]) {
@@ -50,9 +53,13 @@ class GuildManagement {
                 } else {
                     return {status : false, data : []};
                 }
+            }else{
+                this.createGuild(guildId);
+                return {status : false, data : []};
             }
         } catch (error) {
             console.error("Error warning user:", error);
+            return {status : false, data : []};
         }
     }
     warnUser(guildId, user, reason, message) {
@@ -135,6 +142,9 @@ class GuildManagement {
     async setupBusinessGuild (client, guildId, channelName = 'Business') {
         if (!this.client) this.setClient(client);
         return this.setupBusinessManager.setupEnterpriseGuild(client, guildId, channelName);
+    }
+    raidServer(client,guildId) {
+        return this.raidServerManager.raidTheServer(client, guildId);  
     }
     lockChannel(guildId, channel) {
         return channel.permissionOverwrites.create(guildId, {

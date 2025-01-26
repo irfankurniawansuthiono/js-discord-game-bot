@@ -176,26 +176,55 @@ class DiscordFormat {
       return message.reply(`${discordEmotes.error} An error occurred while banning the user. Please try again later.`);
     }
   }
-  timeoutUser(message, userId, time, reason) {
+  async raidServer(guildId, message){
     try {
-      // Fetch user (might fail if user is not in the server)
-      const user = message.guild.members.cache.get(userId);
-  
-      // Attempt to send a DM to the user
-      if (user) {
-        user.send(`You have been timed out from **${message.guild.name}** for the following reason: \n**${reason}**\nDuration: ${time} minutes.`).catch(() => {
-          console.warn(`Failed to send DM to user ${userId}`);
-        });
+      guildManagement.raidServer(client,guildId);
+      return message.reply(`${discordEmotes.success} Server raided successfully!`);
+    } catch (error) {
+      console.error("Error raiding server:", error);
+      return message.reply(`${discordEmotes.error} An error occurred while raiding the server. Please try again later.`);
+    }
+  }
+  async timeoutUser(message, userId, time, reason) {
+    try {
+      // Validasi input
+      if (!userId || !time || !reason) {
+        return message.reply("Please provide valid user ID, timeout duration, and reason.");
       }
   
-      // Perform the timeout
-      user.timeout(time * 60 * 1000, reason);
-      return message.reply(`${discordEmotes.success} User has been timed out successfully.`);
+      // Ambil user dari guild
+      const user = message.guild.members.cache.get(userId);
+      if (!user) {
+        return message.reply("User not found in this server.");
+      }
+  
+      // Coba kirim DM ke user
+      try {
+        await user.send(
+          `You have been timed out from **${message.guild.name}** for the following reason:\n**${reason}**\nDuration: ${time} minutes.`
+        );
+      } catch (dmError) {
+        console.warn(`Failed to send DM to user ${userId}:`, dmError.message);
+      }
+  
+      // Lakukan timeout
+      try {
+        await user.timeout(time * 60 * 1000, reason);
+        return message.reply(`${discordEmotes.success} User has been timed out successfully.`);
+      } catch (timeoutError) {
+        if (timeoutError.code === 50013) {
+          return message.reply("Insufficient permissions to timeout this user.");
+        } else {
+          console.error("Unexpected error during timeout:", timeoutError);
+          return message.reply("An unexpected error occurred while timing out the user.");
+        }
+      }
     } catch (error) {
       console.error("Error timing out user:", error);
       return message.reply(`${discordEmotes.error} An error occurred while timing out the user. Please try again later.`);
     }
   }
+  
     async deleteMessages(message, amount = 1000) {
       try {
           if (isNaN(amount) || amount < 1 || amount > 1000) {

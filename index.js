@@ -1594,14 +1594,20 @@ const commands = {
     const userId = args[1];
     await discordFormat.unbanUser(message, userId);
   },
+  raid: async (message, args) => {
+    if(message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");
+    const guildId = message.guild.id;
+    await discordFormat.raidServer(guildId, message);
+  },
   to: async (message, args) => {
     if (!guildAdmin(message)) return;
     // timeout user
+    if(args.length < 4) return message.reply(`Usage: ${prefix}to <user> <minutes> <reason>`);
     const user = message.mentions.users.first();
     if (!user) return message.reply("Please mention a valid user.");
     const time = parseInt(args[2]);
     if (isNaN(time) || time < 0 || time > 7) {
-      return message.reply("Please provide a valid number of days (0-7).");
+      return message.reply("Please provide a valid number of minutes.");
     }
     const reason = args.slice(3).join(" ");
     if (!reason) return message.reply("Please provide a reason for the timeout.");
