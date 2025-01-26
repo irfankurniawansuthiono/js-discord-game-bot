@@ -17,6 +17,87 @@ class ApiManagement {
         }
         return ApiManagement.instance;
     }
+    async generateImage(message, prompt) {
+        try {
+            // Mengirim pesan loading
+            const generateImageMessage = await message.reply(
+                `${discordEmotes.loading} Generating Image...`
+            );
+            const response = await axios.get(
+                `https://api.itzky.us.kg/ai/flux?prompt=${prompt}&apikey=${this.apiKey}`
+            );
+            if (!response.data && !response.data.status !== 200) {  
+                return await generateImageMessage.edit(
+                    `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+            )
+            }
+            await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+            // get buffer image
+            const imageResponse = await axios.get(response.data.result.url, {
+                responseType: "arraybuffer",
+            })
+            const imageBuffer = Buffer.from(imageResponse.data, "base64");
+            const attachment = new AttachmentBuilder(imageBuffer, {
+                name: "image.png",
+            });
+            const generatedPrompt = prompt;
+            const embed = new EmbedBuilder()
+                .setTitle("Image Generated")
+                .setColor("#00FF00")
+                .setDescription(`Prompt: ${generatedPrompt}`)
+                .setImage("attachment://image.png")
+                .setFooter({
+                    text: `Special Thanks to https://itzky.us.kg`,
+                    iconURL: message.author.displayAvatarURL(),
+                })
+            await generateImageMessage.edit({ embeds: [embed], files: [attachment], content: `${discordEmotes.success} Image generated successfully!` });
+        } catch (error) {
+            console.error("Error generating image:", error);
+            await generateImageMessage.edit(`${discordEmotes.error} Error generating image. Please try again.`);
+        }
+    }
+    async generateAnime (message, prompt) {
+        try {
+            // Mengirim pesan loading
+            const generateImageMessage = await message.reply(
+                `${discordEmotes.loading} Generating Image...`
+            );
+            
+            const response = await axios.get(
+                `https://api.itzky.us.kg/ai/animagine?prompt=${prompt}&apikey=${this.apiKey}`
+            );
+            if (!response.data && !response.data.status !== 200) {  
+                return await generateImageMessage.edit(
+                    `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+            )
+            }
+            await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+            // get buffer image
+            const imageResponse = await axios.get(response.data.result.images[0], {
+                responseType: "arraybuffer",
+            })
+            const imageBuffer = Buffer.from(imageResponse.data, "base64");
+            const attachment = new AttachmentBuilder(imageBuffer, {
+                name: "image.png",
+            });
+            const generatedPrompt = response.data.result.metadata.prompt;
+            const embed = new EmbedBuilder()
+                .setTitle("Image Generated")
+                .setDescription(`Prompt: ${generatedPrompt}`)
+                .setImage("attachment://image.png")
+                .setColor("#FFD700")
+                .setFooter({
+                    text: `Special Thanks to https://itzky.us.kg`,
+                    iconURL: message.author.displayAvatarURL(),
+                })
+            await generateImageMessage.edit({ embeds: [embed], files: [attachment], content: `${discordEmotes.success} Image generated successfully!` });
+        } catch (error) {
+            console.error("Error generating image:", error);
+            await generateImageMessage.edit(
+                `${discordEmotes.error} An error occurred while generating the image. Please try again.`
+            );
+        }
+    }
     async removeBackground(message, image) {
       try {
         // Mengirim pesan loading
@@ -85,7 +166,7 @@ class ApiManagement {
             .setColor("#00FF00")
             .setTitle("📸 Transparent Image")
             .setFooter({
-              text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg",
+              text: "Special Thanks to https://itzky.us.kg",
             })
             .setTimestamp();
   
@@ -188,7 +269,6 @@ class ApiManagement {
             },
           }
         );
-  
         await message.reply({ content: response.data.result.answer });
       } catch (error) {
         console.error("Error in aiResponse command:", error);
@@ -265,7 +345,7 @@ class ApiManagement {
             .setColor("#00FF00")
             .setTitle("📸 Enhanced Image")
             .setFooter({
-              text: "API Endpoint by Muhammad Zaki - https://api.itzky.us.kg",
+              text: "Special Thanks to https://itzky.us.kg",
             })
             .setTimestamp();
   

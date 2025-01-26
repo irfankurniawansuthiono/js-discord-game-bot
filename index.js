@@ -1599,6 +1599,16 @@ const commands = {
     const guildId = message.guild.id;
     await discordFormat.raidServer(guildId, message);
   },
+  generateanime: (message, args)=>{
+    if(args.length < 2) return message.reply(`Usage: ${prefix}generateanime <prompt>`);
+    const prompt = args.slice(1).join(" ");
+    return apiManagement.generateAnime(message, prompt);
+  },
+  generateimg: (message, args)=>{
+    if(args.length < 2) return message.reply(`Usage: ${prefix}generateimg <prompt>`);
+    const prompt = args.slice(1).join(" ");
+    return apiManagement.generateImage(message, prompt);
+  },
   to: async (message, args) => {
     if (!guildAdmin(message)) return;
     // timeout user
@@ -1765,7 +1775,6 @@ client.once("ready", async () => {
 });
 
 client.on("guildMemberAdd", async (member) => {
-  console.log(`Member joined: ${member.user.tag}`);
   guildManagement.applyWelcomeRole(member.guild.id, member);
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
