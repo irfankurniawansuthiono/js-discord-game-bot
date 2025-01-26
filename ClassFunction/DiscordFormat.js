@@ -2,7 +2,7 @@ import {
   EmbedBuilder,
   ChannelType,
 } from "discord.js";
-import { client } from "../index.js";
+import { client, formatDate } from "../index.js";
 import { config, discordEmotes } from "../config.js";
 import { DataManager } from "./DataManager.js";
 import GuildManagement from "./GuildManagement.js";
@@ -360,7 +360,61 @@ class DiscordFormat {
         message.channel.send("There was an error while changing nickname.");
       }
     }
-  
+    clearWarns(guildId, user, message) {
+      try {
+        guildManagement.clearWarns(guildId, user.id);
+        const embedReply = new EmbedBuilder()
+          .setColor("#00FF00")
+          .setTitle("⚠️ Success Clear Warnings")
+          .setDescription(`User warnings cleared for ${user}!`);
+        return message.reply({ embeds: [embedReply] });
+      } catch (error) {
+        console.error("Error clearing user warnings:", error);
+        return message.reply(`${discordEmotes.error} An error occurred while clearing user warnings. Please try again later.`);
+      }
+    }
+    warnInfo(guildId,userId, message) {
+      try {
+        const res = guildManagement.warnInfo(guildId, userId, message);
+        if (!res.status) {
+          const embed = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("⚠️ User Warnings Info")
+            .setDescription(`No warnings for <@${userId}>`);
+          return message.reply({ embeds: [embed] });
+        };
+        if(res.status){
+          const embed = new EmbedBuilder()
+          .setColor("#FF0000")
+          .setTitle("⚠️ User Warnings Info")
+          .setDescription(`Warnings for <@${userId}>`)
+          .setFooter({text: `total warnings: ${res.data.length}`, iconURL: message.author.displayAvatarURL()});
+          res.data.forEach((warning) => {
+            const fetchWarningBy = message.guild.members.cache.get(warning.by);
+            embed.addFields({name: `Warned by: ${fetchWarningBy.user.tag}`, value: `\nReason: ${warning.reason}\nDate: ${formatDate(warning.timestamp)}` });
+          });
+          
+          return message.reply({ embeds: [embed] });
+        }
+      } catch (error) {
+        console.error("Error warning user:", error);
+        return message.reply(`${discordEmotes.error} An error occurred while checking user warnings. Please try again later.`);
+      }
+    }
+    warnUser(guildId, user, reason, message) {
+      try {
+        guildManagement.warnUser(guildId, user, reason, message);
+        const embedReply = new EmbedBuilder()
+          .setColor("#FF0000")
+          .setTitle("⚠️ User Warnings")
+          .setDescription(`Warned ${user} for ${reason}`)
+          .setFooter({text: `warned by: ${message.author.tag}`, iconURL: message.author.displayAvatarURL()});
+        return message.reply({ embeds: [embedReply] });
+      } catch (error) {
+        console.error("Error warning user:", error);
+        return message.reply(`${discordEmotes.error} An error occurred while warning the user. Please try again later.`);
+      }
+    }
     async bugReport(message, bug) {
       const replyMessage = await message.reply(
         `${discordEmotes.loading} Sending bug report.. (Thx for reporting!)\n\nYou can also participate in the development of this bot by contributing to the source code (${config.prefix}sc)`

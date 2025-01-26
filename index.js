@@ -36,7 +36,7 @@ export const formatClockHHMMSS = (milliseconds) => {
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 };
 
-
+export const formatDate = (timestamp) => new Date(timestamp).toLocaleString();
 
 
 export const formatBalance = (amount) =>
@@ -115,6 +115,27 @@ const guildAdmin = (message) => {
 
 
 const commands = {
+  warninfo: async(message, args) => {
+    if(!guildAdmin(message)) return;
+    const guildId = message.guild.id;
+    const user = message.mentions.users.first();
+    if(!user) return message.reply("Please mention a valid user.");
+    const userId = user.id;
+    await discordFormat.warnInfo(guildId, userId, message);
+  },
+  warn: async(message, args) => {
+    if(!guildAdmin(message)) return;
+    const guildId = message.guild.id;
+    const user = message.mentions.users.first();
+    if (!user) {
+      return message.reply("Please mention a valid user.");
+    }
+    const reason = args.slice(2).join(" ");
+    if (!reason) {
+      return message.reply("Please provide a reason for the warning.");
+    }
+    await discordFormat.warnUser(guildId, user, reason, message);
+  },
   setwelcome: async (message, args) => {
     try {
         // Cek apakah pengguna memiliki izin admin
@@ -372,6 +393,13 @@ const commands = {
   },
   sf: async (message, args) => {
     await voiceManager.shuffleMusic(message);
+  },
+  clearwarns: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    const userId = message.mentions.users.first();
+    const guildId = message.guild.id;
+    if (!userId) return message.reply("Please mention a valid user.");
+    await discordFormat.clearWarns(guildId,userId,message);
   },
   p: async (message, args) => {
     const q = args.slice(1).join(" ");

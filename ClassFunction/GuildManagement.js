@@ -5,6 +5,7 @@ import { loadImage } from "canvas";
 import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
 import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
+import { warn } from "console";
 class GuildManagement {
     constructor() {
         if (!GuildManagement.instance) {
@@ -25,10 +26,48 @@ class GuildManagement {
                 welcomeRole: null,
                 leaveChannel: null,
                 leaveMessage: null
-            }
+            },
+            warning: {}
         };
         this.saveData();
         return this.guildData[guildId];
+    }
+    clearWarns(guildId, userId) {
+        if (this.guildData[guildId]) {
+            if (this.guildData[guildId].warning[userId]) {
+                delete this.guildData[guildId].warning[userId];
+                this.saveData();
+                return this.guildData[guildId];
+            }
+        }
+    }
+    warnInfo(guildId, userId, message) {
+        try {
+            if(this.guildData[guildId]) {
+                if(this.guildData[guildId].warning[userId]) {
+                    const warnings = this.guildData[guildId].warning[userId];
+                    return {status : true, data : warnings};
+                } else {
+                    return {status : false, data : []};
+                }
+            }
+        } catch (error) {
+            console.error("Error warning user:", error);
+        }
+    }
+    warnUser(guildId, user, reason, message) {
+        if (this.guildData[guildId]) {
+            // jika tidka ada warningnya buat dulu guildnya
+            if (!this.guildData[guildId]) {
+                this.createGuild(guildId);
+            }
+            if(!this.guildData[guildId].warning[user.id]) {
+                this.guildData[guildId].warning[user.id] = [];
+            }
+            this.guildData[guildId].warning[user.id].push({by: message.author.id, reason: reason, timestamp: Date.now() });
+            this.saveData();
+            return this.guildData[guildId];
+        }
     }
     removeLeaveMessage(guildId) {
         if (this.guildData[guildId]) {
