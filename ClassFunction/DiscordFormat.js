@@ -351,13 +351,19 @@ class DiscordFormat {
         }
   
         // Ubah nickname
+        // check if the bot can edit the nickname
+        if (!member.manageable) {
+          return message.channel.send(
+            `${discordEmotes.error} I cannot change the nickname of this user due to role hierarchy or permissions.`
+          );
+        }
         await member.setNickname(newNick);
         message.channel.send(
           `Nickname for ${mentionedUser} success changed to ${newNick}!`
         );
       } catch (error) {
         console.error("Error saat mengubah nickname:", error);
-        message.channel.send("There was an error while changing nickname.");
+        message.channel.send("There was an error while changing nickname");
       }
     }
     clearWarns(guildId, user, message) {
