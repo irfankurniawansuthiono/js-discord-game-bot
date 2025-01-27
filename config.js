@@ -143,6 +143,8 @@ const pages = {
           "`📨 invite` - Invite Nanami",
           "`👤 profile [@user]` - Show profile",
           "`🦹 rob <@user>` - Rob a user",
+          "`👤 joinanonim (DM FEATURES)` - Join anonymous message",
+          "`👤 leaveanonim (DM FEATURES)` - Leave anonymous message",
         ].join("\n"),
         inline: false,
       },

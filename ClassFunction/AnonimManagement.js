@@ -1,5 +1,5 @@
 import { ChannelType } from "discord.js";
-import { discordEmotes } from "../config.js";
+import { config, discordEmotes } from "../config.js";
 class AnonChat {
   constructor() {  
     this.sessions = new Map();
@@ -93,7 +93,7 @@ class AnonChat {
 
     if (partnerId) {
       const partnerDM = await message.client.users.fetch(partnerId);
-      await partnerDM.send(`😢 Your anonymous partner has left the chat.`);
+      await partnerDM.send(`😢 Your anonymous partner has left the chat. \n\n to join use ${config.defaultPrefix}joinanonim`);
     }
   }
 }
