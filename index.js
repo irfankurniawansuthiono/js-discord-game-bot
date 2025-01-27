@@ -1752,6 +1752,7 @@ ${description}
 const player = new Player(client);
 client.once("ready", async () => {
   guildManagement.setClient(client)
+  anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
   // Configure player and load extractors
   await player.extractors.loadMulti(DefaultExtractors);

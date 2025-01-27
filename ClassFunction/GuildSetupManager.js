@@ -457,7 +457,21 @@ class GuildSetupManager {
                 }
             ]
         });
-
+        await guild.channels.create({
+            name: '🔐│anonim-logs',
+            type: ChannelType.GuildText,
+            parent: categories.logs.id,
+            permissionOverwrites: [
+                {
+                    id: guild.id, // @everyone role
+                    deny: [PermissionFlagsBits.ViewChannel]
+                },
+                {
+                    id: roles.communityLeader.id,
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+                }
+            ]
+        });
         await guild.channels.create({
             name: '🗒️│moderation-logs',
             type: ChannelType.GuildText,

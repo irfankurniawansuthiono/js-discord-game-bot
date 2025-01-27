@@ -12,6 +12,7 @@ const config = {
   announcementChannelID: "1332378583905341501",
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
+  anonimLogsChannelID : "1333476337373155358",
   defaultPrefix: "N!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
