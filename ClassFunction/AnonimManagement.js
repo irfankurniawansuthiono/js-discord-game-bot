@@ -1,5 +1,5 @@
 import { ChannelType } from "discord.js";
-import { discordEmotes } from "../config";
+import { discordEmotes } from "../config.js";
 class AnonChat {
   constructor() {  
     this.sessions = new Map();
