@@ -256,7 +256,7 @@ class ApiManagement {
       try {
         const sessionId = message.author.id;
         const response = await axios.post(
-          "https://api.itzky.us.kg/ai/logic",
+          "https://api.itzky.us.kg/ai/meta",
           {
             prompt,
             sessionId,
@@ -269,7 +269,7 @@ class ApiManagement {
             },
           }
         );
-        await message.reply({ content: response.data.result.answer });
+        await message.reply({ content: response.data.result.message });
       } catch (error) {
         console.error("Error in aiResponse command:", error);
         return message.reply(

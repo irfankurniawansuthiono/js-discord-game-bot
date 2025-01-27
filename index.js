@@ -8,6 +8,7 @@ import {
   ActivityType,
   ChannelType,
   PermissionsBitField,
+  Partials,
 } from "discord.js";
 import {
   Player,
@@ -21,6 +22,7 @@ import { DiscordFormat } from "./ClassFunction/DiscordFormat.js";
 import { FileManagement } from "./ClassFunction/FileManagement.js";
 import { VoiceManager } from "./ClassFunction/VoiceManager.js";
 import GuildManagement from "./ClassFunction/GuildManagement.js";
+import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
@@ -49,7 +51,9 @@ export const formatBalance = (amount) =>
 
 // Initialize bot with required intents
 export const client = new Client({
+  partials: [Partials.Channel, Partials.Message],
   intents: [
+    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
@@ -97,6 +101,8 @@ const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
 const gamesManagement = new Games();
+const anonChat = new AnonChat();
+
 const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
     message.reply("This command is only available to the bot owner!");
@@ -106,6 +112,9 @@ const ownerHelperFirewall = (authorId, message) => {
 };
 
 const guildAdmin = (message) => {
+  if(message.channel.type === ChannelType.DM) {
+    return message.reply("You can't use this command in DMs.");
+  }
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     message.reply("You do not have permission to use this command.");
     return false;
@@ -612,7 +621,21 @@ const commands = {
     }
   },
   rbc: async (message) => {
-    if (!guildAdmin(message)) return;
+    if(message.channel.type === ChannelType.DM) {
+        try {
+          await message.delete(); // Coba hapus pesan
+          console.log(`[DM] Deleted message from ${message.author.username}`);
+        } catch (err) {
+          console.error("Failed to delete message in DM:", err);
+        }
+      
+        // Lakukan operasi lainnya jika diperlukan
+        const reply = await message.channel.send("Succed to delete messages.");
+        setTimeout(() => {
+          reply.delete().catch(console.error);
+        }, 5000);      
+      return;
+    }else if (!guildAdmin(message)) return;
     try {
       // Delete the command message first
       await message.delete().catch(console.error);
@@ -743,6 +766,30 @@ const commands = {
     }
     prefix = newPrefix;
     return message.reply(`Prefix set to: ${prefix}`);
+  },
+  joinanonim:async (message) => {
+    try {
+      await anonChat.joinSession(message);
+    } catch (error) {
+      console.error("Error in joinAnonim command:", error);
+      return message.channel
+        .send("An error occurred while joining the anonymous chat.")
+        .then((msg) => {
+          setTimeout(() => msg.delete().catch(console.error), 5000);
+        });
+    }
+  },
+  leaveanonim: async (message) => {
+    try {
+      await anonChat.leaveSession(message);
+    } catch (error) {
+      console.error("Error in leaveAnonim command:", error);
+      return message.channel
+        .send("An error occurred while leaving the anonymous chat.")
+        .then((msg) => {
+          setTimeout(() => msg.delete().catch(console.error), 5000);
+        });
+    }
   },
   spamsendto: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
@@ -1346,7 +1393,6 @@ const commands = {
       await discordFormat.setupGuild(message, channelName);
     } catch (error) {
       console.error("Error in createGuildChannel command:", error);
-      // Optionally send an error message to the channel
       message.reply(`Setup failed: ${error.message}`);
     }
   },
@@ -1357,8 +1403,6 @@ const commands = {
       await discordFormat.setupBusinessGuild(message, channelName);
     } catch (error) {
       console.error("Error in createGuildChannel command:", error);
-      // Optionally send an error message to the channel
-      // message.reply(`Setup failed: ${error.message}`);
     }
   },
   removebg: async (message, args) => {
@@ -1778,7 +1822,21 @@ client.on("guildMemberAdd", async (member) => {
   guildManagement.applyWelcomeRole(member.guild.id, member);
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
+
 client.on("messageCreate", async (message) => {
+  if (message.channel.type === ChannelType.DM && !message.content.startsWith(prefix)) {
+    const anonCheck = await anonChat.checkSession(message);
+    if (anonCheck) {
+      anonChat.handleMessage(message);
+      return;
+    };
+    // jika ada prefix dia tidak akan menjalankan fungsi AI
+    if (!message.content.startsWith(prefix) && message.author.id !== client.user.id) {
+      const prompt = message.content
+      message.channel.sendTyping();
+      await apiManagement.aiResponse(message, prompt);
+    };
+  }
   // jika bot di tag dan di reply dia akan menjalankan fungsi AI
   const getMessageMention = message.mentions.users.first();
   const getBotReplied =
