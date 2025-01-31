@@ -23,7 +23,7 @@ class FishingManagement {
         const inventory = dataManager.getInventoryData(interaction.user.id, "fishing");
     
         if (!inventory || inventory.length === 0) {
-            return interaction.update({ content: "You don't have any fish to sell.", ephemeral: true });
+            return interaction.update({embeds: [new EmbedBuilder().setTitle("💰 Fish Sold!").setDescription("You have no fish to sell!").setColor("#FF0000")]});
         }
     
         let totalEarnings = 0;
@@ -36,10 +36,8 @@ class FishingManagement {
             soldFishList.push(`${emoji} **${fish.amount}x** ${fish.name} - 💰 $${earnings.toLocaleString()}`);
         });
     
-        // Hapus semua ikan dari kategori "fishing"
         dataManager.updateInventory(interaction.user.id, "fishing", []);
     
-        // Tambahkan saldo ke akun user
         dataManager.updateBalance(interaction.user.id, totalEarnings);
     
         const embedColor = totalEarnings > 5000 ? "#00FF00" : totalEarnings > 1000 ? "#FFD700" : "#FF0000";
@@ -93,6 +91,10 @@ class FishingManagement {
     }
     
     async startFishing(interaction) {
+        const getUser = await dataManager.getUser(interaction.author.id);
+        if(!getUser){
+            return interaction.reply({ content: `You need to register first! Use ${config.defaultPrefix}register`, ephemeral: true });
+        }
         const fish = this.catchFish();
         const rarityColors = {
             "common": "#A0A0A0",

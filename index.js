@@ -168,6 +168,7 @@ const commands = {
     }
   },
   fish: async (message) => {
+    // check user registered or not 
     await fishingManagement.startFishing(message);
   },
   warninfo: async(message, args) => {
