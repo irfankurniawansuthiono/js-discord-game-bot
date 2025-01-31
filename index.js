@@ -25,6 +25,7 @@ import { VoiceManager } from "./ClassFunction/VoiceManager.js";
 import GuildManagement from "./ClassFunction/GuildManagement.js";
 import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
+import FishingManagement from "./ClassFunction/FishingManagement.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -84,6 +85,7 @@ export const client = new Client({
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
   ],
 });
 
@@ -125,6 +127,7 @@ const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
 const gamesManagement = new Games();
+const fishingManagement = new FishingManagement();
 const anonChat = new AnonChat();
 
 const ownerHelperFirewall = (authorId, message) => {
@@ -148,6 +151,25 @@ const guildAdmin = (message) => {
 
 
 const commands = {
+  inv:(message)=>{
+    const user = message.author.id
+    dataManager.getInventory(message, user)
+  },
+  resetinv(message) {
+    if(!ownerHelperFirewall) return;
+    const user = message.author.id;
+    const userMention = message.mentions.users.first();
+    try {
+      dataManager.resetInventory(userMention ? userMention.id : user);
+      message.reply(userMention ? `${userMention}'s inventory has been reset.` : "Your Inventory has been reset.");
+    } catch (error) {
+      message.reply("An error occurred while resetting the inventory.");
+      console.error (error);
+    }
+  },
+  fish: async (message) => {
+    await fishingManagement.startFishing(message);
+  },
   warninfo: async(message, args) => {
     if(!guildAdmin(message)) return;
     const guildId = message.guild.id;

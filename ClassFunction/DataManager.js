@@ -230,7 +230,62 @@ class DataManager {
   getUser(userId) {
     return this.users[userId];
   }
+  getInventoryData(userId, type) {
+    return this.users[userId]?.inventory?.[type] || [];
+  }
+  updateInventory(userId, type, item) {
+    this.users[userId].inventory[type] = item;
+  }
+  getInventory(message, userId) {
+    const rarityEmojis = {
+        "common": "⚪",
+        "uncommon": "🟢",
+        "rare": "🔵",
+        "epic": "🟣",
+        "legendary": "🟠",
+        "mythical": "🔴"
+    };
 
+    const userInventory = this.users[userId]?.inventory || { fishing: [] };
+    const fishingItems = userInventory.fishing.length > 0
+        ? userInventory.fishing.map((item) => {
+            const emoji = rarityEmojis[item.rarity] || "❓";
+            return `${emoji} **${item.amount}x** ${item.name} - 💰 $${item.price.toLocaleString()}`;
+        }).join("\n")
+        : "*No fish caught yet!*";
+        const totalFish = userInventory.fishing.reduce((total, fish) => total + fish.amount, 0);
+    const embedColor = userInventory.fishing.length > 5 ? "#00FF00" : "#FF0000";
+
+    const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setTitle("🎒 Your Inventory")
+        .setDescription(`Total Fish in Inventory: ${totalFish}`)
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setFooter({ text: `${message.author.username}'s Inventory`, iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) })
+        .setTimestamp()
+        .addFields({ name: "🎣 Fishing", value: fishingItems});
+
+    return message.reply({ embeds: [embed] });
+}
+
+
+  saveInventory(userId, item, type) {
+    // cari agar tidak ada duplikat data di inventory
+    const inventory = this.users[userId].inventory[type].find((i) => i.name === item.name);
+
+    if (inventory) {
+      inventory.amount += 1;
+    } else {
+      this.users[userId].inventory[type].push({ ...item, amount: 1 });
+    }
+    this.saveData();
+  }
+  resetInventory(userId) {
+    this.users[userId].inventory = {
+      fishing:[]
+    };
+    this.saveData();
+  }
   createUser(userId) {
     this.users[userId] = {
       balance: config.startingBalance,
@@ -240,6 +295,9 @@ class DataManager {
         totalEarnings: 0,
         lastDaily: null,
       },
+      inventory:{
+        fishing:[]
+      }
     };
     this.saveData();
     return this.users[userId];

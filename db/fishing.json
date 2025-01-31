@@ -1,0 +1,75 @@
+{
+    "fish": [
+      {
+        "name": "Ikan Arwana",
+        "rarity": "legendary",
+        "price": 500,
+        "weight": "2-6 kg",
+        "description": "Ikan eksotis dengan sisik berkilau yang sangat dihargai di pasar."
+      },
+      {
+        "name": "Ikan Kakap Merah",
+        "rarity": "rare",
+        "price": 250,
+        "weight": "1-8 kg",
+        "description": "Ikan yang populer untuk konsumsi dengan daging yang lembut dan enak."
+      },
+      {
+        "name": "Ikan Tuna",
+        "rarity": "epic",
+        "price": 400,
+        "weight": "10-80 kg",
+        "description": "Ikan laut besar yang banyak dicari untuk sushi dan sashimi."
+      },
+      {
+        "name": "Ikan Lele",
+        "rarity": "common",
+        "price": 50,
+        "weight": "0.3-1.5 kg",
+        "description": "Ikan air tawar yang sering dibudidayakan dan mudah ditemukan."
+      },
+      {
+        "name": "Ikan Gurame",
+        "rarity": "uncommon",
+        "price": 150,
+        "weight": "0.5-3 kg",
+        "description": "Ikan air tawar dengan daging yang gurih dan sering dijadikan hidangan spesial."
+      },
+      {
+        "name": "Ikan Mujair",
+        "rarity": "common",
+        "price": 70,
+        "weight": "0.2-1 kg",
+        "description": "Ikan air tawar yang cepat berkembang biak dan mudah ditangkap."
+      },
+      {
+        "name": "Ikan Hiu",
+        "rarity": "mythical",
+        "price": 1000,
+        "weight": "50-300 kg",
+        "description": "Predator laut yang kuat dan langka ditemukan oleh pemancing."
+      },
+      {
+        "name": "Ikan Pari",
+        "rarity": "rare",
+        "price": 300,
+        "weight": "5-30 kg",
+        "description": "Ikan unik dengan bentuk pipih yang sering ditemukan di laut tropis."
+      },
+      {
+        "name": "Ikan Bawal",
+        "rarity": "uncommon",
+        "price": 120,
+        "weight": "0.5-2 kg",
+        "description": "Ikan yang populer untuk konsumsi karena dagingnya yang lembut."
+      },
+      {
+        "name": "Ikan Teri",
+        "rarity": "common",
+        "price": 20,
+        "weight": "0.01-0.1 kg",
+        "description": "Ikan kecil yang biasanya dikeringkan atau dijadikan sambal."
+      }
+    ]
+  }
+  

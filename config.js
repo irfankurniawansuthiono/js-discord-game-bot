@@ -17,6 +17,7 @@ const config = {
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
+  fishingFile: "./db/fishing.json",
 };
 
 const discordEmotes = {
@@ -139,6 +140,7 @@ const pages = {
       {
         name: "👥 Social",
         value: [
+          "`🎒 inv` - Show user inventory",
           "`💝 give <@user> <amount>` - Give money",
           "`📊 rank` - Show top players",
           "`📨 invite` - Invite Nanami",
@@ -157,6 +159,7 @@ const pages = {
       {
         name: "🛠️ Owner Commands",
         value: [
+          "`🎒 resetinv <@user?>` - Reset inventory",
           "`👤 registeruser <@user>` - Register a user",
           "`💰 setbalance <@user>` - Set balance",
           "`💸 giveowner <amount>` - Give to owner",

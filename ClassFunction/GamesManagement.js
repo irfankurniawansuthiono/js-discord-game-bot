@@ -388,7 +388,7 @@ class Games {
       const emojis = ["⭐", "🍒", "🍇", "🍑", "🍆", "🌽"];
 
       // 20% chance to win
-      let winningChance = Math.random() < 0.8;
+      let winningChance = Math.random() < 0.2;
       let starChance = Math.random() < 0.1;
 
       // Fungsi untuk mendapatkan random emoji
