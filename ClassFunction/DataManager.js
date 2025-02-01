@@ -306,6 +306,7 @@ class DataManager {
   updateBalance(userId, amount) {
     if (!this.users[userId]) return false;
     this.users[userId].balance += amount;
+    this.users[userId].stats.totalEarnings += amount;
     this.saveData();
     return true;
   }

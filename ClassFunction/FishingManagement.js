@@ -1,192 +1,241 @@
-import fs from "fs";
-import { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder, ComponentType }from "discord.js";
-import { config } from "../config.js";
-import { DataManager } from "./DataManager.js";
-
-const dataManager = new DataManager()
+import { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ComponentType, AttachmentBuilder } from 'discord.js';
+import fs from 'fs';
+import { DataManager } from './DataManager.js';
+import { config } from '../config.js';
 class FishingManagement {
     constructor() {
+        this.dataManager = new DataManager;
+        this.config = config;
         this.fishingData = {};
+        this.rarityColors = {
+            common: "#A0A0A0",
+            uncommon: "#1ABC9C",
+            rare: "#3498DB",
+            epic: "#9B59B6",
+            legendary: "#E67E22",
+            mythical: "#E74C3C"
+        };
+        this.rarityEmojis = {
+            common: "⚪",
+            uncommon: "🟢",
+            rare: "🔵",
+            epic: "🟣",
+            legendary: "🟠",
+            mythical: "🔴"
+        };
+        this.rarityChances = {
+            common: 50,
+            uncommon: 25,
+            rare: 15,
+            epic: 7,
+            legendary: 2,
+            mythical: 1
+        };
         this.loadData();
     }
 
-    async sellFish(interaction) {
-        const rarityEmojis = {
-            "common": "⚪",
-            "uncommon": "🟢",
-            "rare": "🔵",
-            "epic": "🟣",
-            "legendary": "🟠",
-            "mythical": "🔴"
-        };
-    
-        const inventory = dataManager.getInventoryData(interaction.user.id, "fishing");
-    
-        if (!inventory || inventory.length === 0) {
-            return interaction.update({embeds: [new EmbedBuilder().setTitle("💰 Fish Sold!").setDescription("You have no fish to sell!").setColor("#FF0000")]});
-        }
-    
-        let totalEarnings = 0;
-        let soldFishList = [];
-    
-        inventory.forEach(fish => {
-            const earnings = fish.price * fish.amount;
-            totalEarnings += earnings;
-            const emoji = rarityEmojis[fish.rarity] || "❓";
-            soldFishList.push(`${emoji} **${fish.amount}x** ${fish.name} - 💰 $${earnings.toLocaleString()}`);
-        });
-    
-        dataManager.updateInventory(interaction.user.id, "fishing", []);
-    
-        dataManager.updateBalance(interaction.user.id, totalEarnings);
-    
-        const embedColor = totalEarnings > 5000 ? "#00FF00" : totalEarnings > 1000 ? "#FFD700" : "#FF0000";
-    
-        const embed = new EmbedBuilder()
-            .setTitle("💰 Fish Sold!")
-            .setColor(embedColor)
-            .setDescription(`You sold all your fish and earned **$${totalEarnings.toLocaleString()}**!`)
-            .addFields({ name: "🐠 Sold Fish", value: soldFishList.length > 0 ? soldFishList.join("\n") : "*No fish sold!*" })
-            .setFooter({ text: "Keep fishing to earn more money!" })
-            .setTimestamp();
-    
-        return interaction.update({ embeds: [embed], ephemeral: true });
-    }
-    
-    
-    async showFishingInventory(interaction) {
-        const rarityEmojis = {
-            "common": "⚪",
-            "uncommon": "🟢",
-            "rare": "🔵",
-            "epic": "🟣",
-            "legendary": "🟠",
-            "mythical": "🔴"
-        };
-    
-        const inventory = dataManager.getInventoryData(interaction.user.id, "fishing");
-    
-        if (!inventory || inventory.length === 0) {
-            return interaction.update({ content: "You don't have any fish in your inventory.", ephemeral: true });
-        }
-    
-        const totalFish = inventory.reduce((total, fish) => total + fish.amount, 0);
-    
-        const fishList = inventory.map(fish => {
-            const emoji = rarityEmojis[fish.rarity] || "❓";
-            return `${emoji} **${fish.amount}x** ${fish.name} - 💰 $${fish.price.toLocaleString()}`;
-        });
-    
-        const embedColor = totalFish > 10 ? "#00FF00" : totalFish > 5 ? "#FFD700" : "#FF0000";
-    
-        const embed = new EmbedBuilder()
-            .setTitle("🎣 Fishing Inventory")
-            .setColor(embedColor)
-            .setDescription(`You have **${totalFish}** fish in your inventory.`)
-            .addFields({ name: "🐠 Fish List", value: fishList.join("\n") })
-            .setFooter({ text: "Keep fishing to earn more money!" })
-            .setTimestamp();
-    
-        return interaction.update({ embeds: [embed], ephemeral: true });
-    }
-    
     async startFishing(interaction) {
-        const getUser = await dataManager.getUser(interaction.author.id);
-        if(!getUser){
-            return interaction.reply({ content: `You need to register first! Use ${config.defaultPrefix}register`, ephemeral: true });
+        try {
+            // Check if user is registered
+            const user = await this.dataManager.getUser(interaction.author.id);
+            if (!user) {
+                return interaction.reply({ 
+                    content: `You need to register first! Use ${this.config.defaultPrefix}register`, 
+                    ephemeral: true 
+                });
+            }
+
+            // Prepare fishing animation
+            const attachment = await this.createFishingAnimation();
+            
+            // Send initial fishing message
+            const fishingMessage = await interaction.reply({
+                content: 'You are fishing... 🎣',
+                files: [attachment],
+                fetchReply: true
+            });
+
+            // Catch fish and create embed
+            const fish = this.catchFish();
+            const embed = this.createFishEmbed(fish, interaction.author.username);
+            const actionRow = this.createActionRow();
+
+            // Save to inventory
+            this.dataManager.saveInventory(interaction.author.id, fish, "fishing");
+
+            // Update message after delay
+            setTimeout(async () => {
+                await fishingMessage.edit({
+                    embeds: [embed],
+                    components: [actionRow],
+                    files: [],
+                    content: ""
+                });
+            }, 7000);
+
+            // Set up button collector
+            this.setupButtonCollector(fishingMessage, interaction, attachment);
+        } catch (error) {
+            console.error("Error in startFishing:", error);
+            return interaction.reply({
+                content: "Sorry, something went wrong while fishing!",
+                ephemeral: true
+            });
         }
-        const fish = this.catchFish();
-        const rarityColors = {
-            "common": "#A0A0A0",
-            "uncommon": "#1ABC9C", 
-            "rare": "#3498DB",
-            "epic": "#9B59B6",
-            "legendary": "#E67E22",
-            "mythical": "#E74C3C"
-        };
-        
-        const embed = new EmbedBuilder()
-            .setTitle(`🎣 ${interaction.author.username} Caught a ${fish.name}!`)
-            .setColor(rarityColors[fish.rarity] || "#0099ff")
+    }
+
+    async sellFish(interaction) {
+        try {
+            const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
+
+            if (!inventory || inventory.length === 0) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("💰 Fish Not Sold!")
+                            .setDescription("You have no fish to sell!")
+                            .setColor("#FF0000")
+                    ]
+                });
+            }
+
+            const { totalEarnings, soldFishList } = this.calculateSale(inventory);
+
+            // Update user data
+            await this.dataManager.updateInventory(interaction.user.id, "fishing", []);
+            await this.dataManager.updateBalance(interaction.user.id, totalEarnings);
+
+            // Create and send embed
+            const embed = this.createSaleEmbed(totalEarnings, soldFishList);
+            return interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error("Error in sellFish:", error);
+            return interaction.editReply({
+                content: "Sorry, something went wrong while selling fish!",
+                ephemeral: true
+            });
+        }
+    }
+
+    async showFishingInventory(interaction) {
+        try {
+            const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
+
+            if (!inventory || inventory.length === 0) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("🎒 Fishing Inventory")
+                            .setDescription("You have no fish in your inventory!")
+                            .setColor("#FF0000")
+                    ]
+                });
+            }
+
+            const totalFish = inventory.reduce((total, fish) => total + fish.amount, 0);
+            const fishList = this.createInventoryList(inventory);
+            const embed = this.createInventoryEmbed(totalFish, fishList);
+
+            return interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error("Error in showFishingInventory:", error);
+            return interaction.editReply({
+                content: "Sorry, something went wrong while showing inventory!",
+                ephemeral: true
+            });
+        }
+    }
+
+    // Helper Methods
+    async createFishingAnimation() {
+        const fishingGif = "./assets/fishing/fishing-animation.gif";
+        const buffer = await fs.promises.readFile(fishingGif);
+        return new AttachmentBuilder(buffer, { name: 'fishing-animation.gif' });
+    }
+
+    createActionRow() {
+        return new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setLabel("🎣 Fish Again")
+                    .setCustomId("fishAgain")
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setLabel("💰 Sell Fish")
+                    .setCustomId("sellFish")
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setLabel("🎒 Inventory")
+                    .setCustomId("inventory")
+                    .setStyle(ButtonStyle.Secondary)
+            );
+    }
+
+    createFishEmbed(fish, username) {
+        return new EmbedBuilder()
+            .setTitle(`🎣 ${username} Caught a ${fish.name}!`)
+            .setColor(this.rarityColors[fish.rarity] || "#0099ff")
             .addFields(
                 { name: "🌟 Rarity", value: `**${fish.rarity.toUpperCase()}**`, inline: true },
                 { name: "💰 Price", value: `**$ ${fish.price.toLocaleString()}**`, inline: true },
                 { name: "⚖️ Weight", value: `**${fish.weight}**`, inline: true }
             )
             .setFooter({ text: "🎣 Keep fishing to find rarer fish!" });
-    
-        const buttonFishAgain = new ButtonBuilder()
-            .setLabel("🎣 Fish Again")
-            .setCustomId(`fishAgain`)
-            .setStyle(ButtonStyle.Primary);
-        const buttonSellFish = new ButtonBuilder()
-            .setLabel("💰 Sell Fish")
-            .setCustomId(`sellFish`)
-            .setStyle(ButtonStyle.Danger);
-        const buttonInventory = new ButtonBuilder()
-            .setLabel("🎒 Inventory")
-            .setCustomId(`inventory`)
-            .setStyle(ButtonStyle.Secondary);
-        const actionRow = new ActionRowBuilder().addComponents(buttonFishAgain, buttonSellFish, buttonInventory);
-        dataManager.saveInventory(interaction.author.id, fish, "fishing");
-        const response = await interaction.reply({ 
-            embeds: [embed], 
-            components: [actionRow],
-            fetchReply: true 
+    }
+
+    createSaleEmbed(totalEarnings, soldFishList) {
+        const embedColor = totalEarnings > 5000 ? "#00FF00" : totalEarnings > 1000 ? "#FFD700" : "#FF0000";
+        return new EmbedBuilder()
+            .setTitle("💰 Fish Sold!")
+            .setColor(embedColor)
+            .setDescription(`You sold all your fish and earned **$${totalEarnings.toLocaleString()}**!`)
+            .addFields({ 
+                name: "🐠 Sold Fish", 
+                value: soldFishList.length > 0 ? soldFishList.join("\n") : "*No fish sold!*" 
+            })
+            .setFooter({ text: "Keep fishing to earn more money!" })
+            .setTimestamp();
+    }
+
+    createInventoryEmbed(totalFish, fishList) {
+        const embedColor = totalFish > 10 ? "#00FF00" : totalFish > 5 ? "#FFD700" : "#FF0000";
+        return new EmbedBuilder()
+            .setTitle("🎣 Fishing Inventory")
+            .setColor(embedColor)
+            .setDescription(`You have **${totalFish}** fish in your inventory.`)
+            .addFields({ name: "🐠 Fish List", value: fishList.join("\n") })
+            .setFooter({ text: "Keep fishing to earn more money!" })
+            .setTimestamp();
+    }
+
+    calculateSale(inventory) {
+        let totalEarnings = 0;
+        let soldFishList = [];
+
+        inventory.forEach(fish => {
+            const earnings = fish.price * fish.amount;
+            totalEarnings += earnings;
+            const emoji = this.rarityEmojis[fish.rarity] || "❓";
+            soldFishList.push(`${emoji} **${fish.amount}x** ${fish.name} - 💰 $${earnings.toLocaleString()}`);
         });
-    
-        const collector = response.createMessageComponentCollector({
-            componentType: ComponentType.Button,
-        });
-        
-        collector.on('collect', async (buttonInteraction) => {
-            if(buttonInteraction.user.id !== interaction.author.id) {
-                return buttonInteraction.reply({ content: "You can't use this button!", ephemeral: true });
-            }
-            if(buttonInteraction.customId === "fishAgain") {
-                const newFish = this.catchFish(); // Generate a new fish
-                
-                const newEmbed = new EmbedBuilder()
-                    .setTitle(`🎣 ${buttonInteraction.user.username} Caught a ${newFish.name}!`)
-                    .setColor(rarityColors[newFish.rarity] || "#0099ff")
-                    .addFields(
-                        { name: "🌟 Rarity", value: `**${newFish.rarity.toUpperCase()}**`, inline: true },
-                        { name: "💰 Price", value: `**$ ${newFish.price.toLocaleString()}**`, inline: true },
-                        { name: "⚖️ Weight", value: `**${newFish.weight}**`, inline: true }
-                    )
-                    .setFooter({ text: "🎣 Keep fishing to find rarer fish!" });
-        
-                await buttonInteraction.update({ 
-                    embeds: [newEmbed],
-                    components: [actionRow]
-                });
-                dataManager.saveInventory(buttonInteraction.user.id, newFish, "fishing");
-            }else if(buttonInteraction.customId === "sellFish") {
-                await this.sellFish(buttonInteraction);
-            }else if (buttonInteraction.customId === "inventory") {
-                await this.showFishingInventory(buttonInteraction);
-            }
-        });
-    
-        collector.on('end', async () => {
-            button.setDisabled(true);
+
+        return { totalEarnings, soldFishList };
+    }
+
+    createInventoryList(inventory) {
+        return inventory.map(fish => {
+            const emoji = this.rarityEmojis[fish.rarity] || "❓";
+            return `${emoji} **${fish.amount}x** ${fish.name} - 💰 $${fish.price.toLocaleString()}`;
         });
     }
 
     catchFish() {
         const fishList = this.fishingData.fish;
-        const rarityChances = {
-            "common": 50,
-            "uncommon": 25,
-            "rare": 15,
-            "epic": 7,
-            "legendary": 2,
-            "mythical": 1
-        };
-        
         let weightedFish = [];
+        
         fishList.forEach(fish => {
-            for (let i = 0; i < rarityChances[fish.rarity]; i++) {
+            const chance = this.rarityChances[fish.rarity];
+            for (let i = 0; i < chance; i++) {
                 weightedFish.push(fish);
             }
         });
@@ -195,19 +244,82 @@ class FishingManagement {
         return weightedFish[randomIndex];
     }
 
-    async loadData() {
-        try {
-            if (fs.existsSync(`${config.fishingFile}`)) {
-                const data = JSON.parse(fs.readFileSync(`${config.fishingFile}`, "utf8"));
-                if (data) {
-                    this.fishingData = data;
+    setupButtonCollector(message, originalInteraction, attachment) {
+        const collector = message.createMessageComponentCollector({
+            componentType: ComponentType.Button,
+            time: 300000 // 5 minutes
+        });
+
+        collector.on('collect', async (buttonInteraction) => {
+            try {
+                if (buttonInteraction.user.id !== originalInteraction.author.id) {
+                    return buttonInteraction.reply({ 
+                        content: "You can't use this button!", 
+                        ephemeral: true 
+                    });
                 }
+
+                await buttonInteraction.deferUpdate();
+
+                switch (buttonInteraction.customId) {
+                    case 'fishAgain':
+                        await this.handleFishAgain(buttonInteraction, attachment);
+                        break;
+                    case 'sellFish':
+                        await this.sellFish(buttonInteraction);
+                        break;
+                    case 'inventory':
+                        await this.showFishingInventory(buttonInteraction);
+                        break;
+                }
+            } catch (error) {
+                console.error("Error in button collector:", error);
+            }
+        });
+
+        collector.on('end', () => {
+            const disabledRow = this.createActionRow();
+            disabledRow.components.forEach(button => button.setDisabled(true));
+            message.edit({ components: [disabledRow] }).catch(console.error);
+        });
+    }
+
+    async handleFishAgain(interaction, attachment) {
+        await interaction.editReply({
+            content: "You are fishing... 🎣",
+            files: [attachment],
+            embeds: [],
+            components: []
+        });
+
+        const newFish = this.catchFish();
+        const embed = this.createFishEmbed(newFish, interaction.user.username);
+        const actionRow = this.createActionRow();
+
+        await this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
+
+        setTimeout(async () => {
+            await interaction.editReply({
+                embeds: [embed],
+                components: [actionRow],
+                files: [],
+                content: ""
+            });
+        }, 7000);
+    }
+
+    loadData() {
+        try {
+            const filePath = this.config.fishingFile;
+            if (fs.existsSync(filePath)) {
+                const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+                this.fishingData = data || {};
             }
         } catch (error) {
-            console.error("Error loading data:", error);
+            console.error("Error loading fishing data:", error);
             this.fishingData = {};
         }
     }
-
 }
- export default FishingManagement;
+
+export default FishingManagement;
