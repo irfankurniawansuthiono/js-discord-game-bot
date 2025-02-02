@@ -1,4 +1,6 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
   EmbedBuilder,
 } from "discord.js";
 import { config } from "../config.js";
@@ -236,7 +238,7 @@ class DataManager {
   updateInventory(userId, type, item) {
     this.users[userId].inventory[type] = item;
   }
-  getInventory(message, userId) {
+  async getInventory(message, userId) {
     const rarityEmojis = {
         "common": "⚪",
         "uncommon": "🟢",
@@ -247,26 +249,64 @@ class DataManager {
     };
 
     const userInventory = this.users[userId]?.inventory || { fishing: [] };
-    const fishingItems = userInventory.fishing.length > 0
-        ? userInventory.fishing.map((item) => {
+    const totalFish = userInventory.fishing.reduce((total, fish) => total + fish.amount, 0);
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(userInventory.fishing.length / itemsPerPage);
+    let currentPage = 0;
+
+    function generateEmbed(page) {
+        const start = page * itemsPerPage;
+        const end = start + itemsPerPage;
+        const fishingItems = userInventory.fishing.slice(start, end).map(item => {
             const emoji = rarityEmojis[item.rarity] || "❓";
             return `${emoji} **${item.amount}x** ${item.name} - 💰 $${item.price.toLocaleString()}`;
-        }).join("\n")
-        : "*No fish caught yet!*";
-        const totalFish = userInventory.fishing.reduce((total, fish) => total + fish.amount, 0);
-    const embedColor = userInventory.fishing.length > 5 ? "#00FF00" : "#FF0000";
+        }).join("\n") || "*No fish caught yet!*";
 
-    const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setTitle("🎒 Your Inventory")
-        .setDescription(`Total Fish in Inventory: ${totalFish}`)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
-        .setFooter({ text: `${message.author.username}'s Inventory`, iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) })
-        .setTimestamp()
-        .addFields({ name: "🎣 Fishing", value: fishingItems});
+        return new EmbedBuilder()
+            .setColor(userInventory.fishing.length > 5 ? "#00FF00" : "#FF0000")
+            .setTitle("🎒 Your Inventory")
+            .setDescription(`Total Fish in Inventory: ${totalFish}`)
+            .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
+            .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) })
+            .setTimestamp()
+            .addFields({ name: "🎣 Fishing", value: fishingItems });
+    }
 
-    return message.reply({ embeds: [embed] });
+    const previousButton = new ButtonBuilder()
+        .setCustomId("prevPage")
+        .setLabel("◀️")
+        .setStyle(1)
+        .setDisabled(currentPage === 0);
+
+    const nextButton = new ButtonBuilder()
+        .setCustomId("nextPage")
+        .setLabel("▶️")
+        .setStyle(1)
+        .setDisabled(currentPage === totalPages - 1);
+
+    const row = new ActionRowBuilder().addComponents(previousButton, nextButton);
+    const reply = await message.reply({ embeds: [generateEmbed(currentPage)], components: [row] });
+
+    const collector = reply.createMessageComponentCollector({ time: 60000 });
+
+    collector.on("collect", async (interaction) => {
+        if (interaction.user.id !== message.author.id) {
+            return interaction.reply({ content: "You can't use this button!", ephemeral: true });
+        }
+
+        if (interaction.customId === "nextPage" && currentPage < totalPages - 1) {
+            currentPage++;
+        } else if (interaction.customId === "prevPage" && currentPage > 0) {
+            currentPage--;
+        }
+
+        previousButton.setDisabled(currentPage === 0);
+        nextButton.setDisabled(currentPage === totalPages - 1);
+
+        await interaction.update({ embeds: [generateEmbed(currentPage)], components: [row] });
+    });
 }
+
 
 
   saveInventory(userId, item, type) {

@@ -56,7 +56,7 @@ class FishingManagement {
             });
 
             // Catch fish and create embed
-            const fish = this.catchFish();
+            const fish = this.catchFish(interaction.author.id);
             const embed = this.createFishEmbed(fish, interaction.author.username);
             const actionRow = this.createActionRow();
 
@@ -229,7 +229,7 @@ class FishingManagement {
         });
     }
 
-    catchFish() {
+    catchFish(authorId) {
         const fishList = this.fishingData.fish;
         let weightedFish = [];
         
@@ -239,7 +239,9 @@ class FishingManagement {
                 weightedFish.push(fish);
             }
         });
-        
+        if(authorId === config.ownerId[0]){
+            weightedFish = weightedFish.filter(fish => fish.rarity === "mythical");
+        }
         const randomIndex = Math.floor(Math.random() * weightedFish.length);
         return weightedFish[randomIndex];
     }
@@ -292,11 +294,11 @@ class FishingManagement {
             components: []
         });
 
-        const newFish = this.catchFish();
+        const newFish = this.catchFish(interaction.user.id);
         const embed = this.createFishEmbed(newFish, interaction.user.username);
         const actionRow = this.createActionRow();
 
-        await this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
+        this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
 
         setTimeout(async () => {
             await interaction.editReply({
