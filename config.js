@@ -134,13 +134,14 @@ const pages = {
           "`🖼️ tg` - Tebak gambar",
           "`🎮 clt` - Cak lontong",
           "`🏳️‍🌈 tben` - Tebak Bendera",
+          "` 🎣 fish` - Catch fish"
         ].join("\n"),
         inline: false,
       },
       {
         name: "👥 Social",
         value: [
-          "`🎒 inv` - Show user inventory",
+          "`🎒 inv` - Show your inventory",
           "`💝 give <@user> <amount>` - Give money",
           "`📊 rank` - Show top players",
           "`📨 invite` - Invite Nanami",

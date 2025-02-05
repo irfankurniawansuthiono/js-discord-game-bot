@@ -2,9 +2,10 @@ import { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ComponentTy
 import fs from 'fs';
 import { DataManager } from './DataManager.js';
 import { config } from '../config.js';
+
 class FishingManagement {
     constructor() {
-        this.dataManager = new DataManager;
+        this.dataManager = new DataManager();
         this.config = config;
         this.fishingData = {};
         this.rarityColors = {
@@ -50,7 +51,7 @@ class FishingManagement {
             
             // Send initial fishing message
             const fishingMessage = await interaction.reply({
-                content: 'You are fishing... 🎣',
+                content: `${interaction.author.username} are fishing... 🎣`,
                 files: [attachment],
                 fetchReply: true
             });
@@ -102,12 +103,20 @@ class FishingManagement {
             const { totalEarnings, soldFishList } = this.calculateSale(inventory);
 
             // Update user data
-            await this.dataManager.updateInventory(interaction.user.id, "fishing", []);
-            await this.dataManager.updateBalance(interaction.user.id, totalEarnings);
+            this.dataManager.updateInventory(interaction.user.id, "fishing", []);
+            this.dataManager.updateBalance(interaction.user.id, totalEarnings);
 
             // Create and send embed
             const embed = this.createSaleEmbed(totalEarnings, soldFishList);
-            return interaction.editReply({ embeds: [embed] });
+            // make action row
+            const row = this.createActionRow()
+
+            const attachment = this.createFishingAnimation();
+
+            const message = await interaction.channel.send({ embeds: [embed], components: [row] });
+
+            // Set up button collector
+            this.setupButtonCollector(message, interaction, attachment);
         } catch (error) {
             console.error("Error in sellFish:", error);
             return interaction.editReply({
@@ -118,35 +127,83 @@ class FishingManagement {
     }
 
     async showFishingInventory(interaction) {
-        try {
-            const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
-
-            if (!inventory || inventory.length === 0) {
-                return interaction.editReply({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setTitle("🎒 Fishing Inventory")
-                            .setDescription("You have no fish in your inventory!")
-                            .setColor("#FF0000")
-                    ]
-                });
-            }
-
-            const totalFish = inventory.reduce((total, fish) => total + fish.amount, 0);
-            const fishList = this.createInventoryList(inventory);
-            const embed = this.createInventoryEmbed(totalFish, fishList);
-
-            return interaction.editReply({ embeds: [embed] });
-        } catch (error) {
-            console.error("Error in showFishingInventory:", error);
-            return interaction.editReply({
-                content: "Sorry, something went wrong while showing inventory!",
-                ephemeral: true
-            });
+    
+        const userInventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
+        const totalFish = userInventory.reduce((total, fish) => total + fish.amount, 0);
+        const itemsPerPage = 10;
+        const totalPages = Math.ceil(userInventory.length / itemsPerPage);
+        let currentPage = 0;
+    
+        function generateEmbed(page, rarityEmojis) {
+            const start = page * itemsPerPage;
+            const end = start + itemsPerPage;
+            const fishingItems = userInventory.slice(start, end).map(item => {
+                const emoji = rarityEmojis[item.rarity] || "❓";
+                return `${emoji} **${item.amount}x** ${item.name} - 💰 $${item.price.toLocaleString()}`;
+            }).join("\n") || "*No fish caught yet!*";
+    
+            return new EmbedBuilder()
+                .setColor(userInventory.length > 5 ? "#00FF00" : "#FF0000")
+                .setTitle(`🎒 ${interaction.user.username} Inventory`)
+                .setDescription(`Total Fish in Inventory: ${totalFish}`)
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true, size: 256 }))
+                .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: interaction.user.displayAvatarURL({ dynamic: true, size: 256 }) })
+                .setTimestamp()
+                .addFields({ name: "🎣 Fishing", value: fishingItems });
         }
+    
+        const previousButton = new ButtonBuilder()
+            .setCustomId("prevPage")
+            .setLabel("◀️")
+            .setStyle(1)
+            .setDisabled(currentPage === 0);
+        const nextButton = new ButtonBuilder()
+            .setCustomId("nextPage")
+            .setLabel("▶️")
+            .setStyle(1)
+            .setDisabled(currentPage === totalPages - 1);
+        const fishAgainButton = new ButtonBuilder()
+            .setCustomId("fishAgain")
+            .setLabel("🎣 Fish Again")
+            .setStyle(2);
+        const sellFishButton = new ButtonBuilder()
+            .setCustomId("sellFish")
+            .setLabel("💰 Sell Fish")
+            .setStyle(4);
+        const row = new ActionRowBuilder().addComponents(previousButton, nextButton, fishAgainButton, sellFishButton);
+        const reply = await interaction.channel.send({ embeds: [generateEmbed(currentPage, this.rarityEmojis)], components: [row] });
+    
+        const collector = reply.createMessageComponentCollector({ time: 60000 });
+        const attachment = await this.createFishingAnimation();
+        collector.on("collect", async (interaction) => {
+            await interaction.deferUpdate(); // Menunda pembaruan interaksi
+        
+            switch (interaction.customId) {
+                case "fishAgain":
+                    await this.handleFishAgain(interaction, attachment);
+                    collector.stop(); // Hentikan collector setelah fishAgain
+                    break;
+                case "sellFish":
+                    await this.sellFish(interaction);
+                    collector.stop(); // Hentikan collector setelah sellFish
+                    break;
+                case "prevPage":
+                    currentPage--;
+                    break;
+                case "nextPage":
+                    currentPage++;
+                    break;
+            }
+        
+            // Update status tombol
+            previousButton.setDisabled(currentPage === 0);
+            nextButton.setDisabled(currentPage === totalPages - 1 || totalFish === 0);
+        
+            // Edit pesan untuk memperbarui embed dan tombol
+            await reply.edit({ embeds: [generateEmbed(currentPage, this.rarityEmojis)], components: [row] });
+        });
     }
 
-    // Helper Methods
     async createFishingAnimation() {
         const fishingGif = "./assets/fishing/fishing-animation.gif";
         const buffer = await fs.promises.readFile(fishingGif);
@@ -197,17 +254,6 @@ class FishingManagement {
             .setTimestamp();
     }
 
-    createInventoryEmbed(totalFish, fishList) {
-        const embedColor = totalFish > 10 ? "#00FF00" : totalFish > 5 ? "#FFD700" : "#FF0000";
-        return new EmbedBuilder()
-            .setTitle("🎣 Fishing Inventory")
-            .setColor(embedColor)
-            .setDescription(`You have **${totalFish}** fish in your inventory.`)
-            .addFields({ name: "🐠 Fish List", value: fishList.join("\n") })
-            .setFooter({ text: "Keep fishing to earn more money!" })
-            .setTimestamp();
-    }
-
     calculateSale(inventory) {
         let totalEarnings = 0;
         let soldFishList = [];
@@ -222,15 +268,8 @@ class FishingManagement {
         return { totalEarnings, soldFishList };
     }
 
-    createInventoryList(inventory) {
-        return inventory.map(fish => {
-            const emoji = this.rarityEmojis[fish.rarity] || "❓";
-            return `${emoji} **${fish.amount}x** ${fish.name} - 💰 $${fish.price.toLocaleString()}`;
-        });
-    }
-
     catchFish(authorId) {
-        const fishList = this.fishingData.fish;
+        const fishList = this.fishingData.fish || [];
         let weightedFish = [];
         
         fishList.forEach(fish => {
@@ -239,30 +278,25 @@ class FishingManagement {
                 weightedFish.push(fish);
             }
         });
-        if(authorId === config.ownerId[0]){
+
+        // Special condition for bot owner to always catch mythical fish
+        if (authorId === this.config.ownerId[0]) {
             weightedFish = weightedFish.filter(fish => fish.rarity === "mythical");
         }
+
         const randomIndex = Math.floor(Math.random() * weightedFish.length);
         return weightedFish[randomIndex];
     }
 
-    setupButtonCollector(message, originalInteraction, attachment) {
+    setupButtonCollector(message,originalInteraction, attachment) {
         const collector = message.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 300000 // 5 minutes
+            time: 60000 // 1 minute timeout
         });
 
         collector.on('collect', async (buttonInteraction) => {
             try {
-                if (buttonInteraction.user.id !== originalInteraction.author.id) {
-                    return buttonInteraction.reply({ 
-                        content: "You can't use this button!", 
-                        ephemeral: true 
-                    });
-                }
-
                 await buttonInteraction.deferUpdate();
-
                 switch (buttonInteraction.customId) {
                     case 'fishAgain':
                         await this.handleFishAgain(buttonInteraction, attachment);
@@ -274,6 +308,8 @@ class FishingManagement {
                         await this.showFishingInventory(buttonInteraction);
                         break;
                 }
+                collector.stop();
+
             } catch (error) {
                 console.error("Error in button collector:", error);
             }
@@ -287,27 +323,31 @@ class FishingManagement {
     }
 
     async handleFishAgain(interaction, attachment) {
-        await interaction.editReply({
-            content: "You are fishing... 🎣",
+        const message = await interaction.channel.send({
+            content: `${interaction.user.username} are fishing... 🎣`,
             files: [attachment],
             embeds: [],
-            components: []
-        });
+            components: [],
+            fetchReply: true
+        }, );
 
         const newFish = this.catchFish(interaction.user.id);
         const embed = this.createFishEmbed(newFish, interaction.user.username);
         const actionRow = this.createActionRow();
-
         this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
 
+        
         setTimeout(async () => {
-            await interaction.editReply({
+            await message.edit({
                 embeds: [embed],
                 components: [actionRow],
                 files: [],
                 content: ""
             });
         }, 7000);
+
+        // Set up button collector
+        this.setupButtonCollector(message, interaction, attachment);
     }
 
     loadData() {
