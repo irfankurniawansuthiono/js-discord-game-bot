@@ -5,34 +5,37 @@ import { config } from '../config.js';
 
 class FishingManagement {
     constructor() {
-        this.dataManager = new DataManager();
-        this.config = config;
-        this.fishingData = {};
-        this.rarityColors = {
-            common: "#A0A0A0",
-            uncommon: "#1ABC9C",
-            rare: "#3498DB",
-            epic: "#9B59B6",
-            legendary: "#E67E22",
-            mythical: "#E74C3C"
-        };
-        this.rarityEmojis = {
-            common: "⚪",
-            uncommon: "🟢",
-            rare: "🔵",
-            epic: "🟣",
-            legendary: "🟠",
-            mythical: "🔴"
-        };
-        this.rarityChances = {
-            common: 50,
-            uncommon: 25,
-            rare: 15,
-            epic: 7,
-            legendary: 2,
-            mythical: 1
-        };
-        this.loadData();
+        if(!FishingManagement.instance) {
+            this.dataManager = new DataManager();
+            this.config = config;
+            this.fishingData = {};
+            this.rarityColors = {
+                common: "#A0A0A0",
+                uncommon: "#1ABC9C",
+                rare: "#3498DB",
+                epic: "#9B59B6",
+                legendary: "#E67E22",
+                mythical: "#E74C3C"
+            };
+            this.rarityEmojis = {
+                common: "⚪",
+                uncommon: "🟢",
+                rare: "🔵",
+                epic: "🟣",
+                legendary: "🟠",
+                mythical: "🔴"
+            };
+            this.rarityChances = {
+                common: 50,
+                uncommon: 25,
+                rare: 15,
+                epic: 7,
+                legendary: 2,
+                mythical: 1
+            };
+            this.loadData();
+        }
+        return FishingManagement.instance;
     }
 
     async startFishing(interaction) {
@@ -51,7 +54,7 @@ class FishingManagement {
             
             // Send initial fishing message
             const fishingMessage = await interaction.reply({
-                content: `${interaction.author.username} are fishing... 🎣`,
+                content: `${interaction.author} is fishing... 🎣`,
                 files: [attachment],
                 fetchReply: true
             });
@@ -88,7 +91,7 @@ class FishingManagement {
     async sellFish(interaction) {
         try {
             const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
-
+    
             if (!inventory || inventory.length === 0) {
                 return interaction.editReply({
                     embeds: [
@@ -99,24 +102,84 @@ class FishingManagement {
                     ]
                 });
             }
-
+    
             const { totalEarnings, soldFishList } = this.calculateSale(inventory);
-
-            // Update user data
+            
             this.dataManager.updateInventory(interaction.user.id, "fishing", []);
             this.dataManager.updateBalance(interaction.user.id, totalEarnings);
-
-            // Create and send embed
-            const embed = this.createSaleEmbed(totalEarnings, soldFishList);
-            // make action row
-            const row = this.createActionRow()
-
-            const attachment = this.createFishingAnimation();
-
-            const message = await interaction.channel.send({ embeds: [embed], components: [row] });
-
-            // Set up button collector
-            this.setupButtonCollector(message, interaction, attachment);
+    
+            if (soldFishList.length === 0) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("💰 No Fish Sold!")
+                            .setDescription("Something went wrong, no fish were sold!")
+                            .setColor("#FF0000")
+                    ]
+                });
+            }
+    
+            const chunkSize = 10;
+            const totalPages = Math.ceil(soldFishList.length / chunkSize);
+            const embeds = this.createSaleEmbeds(totalEarnings, soldFishList, totalPages);
+    
+            if (embeds.length === 0) {
+                return interaction.editReply({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle("💰 No Fish Sold!")
+                            .setDescription("Something went wrong, no valid data!")
+                            .setColor("#FF0000")
+                    ]
+                });
+            }
+    
+            let currentPage = 0;
+    
+            const nextButton = new ButtonBuilder()
+                .setCustomId("nextPage")
+                .setLabel("▶️")
+                .setStyle(ButtonStyle.Primary);
+    
+            const previousButton = new ButtonBuilder()
+                .setCustomId("previousPage")
+                .setLabel("◀️")
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(true);
+    
+            const row = new ActionRowBuilder().addComponents(previousButton, nextButton);
+    
+            const message = await interaction.editReply({
+                embeds: [embeds[currentPage]],
+                components: totalPages > 1 ? [row] : []
+            });
+    
+            if (totalPages > 1) {
+                const collector = message.createMessageComponentCollector({
+                    filter: (i) => i.user.id === interaction.user.id,
+                    time: 60000
+                });
+    
+                collector.on("collect", async (i) => {
+                    if (i.customId === "nextPage") {
+                        currentPage++;
+                    } else if (i.customId === "previousPage") {
+                        currentPage--;
+                    }
+    
+                    previousButton.setDisabled(currentPage === 0);
+                    nextButton.setDisabled(currentPage === totalPages - 1 || soldFishList.length < chunkSize);
+    
+                    await i.update({
+                        embeds: [embeds[currentPage]],
+                        components: [row]
+                    });
+                });
+    
+                collector.on("end", async () => {
+                    await message.edit({ components: [] });
+                });
+            }
         } catch (error) {
             console.error("Error in sellFish:", error);
             return interaction.editReply({
@@ -181,11 +244,9 @@ class FishingManagement {
             switch (interaction.customId) {
                 case "fishAgain":
                     await this.handleFishAgain(interaction, attachment);
-                    collector.stop(); // Hentikan collector setelah fishAgain
                     break;
                 case "sellFish":
                     await this.sellFish(interaction);
-                    collector.stop(); // Hentikan collector setelah sellFish
                     break;
                 case "prevPage":
                     currentPage--;
@@ -199,7 +260,7 @@ class FishingManagement {
             previousButton.setDisabled(currentPage === 0);
             nextButton.setDisabled(currentPage === totalPages - 1 || totalFish === 0);
         
-            // Edit pesan untuk memperbarui embed dan tombol
+
             await reply.edit({ embeds: [generateEmbed(currentPage, this.rarityEmojis)], components: [row] });
         });
     }
@@ -240,19 +301,33 @@ class FishingManagement {
             .setFooter({ text: "🎣 Keep fishing to find rarer fish!" });
     }
 
-    createSaleEmbed(totalEarnings, soldFishList) {
+    createSaleEmbeds(totalEarnings, soldFishList, totalPages, currentPage = 0) {
         const embedColor = totalEarnings > 5000 ? "#00FF00" : totalEarnings > 1000 ? "#FFD700" : "#FF0000";
-        return new EmbedBuilder()
-            .setTitle("💰 Fish Sold!")
-            .setColor(embedColor)
-            .setDescription(`You sold all your fish and earned **$${totalEarnings.toLocaleString()}**!`)
-            .addFields({ 
-                name: "🐠 Sold Fish", 
-                value: soldFishList.length > 0 ? soldFishList.join("\n") : "*No fish sold!*" 
-            })
-            .setFooter({ text: "Keep fishing to earn more money!" })
-            .setTimestamp();
+        const chunkSize = 10;
+        const embeds = [];
+        
+        for (let i = 0; i < soldFishList.length; i += chunkSize) {
+            const chunk = soldFishList.slice(i, i + chunkSize);
+            const page = Math.floor(i / chunkSize);
+            
+            const embed = new EmbedBuilder()
+                .setTitle("💰 Fish Sold!")
+                .setColor(embedColor)
+                .setDescription(`You sold all your fish and earned **$${totalEarnings.toLocaleString()}**!`)
+                .addFields({ 
+                    name: "🐠 Sold Fish", 
+                    value: chunk.length > 0 ? chunk.join("\n") : "*No fish sold!*"
+                })
+                .setFooter({ text: `Page ${page + 1} of ${totalPages} | Keep fishing to earn more money!` })
+                .setTimestamp();
+            
+            embeds.push(embed);
+        }
+        
+        return embeds;
     }
+    
+    
 
     calculateSale(inventory) {
         let totalEarnings = 0;
@@ -324,7 +399,7 @@ class FishingManagement {
 
     async handleFishAgain(interaction, attachment) {
         const message = await interaction.channel.send({
-            content: `${interaction.user.username} are fishing... 🎣`,
+            content: `${interaction.user} is fishing... 🎣`,
             files: [attachment],
             embeds: [],
             components: [],

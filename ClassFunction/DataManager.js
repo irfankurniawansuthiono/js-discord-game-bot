@@ -238,7 +238,7 @@ class DataManager {
   updateInventory(userId, type, item) {
     this.users[userId].inventory[type] = item;
   }
-  async getInventory(message, userId) {
+  async getInventory(message, userId, user) {
     const rarityEmojis = {
         "common": "⚪",
         "uncommon": "🟢",
@@ -264,10 +264,10 @@ class DataManager {
 
         return new EmbedBuilder()
             .setColor(userInventory.fishing.length > 5 ? "#00FF00" : "#FF0000")
-            .setTitle("🎒 Your Inventory")
+            .setTitle(`🎒 ${user.username} Inventory`)
             .setDescription(`Total Fish in Inventory: ${totalFish}`)
-            .setThumbnail(message.author.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: message.author.displayAvatarURL({ dynamic: true, size: 256 }) })
+            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+            .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: user.displayAvatarURL({ dynamic: true, size: 256 }) })
             .setTimestamp()
             .addFields({ name: "🎣 Fishing", value: fishingItems });
     }
@@ -305,6 +305,11 @@ class DataManager {
 
         await interaction.update({ embeds: [generateEmbed(currentPage)], components: [row] });
     });
+    collector.on("end", () => {
+        previousButton.setDisabled(true);
+        nextButton.setDisabled(true);
+        reply.edit({ components: [row] });
+    })
 }
 
 

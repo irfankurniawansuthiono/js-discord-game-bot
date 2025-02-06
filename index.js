@@ -26,6 +26,7 @@ import GuildManagement from "./ClassFunction/GuildManagement.js";
 import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 import FishingManagement from "./ClassFunction/FishingManagement.js";
+import ShopManagement from "./ClassFunction/ShopManagement.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -126,6 +127,7 @@ const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
+const shopManagement = new ShopManagement();
 const gamesManagement = new Games();
 const fishingManagement = new FishingManagement();
 const anonChat = new AnonChat();
@@ -152,10 +154,24 @@ const guildAdmin = (message) => {
 
 const commands = {
   inv:(message)=>{
-    const user = message.author.id
-    dataManager.getInventory(message, user)
+    const user = message.author
+    dataManager.getInventory(message, user.id, user)
   },
-  resetinv(message) {
+  checkinv: async (message) => {
+    if(!ownerHelperFirewall) return;
+    const userMention = message.mentions.users.first();
+    if(!userMention) return message.reply("Please mention a valid user.");
+    try {
+      await dataManager.getInventory(message, userMention.id, userMention);
+    } catch (error) {
+      message.reply("An error occurred while checking the inventory.");
+      console.error (error);
+    }
+  },
+  shop: async (message) => {
+    await shopManagement.showShopList(message);
+  },
+  resetinv:(message)=> {
     if(!ownerHelperFirewall) return;
     const user = message.author.id;
     const userMention = message.mentions.users.first();
@@ -625,8 +641,6 @@ const commands = {
 
     // Special badge for owner
     if (config.ownerId.includes(message.author.id)) {
-      profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
-    } else if (config.ownerId.includes(isUserMentioned.id)) {
       profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
     }
 
@@ -1707,8 +1721,8 @@ const commands = {
     const user = message.mentions.users.first();
     if (!user) return message.reply("Please mention a valid user.");
     const time = parseInt(args[2]);
-    if (isNaN(time) || time < 0 || time > 7) {
-      return message.reply("Please provide a valid number of minutes.");
+    if (isNaN(time) || time < 0 || time > 60) {
+      return message.reply("Please provide a valid number of minutes (1-60).");
     }
     const reason = args.slice(3).join(" ");
     if (!reason) return message.reply("Please provide a reason for the timeout.");
@@ -1719,8 +1733,9 @@ const commands = {
       // Check if the user is authorized to use this command
       if(message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");
       
-      const newCommands = args[1];
-      const description = args.slice(2).join(" ");
+      const splitted = args.join(" ").split("|");
+      const description = splitted[0];
+      const newCommands = splitted[1];
       if (!description || !newCommands) {
         return message.reply(
           `${discordEmotes.error} Please provide a description for the new commands.`
@@ -1792,6 +1807,18 @@ ${description}
         `${discordEmotes.error} An error occurred while sending the announcement. Please check the console for details.`
       );
     }
+  },
+  setvoicelogs :async (message, args) => {
+    if(!guildAdmin(message)) return;
+    const guildId = message.guild.id;
+    const channelMention = message.mentions.channels.first();
+    if (!channelMention) return message.reply("Please mention a valid channel.");
+    await guildManagement.setVoiceLogs(guildId, channelMention.id, message);
+  },
+  disablevoicelogs :async (message, args) => {
+    if(!guildAdmin(message)) return;
+    const guildId = message.guild.id;
+    await guildManagement.disableVoiceLogs(guildId);
   },
 }
 
@@ -1872,6 +1899,25 @@ client.once("ready", async () => {
 client.on("guildMemberAdd", async (member) => {
   guildManagement.applyWelcomeRole(member.guild.id, member);
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
+});
+
+client.on("voiceStateUpdate", async (oldState, newState) => {
+  const user = newState.member || oldState.member; // Ambil member dari state baru atau lama
+  const guildId = newState.guild.id;
+
+  // Cek jika user join voice channel
+  if (!oldState.channelId && newState.channelId) {
+      guildManagement.sendVoiceLogs(client, guildId, user, `joined ${newState.channel}`);
+  }
+  // Cek jika user leave voice channel
+  else if (oldState.channelId && !newState.channelId) {
+      guildManagement.sendVoiceLogs(client, guildId, user, `left ${oldState.channel}`);
+  }
+
+  // jika user pindah channel 
+  else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+      guildManagement.sendVoiceLogs(client, guildId, user, `moved from ${oldState.channel} to ${newState.channel}`);
+  }
 });
 
 client.on("messageCreate", async (message) => {

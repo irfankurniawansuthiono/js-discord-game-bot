@@ -109,9 +109,11 @@ const pages = {
           "`🔨 ban <@user> <reason>` - Ban a user",
           "`🔨 to <@user> <time> <reason>` - Timeout a user",
           "`🔨 unban <@user>` - Unban a user",
-          "`🔨 warn <@user>` - warn a user",
+          "`🔨 warn <@user>` - Warn a user",
           "`🔨 warninfo <@user>` - Check user warnings",
           "`🔨 clearwarns <@user>` - Clear user warnings",
+          "`🔊 setvoicelogs <#channel>` - Set Voice Logs Update Channel",
+          "`🔇 disablevoicelogs` - Disable Voice Logs",
           // "`🔨 unmute <@user>` - Unmute a user",
           // "`🔨 mute <@user>` - Mute a user",
         ].join("\n"),
@@ -141,6 +143,7 @@ const pages = {
       {
         name: "👥 Social",
         value: [
+          "`🏪 shop` - open shop",
           "`🎒 inv` - Show your inventory",
           "`💝 give <@user> <amount>` - Give money",
           "`📊 rank` - Show top players",
@@ -166,6 +169,7 @@ const pages = {
           "`💸 giveowner <amount>` - Give to owner",
           "`⚙️ setprefix <prefix>` - Set bot prefix",
           "`🔄 setstatus <status>` - Set status",
+          "`🎒 checkinv <@user>` - Check user inventory",
           "`👤 resetap` - reset all players",
           "`😎 spamsendto <@user> <amount>` - Spam DM Message to a user",
           "`😎 spamsay <amount>` - Spam Message to current",

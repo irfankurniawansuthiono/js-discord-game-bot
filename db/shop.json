@@ -1,0 +1,28 @@
+{
+    "fishing-shop": [{
+        "bait-bundle" : 
+        [
+            {
+                "id": 1,
+                "name": "10-bait",
+                "price": 10000,
+                "description": "10 items of fishing bait.",
+                "qty": 10
+            },
+            {
+                "id": 2,
+                "name": "50-bait",
+                "price": 45000,
+                "description": "50 items of fishing bait.",
+                "qty": 50
+            },
+            {
+                "id": 3,
+                "name": "100-bait",
+                "price": 90000,
+                "description": "100 items of fishing bait.",
+                "qty": 100
+            }
+        ]
+    }]
+}

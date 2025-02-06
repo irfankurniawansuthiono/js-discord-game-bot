@@ -512,37 +512,81 @@ class VoiceManager {
         );
       }
     }
-  
+
     async getLyrics(message, title) {
       try {
         const player = useMainPlayer();
-        const lyrics = await player.lyrics.search({ q: title });
-  
-        if (!lyrics || lyrics.length <= 0) {
+        const lyricsData = await player.lyrics.search({ q: title });
+        if (!lyricsData || lyricsData.length === 0) {
           return message.reply(`${discordEmotes.error} No lyrics found!`);
         }
-        const trimmedLyrics = lyrics[0].plainLyrics.substring(0, 1997);
+        const lyrics = lyricsData[0]?.plainLyrics || "No lyrics available.";
+        const trackName = lyricsData[0]?.trackName ?? title;
+        const artistName = lyricsData[0]?.artistName ?? "Unknown Artist";
+        const artistImage = lyricsData[0]?.artist?.image ?? message.author.displayAvatarURL();
+        const artistUrl = lyricsData[0]?.artist?.url ?? "https://irfanks.site";
+        const thumbnail = lyricsData[0]?.thumbnail ?? message.author.displayAvatarURL();
+    
+        const chunks = lyrics.match(/.{1,1900}/gs) || [];
+        let page = 0;
+    
         const embed = new EmbedBuilder()
           .setColor("#00ff00")
-          .setTitle(`🎵 ${lyrics[0].trackName ?? title}`)
-          .setThumbnail(lyrics[0].thumbnail ?? message.author.displayAvatarURL())
-          .setAuthor({
-            name: lyrics[0]?.artist?.name ?? title, // Gunakan nullish coalescing operator (??) untuk memberikan fallback jika undefined atau null
-            iconURL:
-              lyrics[0]?.artist?.image ?? message.author.displayAvatarURL(), // Ganti dengan URL gambar default jika artist.image tidak ada
-            url: lyrics[0]?.artist?.url ?? "https://irfanks.site", // Ganti dengan URL default atau link yang diinginkan jika artist.url tidak ada
-          })
-          .setDescription(
-            trimmedLyrics.length === 1997 ? `${trimmedLyrics}...` : trimmedLyrics
-          )
+          .setTitle(`🎵 ${trackName}`)
+          .setThumbnail(thumbnail)
+          .setAuthor({ name: artistName, iconURL: artistImage, url: artistUrl })
+          .setDescription(chunks[page])
+          .setFooter({ text: `Page ${page + 1} of ${chunks.length}` })
           .setTimestamp();
-  
-        message.reply({ embeds: [embed] });
+    
+        if (chunks.length === 1) {
+          return message.reply({ embeds: [embed] });
+        }
+    
+        const prevButton = new ButtonBuilder()
+          .setCustomId("prev_lyrics")
+          .setLabel("◀️")
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(true);
+    
+        const nextButton = new ButtonBuilder()
+          .setCustomId("next_lyrics")
+          .setLabel("▶️")
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(chunks.length <= 1);
+    
+        const row = new ActionRowBuilder().addComponents(prevButton, nextButton);
+    
+        const reply = await message.reply({ embeds: [embed], components: [row] });
+        
+        const collector = reply.createMessageComponentCollector({ time: 60000 });
+    
+        collector.on("collect", async (interaction) => {
+          if (interaction.user.id !== message.author.id) return interaction.reply({ content: "You can't control this pagination!", ephemeral: true });
+          
+          if (interaction.customId === "prev_lyrics" && page > 0) {
+            page--;
+          } else if (interaction.customId === "next_lyrics" && page < chunks.length - 1) {
+            page++;
+          }
+    
+          embed.setDescription(chunks[page]);
+          embed.setFooter({ text: `Page ${page + 1} of ${chunks.length}` });
+          
+          prevButton.setDisabled(page === 0);
+          nextButton.setDisabled(page === chunks.length - 1);
+          
+          await interaction.update({ embeds: [embed], components: [row] });
+        });
+    
+        collector.on("end", () => {
+          prevButton.setDisabled(true);
+          nextButton.setDisabled(true);
+          reply.edit({ components: [row] }).catch(() => {});
+        });
       } catch (error) {
         console.error("Error in getLyrics:", error);
-        message.reply(
-          `${discordEmotes.error} Error getting lyrics! Please try again.`
-        );
+        message.reply(`${discordEmotes.error} Error getting lyrics! Please try again.`);
       }
     }
     async playMusic(message, query) {

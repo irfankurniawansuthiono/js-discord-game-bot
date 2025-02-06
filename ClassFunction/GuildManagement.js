@@ -20,6 +20,21 @@ class GuildManagement {
         }
         return GuildManagement.instance;
     }
+    setVoiceLogs(guildId, channelId, message) {
+        if (this.guildData[guildId]) {
+            this.guildData[guildId].voiceLogs = channelId;
+            this.saveData();
+            message.reply("Voice logs channel has been set.");
+            return this.guildData[guildId];
+        }else { 
+            this.createGuild(guildId);
+            this.guildData[guildId].voiceLogs = channelId;
+            this.saveData();
+            message.reply("Voice logs channel has been set.");
+            return this.guildData[guildId];
+        }
+    }
+    
     createGuild(guildId) {
         this.guildData[guildId] = {
             welcome: {
@@ -29,6 +44,7 @@ class GuildManagement {
                 leaveChannel: null,
                 leaveMessage: null
             },
+            voiceLogs: null,
             warning: {}
         };
         this.saveData();
@@ -265,6 +281,14 @@ class GuildManagement {
         this.saveData();
         return this.guildData[guildId];
     }
+    disableVoiceLogs(guildId) {
+        if (!this.guildData[guildId]) {
+            this.createGuild(guildId);
+        }
+        this.guildData[guildId].voiceLogs = null;
+        this.saveData();
+        return this.guildData[guildId];
+    }
     async applyWelcomeRole(guildId, member) {
         try {
             // Check if guild configuration exists
@@ -378,6 +402,22 @@ class GuildManagement {
             });
         } catch (error) {
             console.error("Error sending welcome message:", error);
+        }
+    }
+
+    async sendVoiceLogs(client, guildId, user, action) {
+        try {
+            const guildConfig = this.getGuild(guildId);
+            if (!guildConfig || !guildConfig.voiceLogs) return;
+    
+            const channel = client.channels.cache.get(guildConfig.voiceLogs);
+            if (!channel) return;
+    
+            await channel.send({
+                content: `🔊 **${user.user.tag}** has ${action} the voice channel!`
+            });
+        } catch (error) {
+            console.error('Error sending voice logs:', error);
         }
     }
 }
