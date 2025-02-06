@@ -3,7 +3,7 @@ import {
   ButtonBuilder,
   EmbedBuilder,
 } from "discord.js";
-import { config } from "../config.js";
+import { config, newPlayerData } from "../config.js";
 import fs from "fs";
 import { formatBalance } from "../index.js";
 const dataFile = config.dataFile
@@ -154,24 +154,13 @@ class DataManager {
 
   async resetAllPlayer() {
     for (const userId in this.users) {
-      this.users[userId].balance = config.startingBalance;
-      this.users[userId].stats = {
-        gamesPlayed: 0,
-        gamesWon: 0,
-        totalEarnings: 0,
-        lastDaily: null,
-      };
+      this.users[userId] = newPlayerData;
     }
     this.saveData();
     return this.users;
   }
   async resetPlayer(userId) {
-    this.users[userId].balance = config.startingBalance;
-    this.users[userId].stats = {
-      gamesPlayed: 0,
-      gamesWon: 0,
-      totalEarnings: 0,
-    };
+    this.users[userId] = newPlayerData;
     this.saveData();
     return this.users[userId];
   }
@@ -231,6 +220,10 @@ class DataManager {
 
   getUser(userId) {
     return this.users[userId];
+  }
+  updateUserBait (userId, bait) {
+    this.users[userId].bait = bait;
+    return this.saveData();
   }
   getInventoryData(userId, type) {
     return this.users[userId]?.inventory?.[type] || [];
@@ -311,7 +304,13 @@ class DataManager {
         reply.edit({ components: [row] });
     })
 }
-
+getUserBait(userId) {
+  return this.users[userId]?.fishingItems?.bait || 0;
+}
+updateBait(userId, bait) {
+  this.users[userId].fishingItems["bait"] += bait;
+  this.saveData();
+}
 
 
   saveInventory(userId, item, type) {
@@ -332,18 +331,7 @@ class DataManager {
     this.saveData();
   }
   createUser(userId) {
-    this.users[userId] = {
-      balance: config.startingBalance,
-      stats: {
-        gamesPlayed: 0,
-        gamesWon: 0,
-        totalEarnings: 0,
-        lastDaily: null,
-      },
-      inventory:{
-        fishing:[]
-      }
-    };
+    this.users[userId] = newPlayerData;
     this.saveData();
     return this.users[userId];
   }
@@ -358,6 +346,12 @@ class DataManager {
   updateBugReport(userId, date) {
     if (!this.users[userId]) return false;
     this.users[userId].lastBugReport = date;
+    this.saveData();
+    return true;
+  }
+  addFishCaught(userId) {
+    if (!this.users[userId]) return false;
+    this.users[userId].stats.fishCaught += 1;
     this.saveData();
     return true;
   }

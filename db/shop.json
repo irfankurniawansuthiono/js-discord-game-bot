@@ -1,28 +1,49 @@
-{
-    "fishing-shop": [{
-        "bait-bundle" : 
-        [
+[
+    {
+        "id": 1,
+        "name": "Fishing Shop",
+        "items": [
             {
-                "id": 1,
-                "name": "10-bait",
-                "price": 10000,
-                "description": "10 items of fishing bait.",
-                "qty": 10
+                "name": "Fishing Rods",
+                "items": [
+                    {
+                        "id": 1,
+                        "name": "Spinning Rod",
+                        "price": 150000,
+                        "description": "Light weight spinning rod for fresh water fishing"
+                    },
+                    {
+                        "id": 2,
+                        "name": "Casting Rod",
+                        "price": 200000,
+                        "description": "Heavy duty casting rod for salt water fishing"
+                    }
+                ]
             },
             {
-                "id": 2,
-                "name": "50-bait",
-                "price": 45000,
-                "description": "50 items of fishing bait.",
-                "qty": 50
-            },
-            {
-                "id": 3,
-                "name": "100-bait",
-                "price": 90000,
-                "description": "100 items of fishing bait.",
-                "qty": 100
+                "name": "Bait Shop",
+                "items": [
+                    {
+                        "id": 1,
+                        "name": "10x Live Bait",
+                        "qty" : 10,
+                        "price": 25000,
+                        "description": "Fresh live bait for fishing"
+                    },
+                    {
+                        "id": 2,
+                        "name": "50x Live Bait",
+                        "price": 100000,
+                        "description": "Fresh live bait for fishing"
+                    },
+                    {
+                        "id": 3,
+                        "name": "100x Live Bait",
+                        "price": 150000,
+                        "description": "Fresh live bait for fishing"
+                    }
+                ]
             }
         ]
-    }]
-}
+    }
+]

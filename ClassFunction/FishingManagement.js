@@ -34,6 +34,7 @@ class FishingManagement {
                 mythical: 1
             };
             this.loadData();
+            FishingManagement.instance = this;
         }
         return FishingManagement.instance;
     }
@@ -48,6 +49,13 @@ class FishingManagement {
                     ephemeral: true 
                 });
             }
+            // check user bait
+            const userBait = await this.dataManager.getUserBait(interaction.author.id);
+            if (!userBait) {
+                return interaction.reply({ 
+                    content: `${interaction.user} need to buy bait first! Use ${this.config.defaultPrefix}shop`
+                });
+            }
 
             // Prepare fishing animation
             const attachment = await this.createFishingAnimation();
@@ -60,12 +68,15 @@ class FishingManagement {
             });
 
             // Catch fish and create embed
+            this.dataManager.updateBait(interaction.author.id, -1);
+            this.dataManager.addFishCaught(interaction.author.id);
             const fish = this.catchFish(interaction.author.id);
-            const embed = this.createFishEmbed(fish, interaction.author.username);
+            
+            let embed = fish ? this.createFishEmbed(fish, interaction.author.username, interaction.author.id): this.failedToCatchEmbed();
             const actionRow = this.createActionRow();
 
             // Save to inventory
-            this.dataManager.saveInventory(interaction.author.id, fish, "fishing");
+            fish && this.dataManager.saveInventory(interaction.author.id, fish, "fishing");
 
             // Update message after delay
             setTimeout(async () => {
@@ -97,7 +108,7 @@ class FishingManagement {
                     embeds: [
                         new EmbedBuilder()
                             .setTitle("💰 Fish Not Sold!")
-                            .setDescription("You have no fish to sell!")
+                            .setDescription(`${interaction.user} have no fish to sell!`)
                             .setColor("#FF0000")
                     ]
                 });
@@ -289,7 +300,7 @@ class FishingManagement {
             );
     }
 
-    createFishEmbed(fish, username) {
+    createFishEmbed(fish, username, userId) {
         return new EmbedBuilder()
             .setTitle(`🎣 ${username} Caught a ${fish.name}!`)
             .setColor(this.rarityColors[fish.rarity] || "#0099ff")
@@ -298,7 +309,7 @@ class FishingManagement {
                 { name: "💰 Price", value: `**$ ${fish.price.toLocaleString()}**`, inline: true },
                 { name: "⚖️ Weight", value: `**${fish.weight}**`, inline: true }
             )
-            .setFooter({ text: "🎣 Keep fishing to find rarer fish!" });
+            .setFooter({ text: `🎣 Keep fishing to find rarer fish! | baits left : ${this.dataManager.getUserBait(userId)}` });
     }
 
     createSaleEmbeds(totalEarnings, soldFishList, totalPages, currentPage = 0) {
@@ -353,16 +364,27 @@ class FishingManagement {
                 weightedFish.push(fish);
             }
         });
-
+        // failed to catch fish 30% chance to failed
+        const ownerBot = this.config.ownerId[0] === authorId;
+        const failedToCatchChance = ownerBot ? true : Math.random() < 0.3;
+        if (!failedToCatchChance) {
+            return null;
+        } 
         // Special condition for bot owner to always catch mythical fish
-        if (authorId === this.config.ownerId[0]) {
+        if (ownerBot) {
             weightedFish = weightedFish.filter(fish => fish.rarity === "mythical");
         }
-
+        
         const randomIndex = Math.floor(Math.random() * weightedFish.length);
         return weightedFish[randomIndex];
     }
-
+    failedToCatchEmbed() {
+        const embed = new EmbedBuilder()
+            .setTitle("🎣 You failed to catch a fish!")
+            .setColor("#FF0000")
+            .setDescription("Better luck next time!");
+        return embed;
+    }
     setupButtonCollector(message,originalInteraction, attachment) {
         const collector = message.createMessageComponentCollector({
             componentType: ComponentType.Button,
@@ -398,6 +420,17 @@ class FishingManagement {
     }
 
     async handleFishAgain(interaction, attachment) {
+        // check bait 
+        const userBait = await this.dataManager.getUserBait(interaction.user.id);
+        if (!userBait) {
+            return interaction.editReply({
+                content: `${interaction.user} need to buy bait first! Use ${this.config.defaultPrefix}shop`,
+                components: [],
+                files: [],
+                embeds: []
+            });
+        }
+
         const message = await interaction.channel.send({
             content: `${interaction.user} is fishing... 🎣`,
             files: [attachment],
@@ -405,11 +438,12 @@ class FishingManagement {
             components: [],
             fetchReply: true
         }, );
-
+        this.dataManager.updateBait(interaction.user.id, -1);
+        this.dataManager.addFishCaught(interaction.user.id);
         const newFish = this.catchFish(interaction.user.id);
-        const embed = this.createFishEmbed(newFish, interaction.user.username);
+        let embed = newFish ? this.createFishEmbed(newFish, interaction.user.username, interaction.user.id): this.failedToCatchEmbed();
         const actionRow = this.createActionRow();
-        this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
+        newFish && this.dataManager.saveInventory(interaction.user.id, newFish, "fishing");
 
         
         setTimeout(async () => {

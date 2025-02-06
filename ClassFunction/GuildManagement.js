@@ -5,7 +5,6 @@ import { loadImage } from "canvas";
 import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
 import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
-import { warn } from "console";
 import GuildRaidManager from "./RaidServer.js";
 class GuildManagement {
     constructor() {

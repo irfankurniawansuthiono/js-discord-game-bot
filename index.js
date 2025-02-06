@@ -127,7 +127,7 @@ const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
-const shopManagement = new ShopManagement();
+const shopManagement = new ShopManagement(client);
 const gamesManagement = new Games();
 const fishingManagement = new FishingManagement();
 const anonChat = new AnonChat();
@@ -169,7 +169,7 @@ const commands = {
     }
   },
   shop: async (message) => {
-    await shopManagement.showShopList(message);
+    await shopManagement.showShopCategories(client,message);
   },
   resetinv:(message)=> {
     if(!ownerHelperFirewall) return;
@@ -632,7 +632,17 @@ const commands = {
           name: "🎮 Gaming Statistics",
           value: `**Games Played:** ${user.stats.gamesPlayed}
                  **Games Won:** ${user.stats.gamesWon}
+                 **Games Lost:** ${user.stats.gamesPlayed - user.stats.gamesWon}
                  **Win Rate:** ${winRate}%`,
+          inline: false,
+        },
+        // fishing information 
+        {
+          name: "🎣 Fishing Information",
+          value: `**Fish Baits:** ${user.fishingItems["bait"]}
+                 **Fish Nets:** ${user.fishingItems["net"]}
+                 **Fish Rods:** ${user.fishingItems["rod"]}
+                 **Fish Caught:** ${user.stats.fishCaught}`,
           inline: false,
         }
       )
@@ -640,7 +650,7 @@ const commands = {
       .setTimestamp();
 
     // Special badge for owner
-    if (config.ownerId.includes(message.author.id)) {
+    if ((!isUserMentioned && config.ownerId.includes(message.author.id)) || config.ownerId.includes(isUserMentioned.id)) {
       profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
     }
 
@@ -1733,9 +1743,9 @@ const commands = {
       // Check if the user is authorized to use this command
       if(message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");
       
-      const splitted = args.join(" ").split("|");
-      const description = splitted[0];
-      const newCommands = splitted[1];
+      const splitted = args.slice(1).join(" ").split("|");
+      const newCommands = splitted[0];
+      const description = splitted[1];
       if (!description || !newCommands) {
         return message.reply(
           `${discordEmotes.error} Please provide a description for the new commands.`

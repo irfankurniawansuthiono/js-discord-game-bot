@@ -20,6 +20,24 @@ const config = {
   fishingFile: "./db/fishing.json",
 };
 
+const newPlayerData = {
+  balance: config.startingBalance,
+  stats: {
+    gamesPlayed: 0,
+    gamesWon: 0,
+    totalEarnings: 0,
+    lastDaily: null,
+    fishCaught: 0,
+  },
+  fishingItems: {
+    bait: 0,
+    rod: 0,
+    net: 0,
+  },
+  inventory:{
+    fishing:[]
+  }
+};
 const discordEmotes = {
   loading: "<a:loading:1330226649169399882>",
   error: "<a:error:1331479515515457536>",
@@ -196,4 +214,4 @@ const pages = {
   },
 };
 
-export { config, discordEmotes, pages };
+export { config, discordEmotes, pages, newPlayerData };
