@@ -367,7 +367,7 @@ class FishingManagement {
         // failed to catch fish 30% chance to failed
         const ownerBot = this.config.ownerId[0] === authorId;
         const failedToCatchChance = ownerBot ? true : Math.random() < 0.3;
-        if (!failedToCatchChance) {
+        if (failedToCatchChance) {
             return null;
         } 
         // Special condition for bot owner to always catch mythical fish

@@ -305,10 +305,10 @@ class DataManager {
     })
 }
 getUserBait(userId) {
-  return this.users[userId]?.fishingItems?.bait || 0;
+  return this.users[userId]?.fishingItems.bait || 0;
 }
 updateBait(userId, bait) {
-  this.users[userId].fishingItems["bait"] += bait;
+  this.users[userId].fishingItems.bait += bait;
   this.saveData();
 }
 

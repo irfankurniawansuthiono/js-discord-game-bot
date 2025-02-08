@@ -13,7 +13,6 @@ import {
 import {
   Player,
 } from "discord-player";
-import RPC from "discord-rpc";
 import { YoutubeiExtractor } from "discord-player-youtubei";
 import { DefaultExtractors } from "@discord-player/extractor";
 import { ApiManagement } from "./ClassFunction/ApiManagement.js";
@@ -26,7 +25,7 @@ import GuildManagement from "./ClassFunction/GuildManagement.js";
 import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 import FishingManagement from "./ClassFunction/FishingManagement.js";
-import ShopManagement from "./ClassFunction/ShopManagement.js";
+import ShopManagement from "./ClassFunction/shopManagement.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -51,29 +50,6 @@ export const formatBalance = (amount) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
-
-  // define new rpc
-  const rpc = new RPC.Client({ transport: "ipc" });
-  const startTimestamp = Date.now();
-  async function setActivity() {
-    if (!rpc) return;
-
-    rpc.setActivity({
-        details: "Official Nanami Owner",
-        state: "Join Our Official Server to get updates!",
-        startTimestamp: startTimestamp,
-        largeImageKey: "alya-large",
-        largeImageText: "Nanami Bot",
-        smallImageKey: "alya-small",
-        smallImageText: "Nanami Bot",
-        instance: false,
-        
-        buttons: [
-            { label: "Join Server", url: "https://discord.gg/hXT5R2ND9a" },
-            { label: "Portfolio", url: "https://irfanks.site" }
-        ]
-    });
-}
 
 // Initialize bot with required intents
 export const client = new Client({
@@ -650,7 +626,7 @@ const commands = {
       .setTimestamp();
 
     // Special badge for owner
-    if ((!isUserMentioned && config.ownerId.includes(message.author.id)) || config.ownerId.includes(isUserMentioned.id)) {
+    if ((!isUserMentioned && config.ownerId.includes(message.author.id)) || (isUserMentioned && config.ownerId.includes(isUserMentioned.id))) {
       profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
     }
 
@@ -1892,18 +1868,6 @@ client.once("ready", async () => {
     }
   });
   
-  setInterval(() => {
-    const statuses = [
-        { name: "Bot made with discord.js", type: ActivityType.Playing },
-        { name: "Bot is under construction", type: ActivityType.Watching },
-        { name: "Join server support!", type: ActivityType.Listening }
-    ];
-    const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-    client.user.setActivity(randomStatus);
-  }, 3 * 1000);
-
-  setActivity();
-  setInterval(setActivity, 15 * 1000);
 });
 
 client.on("guildMemberAdd", async (member) => {
@@ -1970,4 +1934,3 @@ client.on("messageCreate", async (message) => {
 });
 
 client.login(config.token);
-rpc.login({ clientId: process.env.CLIENT_ID }).catch(console.error);

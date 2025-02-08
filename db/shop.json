@@ -33,12 +33,14 @@
                     {
                         "id": 2,
                         "name": "50x Live Bait",
+                        "qty" : 50,
                         "price": 100000,
                         "description": "Fresh live bait for fishing"
                     },
                     {
                         "id": 3,
                         "name": "100x Live Bait",
+                        "qty" : 100,
                         "price": 150000,
                         "description": "Fresh live bait for fishing"
                     }

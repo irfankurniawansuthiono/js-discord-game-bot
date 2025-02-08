@@ -16,7 +16,6 @@
     "canvas": "^3.1.0",
     "discord-player": "^7.1.0",
     "discord-player-youtubei": "^1.4.2",
-    "discord-rpc": "^4.0.1",
     "discord.js": "^14.17.3",
     "ffmpeg-static": "^5.2.0",
     "form-data": "^4.0.1",
