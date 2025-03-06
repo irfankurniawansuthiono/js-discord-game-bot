@@ -141,9 +141,9 @@ class DataManager {
     }
 
     // Deduct from sender
-    this.users[fromUserId].balance -= amount;
+    this.users[fromUserId].balance = fromUser.balance - amount;
     // Add to receiver
-    this.users[toUserId].balance += amount;
+    this.users[toUserId].balance = this.users[toUserId].balance + amount;
 
     this.saveData();
     return {
@@ -312,6 +312,10 @@ updateBait(userId, bait) {
   this.saveData();
 }
 
+setbait(userId, bait) {
+  this.users[userId].fishingItems.bait = bait;
+  this.saveData();
+}
 
   saveInventory(userId, item, type) {
     // cari agar tidak ada duplikat data di inventory

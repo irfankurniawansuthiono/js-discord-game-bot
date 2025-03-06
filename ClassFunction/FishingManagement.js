@@ -53,7 +53,7 @@ class FishingManagement {
             const userBait = await this.dataManager.getUserBait(interaction.author.id);
             if (!userBait) {
                 return interaction.reply({ 
-                    content: `${interaction.user} need to buy bait first! Use ${this.config.defaultPrefix}shop`
+                    content: `${interaction.author} need to buy bait first! Use ${this.config.defaultPrefix}shop`
                 });
             }
 

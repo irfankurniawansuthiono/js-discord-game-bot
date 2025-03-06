@@ -25,7 +25,7 @@ import GuildManagement from "./ClassFunction/GuildManagement.js";
 import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 import FishingManagement from "./ClassFunction/FishingManagement.js";
-import ShopManagement from "./ClassFunction/shopManagement.js";
+import ShopManagement from "./ClassFunction/ShopManagement.js";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -129,6 +129,15 @@ const guildAdmin = (message) => {
 
 
 const commands = {
+  setbait: (message, args)=>{
+    if(!ownerHelperFirewall) return;
+    if(args.length < 2) return message.reply(`Usage: ${prefix}setbait <amount>`);
+    const ammount = message.mentions.users.first() ? parseInt(args[2]) : parseInt(args[1]);
+    const user = message.mentions.users.first() ? message.mentions.users.first().id : message.author.id;
+    dataManager.setbait(user, ammount);
+    message.reply(`Set bait for ${message.mentions.users.first() ? message.mentions.users.first() : message.author} to ${ammount}`);
+  },
+
   inv:(message)=>{
     const user = message.author
     dataManager.getInventory(message, user.id, user)
@@ -1819,8 +1828,6 @@ client.once("ready", async () => {
   player.extractors.register(YoutubeiExtractor, {});
 
   player.events.on("emptyChannel", (queue) => {
-    // Emitted when the voice channel has been empty for the set threshold
-    // Bot will automatically leave the voice channel with this event
     queue.metadata.send(
       `Leaving because no vc activity for the past 5 minutes`
     );
@@ -1876,19 +1883,19 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 client.on("voiceStateUpdate", async (oldState, newState) => {
-  const user = newState.member || oldState.member; // Ambil member dari state baru atau lama
+  const user = newState.member || oldState.member;
   const guildId = newState.guild.id;
 
-  // Cek jika user join voice channel
+  // check if user join a voice channel
   if (!oldState.channelId && newState.channelId) {
       guildManagement.sendVoiceLogs(client, guildId, user, `joined ${newState.channel}`);
   }
-  // Cek jika user leave voice channel
+  // check if user leave a voice channel
   else if (oldState.channelId && !newState.channelId) {
       guildManagement.sendVoiceLogs(client, guildId, user, `left ${oldState.channel}`);
   }
 
-  // jika user pindah channel 
+  // check if user move from one voice channel to another 
   else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
       guildManagement.sendVoiceLogs(client, guildId, user, `moved from ${oldState.channel} to ${newState.channel}`);
   }
@@ -1901,14 +1908,14 @@ client.on("messageCreate", async (message) => {
       anonChat.handleMessage(message);
       return;
     };
-    // jika ada prefix dia tidak akan menjalankan fungsi AI
+    // no prefix bot will automatically response with ai
     if (!message.content.startsWith(prefix) && message.author.id !== client.user.id) {
       const prompt = message.content
       message.channel.sendTyping();
       await apiManagement.aiResponse(message, prompt);
     };
   }
-  // jika bot di tag dan di reply dia akan menjalankan fungsi AI
+  // if bot got tag and replied bot will run ai function
   const getMessageMention = message.mentions.users.first();
   const getBotReplied =
     message.reference && message.reference.messageId === client.user.id;

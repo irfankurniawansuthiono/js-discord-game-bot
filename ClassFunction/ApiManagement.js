@@ -9,6 +9,7 @@ import {
 import { JSDOM } from "jsdom";
 import { config, discordEmotes } from "../config.js";
 import FormData from "form-data";
+const API_URL = "https://api.itzky.xyz";
 class ApiManagement {
     constructor() {
         if (!ApiManagement.instance) {
@@ -24,7 +25,7 @@ class ApiManagement {
                 `${discordEmotes.loading} Generating Image...`
             );
             const response = await axios.get(
-                `https://api.itzky.us.kg/ai/flux?prompt=${prompt}&apikey=${this.apiKey}`
+                `${API_URL}/ai/flux?prompt=${prompt}&apikey=${this.apiKey}`
             );
             if (!response.data && !response.data.status !== 200) {  
                 return await generateImageMessage.edit(
@@ -64,7 +65,7 @@ class ApiManagement {
             );
             
             const response = await axios.get(
-                `https://api.itzky.us.kg/ai/animagine?prompt=${prompt}&apikey=${this.apiKey}`
+                `${API_URL}/ai/animagine?prompt=${prompt}&apikey=${this.apiKey}`
             );
             if (!response.data && !response.data.status !== 200) {  
                 return await generateImageMessage.edit(
@@ -140,7 +141,7 @@ class ApiManagement {
           );
           const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
           const response = await axios.get(
-            `https://api.itzky.us.kg/tools/removebg?url=${encodedUrl}&apikey=${this.apiKey}`
+            `${API_URL}/tools/removebg?url=${encodedUrl}&apikey=${this.apiKey}`
           );
           if (!response.data && !response.data.status !== 200) {
             return await removebgMessage.edit(
@@ -256,7 +257,7 @@ class ApiManagement {
       try {
         const sessionId = message.author.id;
         const response = await axios.post(
-          "https://api.itzky.us.kg/ai/logic",
+          `${API_URL}/ai/logic`,
           {
             prompt,
             sessionId,
@@ -269,8 +270,7 @@ class ApiManagement {
             },
           }
         );
-        console.log(response.data)
-        await message.reply({ content: response.data.result.message });
+        await message.reply({ content: response.data.result.answer });
       } catch (error) {
         console.error("Error in aiResponse command:", error);
         return message.reply(
@@ -320,7 +320,7 @@ class ApiManagement {
           );
           const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
           const response = await axios.get(
-            `https://api.itzky.us.kg/tools/remini?url=${encodedUrl}&apikey=${this.apiKey}`
+            `${API_URL}/tools/remini?url=${encodedUrl}&apikey=${this.apiKey}`
           );
           if (!response.data && !response.data.status !== 200) {
             return await reminiMessage.edit(
@@ -397,7 +397,7 @@ class ApiManagement {
       
           // Mengambil data musik dari API dengan timeout
           const response = await axios.get(
-            `https://api.itzky.us.kg/download/spotify?url=${encodeURIComponent(
+            `${API_URL}/download/spotify?url=${encodeURIComponent(
               url
             )}&apikey=${this.apiKey}`,
             { timeout: 10000 } // Timeout 10 detik
@@ -447,7 +447,7 @@ class ApiManagement {
               `**Music Title:** ${musicTitle || "Unknown"}\n**Music Artist:** ${musicArtist || "Unknown"}`
             )
             .setFooter({
-              text: "Downloaded via https://api.itzky.us.kg",
+              text: `Downloaded via ${API_URL}`,
               iconURL: musicThumbnail || null,
             })
             .setTimestamp();
@@ -488,7 +488,7 @@ class ApiManagement {
         );
   
         const response = await axios.get(
-          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`,
+          `${API_URL}/download/instagram?url=${url}&apikey=${this.apiKey}`,
           { timeout: 10000 }
         );
         const data = response.data;
@@ -524,7 +524,7 @@ class ApiManagement {
           .setDescription(videoTitle)
           .setThumbnail(videoThumbnail)
           .setFooter({
-            text: "Downloaded via https://api.itzky.us.kg",
+            text: `Downloaded via ${API_URL}`,
             iconURL: message.author.displayAvatarURL(),
           })
           .setTimestamp();
@@ -618,7 +618,7 @@ class ApiManagement {
   
         // Mengambil data video dari API
         const response = await axios.get(
-          `https://api.itzky.us.kg/download/instagram?url=${url}&apikey=${this.apiKey}`
+          `${API_URL}/download/instagram?url=${url}&apikey=${this.apiKey}`
         );
         const data = response.data;
   
@@ -690,7 +690,7 @@ class ApiManagement {
       
           // Mengambil data video dari API dengan timeout
           const response = await axios.get(
-            `https://api.itzky.us.kg/download/youtube?url=${encodeURIComponent(
+            `${API_URL}/download/youtube?url=${encodeURIComponent(
               url
             )}&apikey=${this.apiKey}`,
             { timeout: 10000 } // Timeout 10 detik
@@ -741,7 +741,7 @@ class ApiManagement {
             .setURL(url) // Link ke video YouTube
             .setThumbnail(videoThumbnail || null)
             .setFooter({
-              text: "Downloaded via api.itzky.us.kg",
+              text: `Downloaded via ${API_URL}`,
               iconURL: message.author.displayAvatarURL(),
             })
             .setTimestamp();
@@ -789,7 +789,7 @@ class ApiManagement {
   
         // Mengambil data video dari API
         const response = await axios.get(
-          `https://api.itzky.us.kg/download/tiktok?url=${url}&apikey=${this.apiKey}`
+          `${API_URL}/download/tiktok?url=${url}&apikey=${this.apiKey}`
         );
         const data = response.data;
   
@@ -840,7 +840,7 @@ class ApiManagement {
             }
           )
           .setFooter({
-            text: "Downloaded via https://api.itzky.us.kg",
+            text: `Downloaded via ${API_URL}`,
             iconURL: author.avatar,
           });
   
@@ -875,7 +875,7 @@ class ApiManagement {
   
         // Fetch video data with timeout
         const response = await axios.get(
-          `https://api.itzky.us.kg/download/tiktok?url=${encodeURIComponent(
+          `${API_URL}/download/tiktok?url=${encodeURIComponent(
             url
           )}&apikey=${this.apiKey}`,
           { timeout: 10000 } // 10 second timeout
@@ -1091,7 +1091,7 @@ class ApiManagement {
   
         // Fetch video data with timeout
         const response = await axios.get(
-          `https://api.itzky.us.kg/search/tiktok?apikey=${
+          `${API_URL}/search/tiktok?apikey=${
             this.apiKey
           }&query=${encodeURIComponent(prompt)}`,
           { timeout: 10000 } // 10 second timeout
@@ -1185,7 +1185,7 @@ class ApiManagement {
             .setThumbnail(result.cover || null)
             .setURL(result.no_watermark)
             .setFooter({
-              text: "Downloaded via https://api.itzky.us.kg",
+              text: `Downloaded via ${API_URL}`,
               iconURL: message.author.displayAvatarURL(),
             })
             .setTimestamp();
