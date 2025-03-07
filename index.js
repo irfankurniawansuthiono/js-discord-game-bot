@@ -572,6 +572,15 @@ const commands = {
     const user = dataManager.createUser(mention.id);
     return message.reply(`Welcome! ${mention} start with $${user.balance}.`);
   },
+  giveawayall:(message, args)=>{
+    if (!ownerHelperFirewall(message.author.id, message)) return;
+    const balance = args[1];
+    const convertedBalance = parseInt(balance);
+    if (isNaN(convertedBalance) || convertedBalance <= 0) {
+      return message.reply("Please enter a valid amount.");
+    }
+    return dataManager.giveawayAll(convertedBalance, message);
+  },
   register: (message) => {
     if (dataManager.getUser(message.author.id)) {
       return message.reply("You already have an account!");
@@ -1056,7 +1065,7 @@ const commands = {
       // Set banner if exists
       .setImage(
         botUser.bannerURL({ size: 4096 }) ||
-          "https://cdn.discordapp.com/attachments/1234567890/default-banner.png" // Ganti dengan URL banner default jika bot tidak punya banner
+          "https://nanami.irfanks.site/avatar.jpg" // Ganti dengan URL banner default jika bot tidak punya banner
       )
       .addFields(
         {
@@ -1097,8 +1106,9 @@ const commands = {
         {
           name: "🔗 Links",
           value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
-                • [Community Server](https://discord.gg/ARsVsfjtqA)
-                • [Developer Website](https://www.irfanks.site/)`,
+                • [Nanami Community Server](https://discord.gg/hXT5R2ND9a)
+                • [Developer Website](https://www.irfanks.site/)
+                • [Nanami on WEBSITE!](https://nanami.irfanks.site/)`,
           inline: false,
         }
       )

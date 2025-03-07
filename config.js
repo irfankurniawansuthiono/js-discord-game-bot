@@ -194,6 +194,7 @@ const pages = {
           "`😎 spamsay <amount>` - Spam Message to current",
           "`🗣️ say <message>` - Spam DM Message to a user",
           "`👤 resetplayer <@user>` - reset a players",
+          "`🎉 giveawayall <ammount>` - Send giveaway to all current registered players"
         ].join("\n"),
         inline: false,
       },

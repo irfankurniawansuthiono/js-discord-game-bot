@@ -398,7 +398,7 @@ class Games {
       // Fungsi untuk membuat tampilan slot
       const createSlotDisplay = (slots) => {
         return `
-  ╔══ 🎰 SLOTS 🎰 ══╗
+   ╔══ 🎰 SLOTS 🎰 ══╗
   ║                                          ║
   ║     ${slots[0]}   |   ${slots[1]}   |   ${slots[2]}    ║
   ║                                          ║

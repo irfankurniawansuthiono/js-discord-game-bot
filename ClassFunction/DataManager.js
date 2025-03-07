@@ -3,7 +3,7 @@ import {
   ButtonBuilder,
   EmbedBuilder,
 } from "discord.js";
-import { config, newPlayerData } from "../config.js";
+import { config, discordEmotes, newPlayerData } from "../config.js";
 import fs from "fs";
 import { formatBalance } from "../index.js";
 const dataFile = config.dataFile
@@ -217,7 +217,34 @@ class DataManager {
       console.error("Error saving data:", error);
     }
   }
+  async giveawayAll(balance, message) {
+    try {
+      const replyGiveawayAll = await message.reply(`${discordEmotes.loading} Starting giveaway to all current registered users...`);
+      let count = 0;
+      for (const userId in this.users) {
+        this.users[userId].balance = this.users[userId].balance + balance;
+        count++;
+      }
+      this.saveData();
+      const giveawayAllEmbed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle("🎉 Giveaway All Succeed")
+        .setDescription(
+          `You have successfully given all users ${formatBalance(
+            balance
+          )}! You have given ${count} users!`
+        )
+        .setFooter({ text: "this balance giveaway is only given to current registered users" })
+        .setTimestamp();
 
+        return await replyGiveawayAll.edit({ embeds: [giveawayAllEmbed], message: `${discordEmotes.success} Giveaway All Succeed` });
+    } catch (error) {
+      console.error("Error in giveawayAll:", error.message);
+    }
+  }
+  getAllUsers() {
+    return this.users;
+  }
   getUser(userId) {
     return this.users[userId];
   }
