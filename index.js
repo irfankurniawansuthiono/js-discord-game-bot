@@ -120,11 +120,11 @@ const guildAdmin = (message) => {
   if(message.channel.type === ChannelType.DM) {
     return message.reply("You can't use this command in DMs.");
   }
-  if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+  if (config.ownerId[0] === message.author.id) {
+    return true;
+  }else if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     message.reply("You do not have permission to use this command.");
     return false;
-  } else if (config.ownerId[0] === message.author.id) {
-    return true;
   }
   return true;
 };

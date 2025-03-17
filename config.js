@@ -3,10 +3,6 @@ const config = {
   apiKey: process.env.API_AI_KEY,
   ownerId: [
     "411125001853468672",
-    "500585213546463232",
-    "1107212927536201738",
-    "534661318385336321",
-    "481315540733001728",
   ],
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1332378583905341501",
