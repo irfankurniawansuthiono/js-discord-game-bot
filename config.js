@@ -186,8 +186,9 @@ const pages = {
           "`🎒 checkinv <@user>` - Check user inventory",
           "`👤 resetap` - reset all players",
           "`😎 spamsendto <@user> <amount>` - Spam DM Message to a user",
-          "`😎 spamsay <amount>` - Spam Message to current",
-          "`🗣️ say <message>` - Spam DM Message to a user",
+          "`😎 spamsay <amount>` - Spam Message to current channel",
+          "`🗣️ say <message>` - Send chat to current channel",
+          "`🗣️ sendto <message>` - DM a user",
           "`👤 resetplayer <@user>` - reset a players",
           "`🎉 giveawayall <ammount>` - Send giveaway to all current registered players"
         ].join("\n"),
