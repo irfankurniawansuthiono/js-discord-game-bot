@@ -101,8 +101,7 @@ class FishingManagement {
 
     async sellFish(interaction) {
         try {
-            const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing");
-    
+            const inventory = this.dataManager.getInventoryData(interaction.user.id, "fishing"); 
             if (!inventory || inventory.length === 0) {
                 return interaction.editReply({
                     embeds: [

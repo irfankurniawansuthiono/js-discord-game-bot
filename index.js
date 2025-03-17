@@ -123,6 +123,8 @@ const guildAdmin = (message) => {
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     message.reply("You do not have permission to use this command.");
     return false;
+  } else if (config.ownerId[0] === message.author.id) {
+    return true;
   }
   return true;
 };
@@ -570,7 +572,7 @@ const commands = {
       return message.reply("User already registered!");
     }
     const user = dataManager.createUser(mention.id);
-    return message.reply(`Welcome! ${mention} start with $${user.balance}.`);
+    return message.reply(`Welcome! ${mention} start with ${formatBalance(user.balance)}.`);
   },
   giveawayall:(message, args)=>{
     if (!ownerHelperFirewall(message.author.id, message)) return;

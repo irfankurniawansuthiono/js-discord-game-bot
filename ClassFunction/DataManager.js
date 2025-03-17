@@ -362,7 +362,7 @@ setbait(userId, bait) {
     this.saveData();
   }
   createUser(userId) {
-    this.users[userId] = newPlayerData;
+    this.users[userId] = JSON.parse(JSON.stringify(newPlayerData));;
     this.saveData();
     return this.users[userId];
   }
@@ -373,6 +373,7 @@ setbait(userId, bait) {
     this.users[userId].stats.totalEarnings += amount;
     this.saveData();
     return true;
+    
   }
   updateBugReport(userId, date) {
     if (!this.users[userId]) return false;

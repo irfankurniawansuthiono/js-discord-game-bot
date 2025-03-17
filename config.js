@@ -208,7 +208,7 @@ const pages = {
           "`🔧 setupguild` - Setup guild server",
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
-          "`🎭 raid` - Raid a server"
+          // "`🎭 raid` - Raid a server"
         ].join("\n"),
         inline: false,
       },
