@@ -1537,7 +1537,7 @@ const commands = {
     // Check if there are enough arguments
     if (args.length < 2) {
       return message.channel.send(
-        `Usage: ${prefix}say <#channel/@user> <message>`
+        `Usage: ${prefix}sendto <#channel/@user> <message>`
       );
     }
 

@@ -52,7 +52,6 @@ const pages = {
           "`🔹 profile` - View your profile/balance",
           "`🔹 ownerinfo` - Show bot owner information",
           "`🔹 botinfo` - Show bot information",
-          "`🔹 ping` - Check bot latency",
           "`🔹 sc` - Bot Source Code",
           "`🐛 bugreport` - Report a BUG!",
         ].join("\n"),
