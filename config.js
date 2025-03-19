@@ -2,16 +2,20 @@ const config = {
   token: process.env.TOKEN,
   apiKey: process.env.API_AI_KEY,
   ownerId: [
+    // irfan
     "411125001853468672",
+    // hafizh
     "500585213546463232",
     "1043090988731732078",
+    // okta
+    "560025098438967299"
   ],
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1332378583905341501",
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
   anonimLogsChannelID : "1333476337373155358",
-  defaultPrefix: "N!",
+  defaultPrefix: "C!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
