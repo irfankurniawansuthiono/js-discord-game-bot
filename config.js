@@ -15,7 +15,7 @@ const config = {
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
   anonimLogsChannelID : "1333476337373155358",
-  defaultPrefix: "C!",
+  defaultPrefix: "N!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
@@ -114,7 +114,7 @@ const pages = {
           "`📝 nick <@user>` - Set user nickname",
           "`🔒 lock` - Lock current channel",
           "`🔓 unlock` - Unlock the channel",
-          "` 🗑️ purge <amount>` - Delete messages, max 100 purge",
+          "`🗑️ purge <amount>` - Delete messages, max 100 purge",
           "`🔨 kick <@user>` - Kick a user",
           "`☢️ nuke` - Nuke the channel",
           "`📝 setwelcome <channel>` - Set welcome message",
@@ -155,7 +155,7 @@ const pages = {
           "`🖼️ tg` - Tebak gambar",
           "`🎮 clt` - Cak lontong",
           "`🏳️‍🌈 tben` - Tebak Bendera",
-          "` 🎣 fish` - Catch fish"
+          "`🎣 fish` - Catch fish"
         ].join("\n"),
         inline: false,
       },
