@@ -26,7 +26,6 @@ import FishingManagement from "./ClassFunction/FishingManagement.js";
 import ShopManagement from "./ClassFunction/ShopManagement.js";
 // extractor
 import { SoundcloudExtractor } from "discord-player-soundcloud";
-import { YoutubeiExtractor } from "discord-player-youtubei";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -1837,18 +1836,17 @@ client.once("ready", async () => {
   anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
   // Configure player and load extractors
-  await player.extractors.register(YoutubeiExtractor, {});
-  await player.extractors.register(SoundcloudExtractor, {});
+  const soundcloudExtractorPlayer = await player.extractors.register(SoundcloudExtractor, {});
   player.events.on("emptyChannel", (queue) => {
     queue.metadata.send(
       `Leaving because no vc activity for the past 5 minutes`
     );
   });
-  // player.events.on("debug", async (queue, message) => {
-  //   // Emitted when the player queue sends debug info
-  //   // Useful for seeing what state the current queue is at
-  //   console.log(`Player debug event: ${message}`);
-  // });
+  player.events.on("debug", async (queue, message) => {
+    // Emitted when the player queue sends debug info
+    // Useful for seeing what state the current queue is at
+    console.log(`Player debug event: ${message}`);
+  });
   // Set up global player event listeners
   player.events.on("playerError", (queue, error) => {
     console.error("Player error:", error);
