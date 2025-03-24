@@ -13,8 +13,6 @@ import {
 import {
   Player,
 } from "discord-player";
-import { YoutubeiExtractor } from "discord-player-youtubei";
-import { DefaultExtractors } from "@discord-player/extractor";
 import { ApiManagement } from "./ClassFunction/ApiManagement.js";
 import { Games } from "./ClassFunction/GamesManagement.js";
 import { DataManager } from "./ClassFunction/DataManager.js";
@@ -26,6 +24,9 @@ import AnonChat from "./ClassFunction/AnonimManagement.js";
 import { pages, config, discordEmotes } from "./config.js";
 import FishingManagement from "./ClassFunction/FishingManagement.js";
 import ShopManagement from "./ClassFunction/ShopManagement.js";
+// extractor
+import { SoundcloudExtractor } from "discord-player-soundcloud";
+import { YoutubeiExtractor } from "discord-player-youtubei";
 
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
@@ -1836,9 +1837,8 @@ client.once("ready", async () => {
   anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
   // Configure player and load extractors
-  await player.extractors.loadMulti(DefaultExtractors);
-  player.extractors.register(YoutubeiExtractor, {});
-
+  await player.extractors.register(YoutubeiExtractor, {});
+  await player.extractors.register(SoundcloudExtractor, {});
   player.events.on("emptyChannel", (queue) => {
     queue.metadata.send(
       `Leaving because no vc activity for the past 5 minutes`
