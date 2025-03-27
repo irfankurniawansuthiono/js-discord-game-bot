@@ -26,7 +26,8 @@ import FishingManagement from "./ClassFunction/FishingManagement.js";
 import ShopManagement from "./ClassFunction/ShopManagement.js";
 // extractor
 import { SoundcloudExtractor } from "discord-player-soundcloud";
-
+import { YoutubeiExtractor } from "discord-player-youtubei"
+import { SpotifyExtractor } from "discord-player-spotify";
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
     throw new Error("Input must be a non-negative number.");
@@ -1837,11 +1838,23 @@ client.once("ready", async () => {
   console.log(`Bot logged in as ${client.user.tag}`);
   // Configure player and load extractors
   const soundcloudExtractorPlayer = await player.extractors.register(SoundcloudExtractor, {});
+  
+  const spotifyExtractorPlayer = await player.extractors.register(SpotifyExtractor, {
+    clientId: process.env.SPOTIFY_CLIENT_ID,
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET
+  });
+  const youtubeExtractorPlayer = await player.extractors.register(YoutubeiExtractor, {});
+
+  soundcloudExtractorPlayer.priority = 1;
+  spotifyExtractorPlayer.priority = 2;
+  youtubeExtractorPlayer.priority = 3;
+
   player.events.on("emptyChannel", (queue) => {
     queue.metadata.send(
       `Leaving because no vc activity for the past 5 minutes`
     );
   });
+  
   player.events.on("debug", async (queue, message) => {
     // Emitted when the player queue sends debug info
     // Useful for seeing what state the current queue is at
