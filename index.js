@@ -1828,6 +1828,24 @@ ${description}
     const guildId = message.guild.id;
     await guildManagement.disableVoiceLogs(guildId);
   },
+  giveloli: async(message, args) => {
+    return await apiManagement.generateLoli(message);
+  },
+  giveukhty: async(message, args) => {
+    return await apiManagement.generateUkhty(message);
+  },
+  givewaifu: async(message, args) => {
+    return await apiManagement.generateWaifu(message);
+  },
+  transcribeyt: async (message, args) => {
+    const ytLink = args[1]
+    // regex yt link
+    const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    if (!regex.test(ytLink)) {
+      return message.reply("Please provide a valid YouTube link.");
+    }
+    return await apiManagement.transcribeYT(message, ytLink);
+  }
 }
 
 // Event Handlers

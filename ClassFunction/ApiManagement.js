@@ -10,14 +10,202 @@ import { JSDOM } from "jsdom";
 import { config, discordEmotes } from "../config.js";
 import FormData from "form-data";
 const API_URL = "https://api.itzky.xyz";
+const KRIZZ_API_URL = "https://api-krizz.vercel.app";
 class ApiManagement {
   constructor() {
     if (!ApiManagement.instance) {
       this.apiKey = config.apiKey;
+      this.krizzApiKey = config.krizzApiKey;
       ApiManagement.instance = this;
     }
     return ApiManagement.instance;
   }
+  // KRIZZ
+  async generateLoli(message) {
+    try {
+      // Mengirim pesan loading
+      const generateImageMessage = await message.reply(
+        `${discordEmotes.loading} Generating Image...`
+      );
+  
+      // Fetch dari API dengan responseType arraybuffer
+      const response = await axios.get(`${KRIZZ_API_URL}/random/loli`, {
+        responseType: "arraybuffer", // Untuk menerima gambar dalam bentuk buffer
+      });
+  
+      if (response.status !== 200) {
+        return await generateImageMessage.edit(
+          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+        );
+      }
+  
+      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+  
+      // Buat buffer dari arraybuffer
+      const imageBuffer = Buffer.from(response.data);
+  
+      // Buat attachment untuk dikirim di Discord
+      const attachment = new AttachmentBuilder(imageBuffer, {
+        name: "loli.png",
+      });
+  
+      // Buat embed
+      const embed = new EmbedBuilder()
+        .setTitle("Loli Generated")
+        .setColor("#00FF00")
+        .setImage("attachment://loli.png")
+        .setFooter({ text: "Special Thanks to krizz API" })
+        .setTimestamp();
+  
+      // Kirim pesan dengan embed dan file gambar
+      await message.reply({ embeds: [embed], files: [attachment] });
+  
+    } catch (error) {
+      console.error("Error generating image:", error);
+      await message.reply(
+        `${discordEmotes.error} Error generating image. Please try again.`
+      );
+    }
+  }
+  async generateUkhty(message) {
+    try {
+      // Mengirim pesan loading
+      const generateImageMessage = await message.reply(
+        `${discordEmotes.loading} Getting Image...`
+      );
+  
+      // Fetch dari API dengan responseType arraybuffer
+      const response = await axios.get(`${KRIZZ_API_URL}/random/ukhty`, {
+        responseType: "arraybuffer", // Untuk menerima gambar dalam bentuk buffer
+      });
+  
+      if (response.status !== 200) {
+        return await generateImageMessage.edit(
+          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+        );
+      }
+  
+      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+  
+      // Buat buffer dari arraybuffer
+      const imageBuffer = Buffer.from(response.data);
+  
+      // Buat attachment untuk dikirim di Discord
+      const attachment = new AttachmentBuilder(imageBuffer, {
+        name: "ukhty.png",
+      });
+  
+      // Buat embed
+      const embed = new EmbedBuilder()
+        .setTitle("Got Ukhty")
+        .setColor("#00FF00")
+        .setImage("attachment://ukhty.png")
+        .setFooter({ text: "Special Thanks to krizz API" })
+        .setTimestamp();
+  
+      // Kirim pesan dengan embed dan file gambar
+      await message.reply({ embeds: [embed], files: [attachment] });
+  
+    } catch (error) {
+      console.error("Error generating image:", error);
+      await message.reply(
+        `${discordEmotes.error} Error generating image. Please try again.`
+      );
+    }
+  }
+  async transcribeYT(message, url) {
+    try {
+      // Mengirim pesan loading
+      const transcribeMessage = await message.reply(
+        `${discordEmotes.loading} Transcribing...`
+      );
+  
+      // Fetch dari API
+      const response = await axios.get(`${KRIZZ_API_URL}/tools/transyt?url=${encodeURI(url)}`);
+      // Validasi respons API
+      if (response.status !== 200 || !response.data || !response.data.result) {
+        return await transcribeMessage.edit(
+          `${discordEmotes.error} Invalid response from Transcription API. Please try again.`
+        );
+      }
+  
+      const { summarize } = response.data.result;
+  
+      // Pastikan summarize ada dan merupakan string
+      if (!summarize || typeof summarize !== "string") {
+        return await transcribeMessage.edit(
+          `${discordEmotes.error} Failed to retrieve transcription summary.`
+        );
+      }
+  
+      await transcribeMessage.edit(`${discordEmotes.loading} Building Text...`);
+  
+      // Buat embed
+      const embed = new EmbedBuilder()
+        .setTitle("Transcription Result")
+        .setColor("#00FF00")
+        .setDescription(summarize)
+        .setFooter({ text: "Special Thanks to krizz API" })
+        .setTimestamp();
+  
+      // Kirim pesan dengan embed
+      await message.reply({ embeds: [embed] });
+  
+    } catch (error) {
+      console.error("Error transcribing YT video:", error);
+      await message.reply(
+        `${discordEmotes.error} Error transcribing YT video. Please try again.`
+      );
+    }
+  }
+  
+  async generateWaifu(message) {
+    try {
+      // Mengirim pesan loading
+      const generateImageMessage = await message.reply(
+        `${discordEmotes.loading} Generating Image...`
+      );
+  
+      // Fetch dari API dengan responseType arraybuffer
+      const response = await axios.get(`${KRIZZ_API_URL}/random/waifu`, {
+        responseType: "arraybuffer", // Untuk menerima gambar dalam bentuk buffer
+      });
+  
+      if (response.status !== 200) {
+        return await generateImageMessage.edit(
+          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+        );
+      }
+  
+      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+  
+      // Buat buffer dari arraybuffer
+      const imageBuffer = Buffer.from(response.data);
+  
+      // Buat attachment untuk dikirim di Discord
+      const attachment = new AttachmentBuilder(imageBuffer, {
+        name: "waifu.png",
+      });
+  
+      // Buat embed
+      const embed = new EmbedBuilder()
+        .setTitle("Waifu Successfully Generated")
+        .setColor("#00FF00")
+        .setImage("attachment://waifu.png")
+        .setFooter({ text: "Special Thanks to krizz API" })
+        .setTimestamp();
+  
+      // Kirim pesan dengan embed dan file gambar
+      await message.reply({ embeds: [embed], files: [attachment] });
+  
+    } catch (error) {
+      console.error("Error generating image:", error);
+      await message.reply(
+        `${discordEmotes.error} Error generating image. Please try again.`
+      );
+    }
+  }
+  // ITZKY
   async generateImage(message, prompt) {
     try {
       // Mengirim pesan loading
@@ -507,7 +695,6 @@ class ApiManagement {
       }
     }
   }
-
   async instagramDownload(message, url) {
     if (!url || !url.startsWith("https://www.instagram.com/")) {
         return message.reply("Please provide a valid Instagram URL.");
@@ -644,84 +831,79 @@ class ApiManagement {
             `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`
         );
     }
-}
-
-
-
-async instagramInfo(message, url) {
-  if (!url || !url.startsWith("https://www.instagram.com/")) {
-      return message.reply("Please provide a valid Instagram URL.");
   }
+  async instagramInfo(message, url) {
+    if (!url || !url.startsWith("https://www.instagram.com/")) {
+        return message.reply("Please provide a valid Instagram URL.");
+    }
 
-  try {
-      const igMessage = await message.reply(
-          `${discordEmotes.loading} Processing...`
-      );
+    try {
+        const igMessage = await message.reply(
+            `${discordEmotes.loading} Processing...`
+        );
 
-      const response = await axios.get(
-          `${API_URL}/download/instagram?url=${url}&apikey=${this.apiKey}`,
-          { timeout: 10000 }
-      );
-      const data = response.data;
-      console.dir(response.data);
+        const response = await axios.get(
+            `${API_URL}/download/instagram?url=${url}&apikey=${this.apiKey}`,
+            { timeout: 10000 }
+        );
+        const data = response.data;
+        console.dir(response.data);
 
-      if (!data || !data.result) {
-          return igMessage.edit(
-              `${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`
-          );
-      }
+        if (!data || !data.result) {
+            return igMessage.edit(
+                `${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`
+            );
+        }
 
-      await igMessage.edit(`${discordEmotes.loading} Scrapping...`);
-      const postInfo = data.result;
-      const postCaption = postInfo.metadata.caption;
-      const username = String(postInfo.metadata.username);
-      const likes = String(postInfo.metadata.like);
-      const comments = String(postInfo.metadata.comment);
+        await igMessage.edit(`${discordEmotes.loading} Scrapping...`);
+        const postInfo = data.result;
+        const postCaption = postInfo.metadata.caption;
+        const username = String(postInfo.metadata.username);
+        const likes = String(postInfo.metadata.like);
+        const comments = String(postInfo.metadata.comment);
 
 
-      // Buat Embed
-      const igEmbed = new EmbedBuilder()
-          .setColor("#FFFF00")
-          .setTitle("Instagram Info")
-          .setDescription(postCaption || "*No caption available.*")
-          .addFields(
-              { name: "👤 Username", value: username || "*Unknown*", inline: true },
-              { name: "❤️ Likes", value: likes || "*Unknown*", inline: true },
-              { name: "💬 Comments", value: comments || "*Unknown*", inline: true }
-          )
-          .setFooter({
-              text: `Scrapped via ${API_URL ?? "Unknown API"}`,
-              iconURL: message?.author?.displayAvatarURL() || null,
-          })
-          .setTimestamp();
+        // Buat Embed
+        const igEmbed = new EmbedBuilder()
+            .setColor("#FFFF00")
+            .setTitle("Instagram Info")
+            .setDescription(postCaption || "*No caption available.*")
+            .addFields(
+                { name: "👤 Username", value: username || "*Unknown*", inline: true },
+                { name: "❤️ Likes", value: likes || "*Unknown*", inline: true },
+                { name: "💬 Comments", value: comments || "*Unknown*", inline: true }
+            )
+            .setFooter({
+                text: `Scrapped via ${API_URL ?? "Unknown API"}`,
+                iconURL: message?.author?.displayAvatarURL() || null,
+            })
+            .setTimestamp();
 
-      await igMessage.edit({
-          content: "✨ Here's your Instagram content!",
-          embeds: [igEmbed],
-      });
+        await igMessage.edit({
+            content: "✨ Here's your Instagram content!",
+            embeds: [igEmbed],
+        });
 
-  } catch (error) {
-      console.error("Error in Instagram Download command:", error);
+    } catch (error) {
+        console.error("Error in Instagram Download command:", error);
 
-      if (error.code === "ECONNABORTED" || error.name === "AbortError") {
-          return message.reply(
-              `${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`
-          );
-      }
+        if (error.code === "ECONNABORTED" || error.name === "AbortError") {
+            return message.reply(
+                `${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`
+            );
+        }
 
-      if (error.response?.status === 413) {
-          return message.reply(
-              `${discordEmotes.error} The file is too large to process. Please try a different post.`
-          );
-      }
+        if (error.response?.status === 413) {
+            return message.reply(
+                `${discordEmotes.error} The file is too large to process. Please try a different post.`
+            );
+        }
 
-      return message.reply(
-          `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`
-      );
+        return message.reply(
+            `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`
+        );
+    }
   }
-}
-
-
   async youtubeDownload(message, url) {
     try {
       // Validasi URL YouTube
@@ -826,7 +1008,6 @@ async instagramInfo(message, url) {
       }
     }
   }
-
   async tiktokInfo(message, url) {
     try {
       // Validasi URL TikTok
@@ -1137,7 +1318,6 @@ async instagramInfo(message, url) {
       }
     }
   }
-
   async tiktokSearch(message, prompt) {
     try {
       // Send loading message

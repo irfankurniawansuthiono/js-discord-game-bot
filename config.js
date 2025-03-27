@@ -66,8 +66,12 @@ const pages = {
       {
         name: "🛠️ Tools",
         value: [
-          "`🎥 ttfind <prompt>` - Search TikTok videos",
+          "`🖼️ giveloli` - Give random loli image",
+          "`🖼️ giveukhty` - Give random ukhty girl image",
+          "`🖼️ givewaifu` - Give random waifu image",
+          "`🎥 transcribeyt <url>` - Transcribe YouTube video",
           "`📱 ttinfo <url>` - TikTok video information",
+          "`🎥 ttfind <prompt>` - Search TikTok videos",
           "`⬇️ ttdown <url>` - Download TikTok video",
           "`📺 ytdown <url>` - Download YouTube videos",
           "`📸 iginfo <post url>` - Instagram info",
