@@ -58,7 +58,7 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({ embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Here's a random loli ❤️‍🔥", embeds: [embed], files: [attachment] });
   
     } catch (error) {
       console.error("Error generating image:", error);
@@ -104,7 +104,7 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({ embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Ukhty ❤️‍🔥", embeds: [embed], files: [attachment] });
   
     } catch (error) {
       console.error("Error generating image:", error);
@@ -196,7 +196,7 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({ embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Here's a random waifu ❤️‍🔥", embeds: [embed], files: [attachment] });
   
     } catch (error) {
       console.error("Error generating image:", error);
