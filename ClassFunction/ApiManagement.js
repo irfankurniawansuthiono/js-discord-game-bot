@@ -10,7 +10,7 @@ import { JSDOM } from "jsdom";
 import { config, discordEmotes } from "../config.js";
 import FormData from "form-data";
 const API_URL = "https://api.itzky.xyz";
-const KRIZZ_API_URL = "https://api-krizz.vercel.app";
+const KRIZZ_API_URL = "https://free-apiz-vercel.app";
 class ApiManagement {
   constructor() {
     if (!ApiManagement.instance) {
