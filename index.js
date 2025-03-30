@@ -1854,6 +1854,22 @@ client.once("ready", async () => {
   guildManagement.setClient(client)
   anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
+  let toggle = true;
+  setInterval(() => {
+    if (toggle) {
+      client.user.setPresence({
+        activities: [{ name: "N!help", type: 2 }], // LISTENING
+        status: "online",
+      });
+    } else {
+      client.user.setPresence({
+        activities: [{ name: "https://nanami.irfanks.site", type: 1,state: "Nanami", url: "https://nanami.irfanks.site" }], // STREAMING
+        status: "online",
+      });
+    }
+    toggle = !toggle;
+  }, 5000); // Ubah status setiap 2 detik
+
   // Configure player and load extractors
   const soundcloudExtractorPlayer = await player.extractors.register(SoundcloudExtractor, {});
   
@@ -1862,14 +1878,14 @@ client.once("ready", async () => {
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET
   });
   const youtubeExtractorPlayer = await player.extractors.register(YoutubeiExtractor, {});
-
+  
   soundcloudExtractorPlayer.priority = 1;
   spotifyExtractorPlayer.priority = 2;
   youtubeExtractorPlayer.priority = 3;
 
   player.events.on("emptyChannel", (queue) => {
     queue.metadata.send(
-      `Leaving because no vc activity for the past 5 minutes`
+      `${discordEmotes.error} Leaving because no one was listening for the past 5 minutes`
     );
   });
   
@@ -1917,6 +1933,7 @@ client.once("ready", async () => {
   });
   
 });
+
 
 client.on("guildMemberAdd", async (member) => {
   guildManagement.applyWelcomeRole(member.guild.id, member);
