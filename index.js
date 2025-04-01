@@ -1863,7 +1863,7 @@ client.once("ready", async () => {
   setInterval(async () => {
     console.log("Running scheduled GithubCron commit...");
     await githubCron.startCommit();
-}, 11 * 60 * 60 * 1000); // 11 hours in milliseconds
+}, 11 * 60 * 60 * 1000); 
 
   guildManagement.setClient(client)
   anonChat.setClient(client);
