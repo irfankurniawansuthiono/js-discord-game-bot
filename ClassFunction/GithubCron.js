@@ -12,7 +12,7 @@ class GithubCron {
             this.githubUsername = process.env.GITHUB_USERNAME;
             this.githubToken = process.env.GITHUB_TOKEN;
             this.filePath = path.join("./assets/githubCron");
-            this.resetCommitId = "b49c9e2"
+            this.resetCommitId = config.resetCommitId;
             GithubCron.instance = this;
         }
         return GithubCron.instance;
@@ -68,7 +68,7 @@ class GithubCron {
                 throw new Error("resetCommitId is not defined");
             }
     
-            const response = await octokit.rest.git.updateRef({
+            await octokit.rest.git.updateRef({
                 owner: this.githubUsername,
                 repo: "public-uploads",
                 ref: "heads/main", // Mengupdate branch 'main'
@@ -78,20 +78,23 @@ class GithubCron {
     
             console.log("Repository successfully reset to commit:", this.resetCommitId);
             const embed = new EmbedBuilder()
-            .setColor("#FF0000")
-            .setTitle("⚠️ Repository Reset")
+            // pink
+            .setColor("#FF69B4")
+            .setTimestamp()
+            .setTitle("✅ Repository Reset Success")
             .addFields(
                 { name: "Status", value: "Repository reset successfully", inline: false },
             )
+            .setFooter({ text: "Github Commit Stream" })
             .setDescription(`Repository public-uploads reset to commit: ${this.resetCommitId}`);
             const userId = config.ownerId[0];
             const user = await this.client.users.fetch(userId);
             await user.send({ embeds: [embed] });
-            return { status: true, response: response };
+            return { status: true, message: "Repository reset successfully" };
         } catch (error) {
             const embed = new EmbedBuilder()
             .setColor("#FF0000")
-            .setTitle("⚠️ Repository Reset")
+            .setTitle("⚠️ Repository Reset Failed")
             .addFields(
                 { name: "Error", value: error.message, inline: false },
             )
@@ -121,7 +124,7 @@ class GithubCron {
             const imageBuffer = fileBuffer.imageBuffer;
             const content = imageBuffer.toString("base64");
             const filePath = `file/${fileName}`;
-            const response = await octokit.rest.repos.createOrUpdateFileContents({
+            await octokit.rest.repos.createOrUpdateFileContents({
                 owner: `${process.env.GITHUB_USERNAME}`,
                 repo: "public-uploads",
                 path: filePath,
@@ -136,7 +139,7 @@ class GithubCron {
             const user = await this.client.users.fetch(userId);
             const embed = new EmbedBuilder()
                 .setColor("#0099ff")
-                .setTitle("Cron JOB - Github Upload")
+                .setTitle("✅ Cron JOB - Github Upload Success")
                 .setURL(cdnURL)
                 .setDescription(`New image uploaded: [Click here](${cdnURL})`)
                 .setTimestamp()
@@ -149,7 +152,7 @@ class GithubCron {
             const user = await this.client.users.fetch(userId);
             const embed = new EmbedBuilder()
                 .setColor("#FF0000")
-                .setTitle("⚠️ Cron JOB - Github Upload")
+                .setTitle("⚠️ Cron JOB - Github Upload Failed")
                 .setDescription(`Error: ${error.message}`)
                 .setTimestamp()
                 .setFooter({ text: "Github Commit Stream" });

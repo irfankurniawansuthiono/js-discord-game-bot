@@ -10,6 +10,8 @@ const config = {
     // okta
     "560025098438967299"
   ],
+  // reset commit SHA
+  resetCommitId: "b49c9e25d2b4c6bd83d9160b45259349077225e0",
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1332378583905341501",
   bugReportChannelID: "1332378606038548510",
@@ -214,7 +216,7 @@ const pages = {
           "`🔧 setupguild` - Setup guild server",
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
-          "`⚠️ resetCDN` - Reset PUBLIC UPLOADS CDN",
+          "`⚠️ resetrepo` - Reset PUBLIC UPLOADS Repository",
           // "`🎭 raid` - Raid a server"
         ].join("\n"),
         inline: false,

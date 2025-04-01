@@ -107,6 +107,7 @@ const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
 const githubCron = new GithubCron(client);
 const shopManagement = new ShopManagement(client);
+const player = new Player(client);
 const gamesManagement = new Games();
 const fishingManagement = new FishingManagement();
 const anonChat = new AnonChat();
@@ -1848,18 +1849,14 @@ ${description}
     }
     return await apiManagement.transcribeYT(message, ytLink);
   },
-  resetCDN: async (message) => {
+  resetrepo: async (message) => {
+    console.log(`Command C!resetCDN dipanggil oleh ${message.author.id}`); // Debugging
     if (message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");  
-    try {
-      await githubCron.resetPublicUploads();
-    } catch (error) {
-      console.error("Error in resetCDN command:", error);
-    }
+    return await githubCron.resetPublicUploads();
   },
 }
 
 // Event Handlers
-const player = new Player(client);
 client.once("ready", async () => {
   // Jalankan sekali saat bot pertama kali start
 (async () => {
