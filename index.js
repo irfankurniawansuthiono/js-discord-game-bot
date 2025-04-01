@@ -28,6 +28,7 @@ import ShopManagement from "./ClassFunction/ShopManagement.js";
 import { SoundcloudExtractor } from "discord-player-soundcloud";
 import { YoutubeiExtractor } from "discord-player-youtubei"
 import { SpotifyExtractor } from "discord-player-spotify";
+import GithubCron from "./ClassFunction/GithubCron.js";
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
     throw new Error("Input must be a non-negative number.");
@@ -104,6 +105,7 @@ const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const guildManagement = new GuildManagement(client);
+const githubCron = new GithubCron(client);
 const shopManagement = new ShopManagement(client);
 const gamesManagement = new Games();
 const fishingManagement = new FishingManagement();
@@ -698,7 +700,7 @@ const commands = {
         }
       
         // Lakukan operasi lainnya jika diperlukan
-        const reply = await message.channel.send("Succed to delete messages.");
+        const reply = await message.channel.send(`${discordEmotes.success} Succeed to delete messages.`);
         setTimeout(() => {
           reply.delete().catch(console.error);
         }, 5000);      
@@ -1851,6 +1853,18 @@ ${description}
 // Event Handlers
 const player = new Player(client);
 client.once("ready", async () => {
+  // Jalankan sekali saat bot pertama kali start
+(async () => {
+  console.log("Running GithubCron commit on startup...");
+  await githubCron.startCommit();
+})();
+
+  // setup github cron every 11 hours
+  setInterval(async () => {
+    console.log("Running scheduled GithubCron commit...");
+    await githubCron.startCommit();
+}, 11 * 60 * 60 * 1000); // 11 hours in milliseconds
+
   guildManagement.setClient(client)
   anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
