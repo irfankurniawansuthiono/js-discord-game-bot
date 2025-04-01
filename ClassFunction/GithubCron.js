@@ -3,6 +3,7 @@ import path from "path";
 import { Octokit } from "octokit";
 import { restEndpointMethods } from "@octokit/plugin-rest-endpoint-methods";
 import { config, discordEmotes } from "../config.js";
+import { EmbedBuilder } from "discord.js";
 const myOctokit = Octokit.plugin(restEndpointMethods);
 class GithubCron {
     constructor(client) {
@@ -82,13 +83,22 @@ class GithubCron {
                 branch: "main",
               });
             const githubURL = `https://raw.githubusercontent.com/${this.githubUsername}/public-uploads/main/${filePath}`;
-            console.log("Commit response:", response);
+            const cdnURL ="https://cdn.irfanks.site/api/file/" + githubURL.toString().split("/")[githubURL.toString().split("/").length - 1];
             // send github url to owner dm
             const userId = config.ownerId[0];
             const user = await this.client.users.fetch(userId);
-            await user.send(`${discordEmotes.success} New image uploaded: ${githubURL}`);
-            return {status : true, githubURL: githubURL};
+            const embed = new EmbedBuilder()
+                .setColor("#0099ff")
+                .setTitle("Cron JOB - Github Upload")
+                .setURL(cdnURL)
+                .setDescription(`New image uploaded: [Click here](${cdnURL})`)
+                .setTimestamp()
+                .setFooter({ text: "Github Commit Stream" });
+            await user.send({ embeds: [embed] });
+            console.log("GITHUB CRON STATUS : SUCCESS", cdnURL);
+            return {status : true, githubURL: cdnURL};
         } catch (error) {
+            console.error("GITHUB CRON STATUS : FAILED");
             console.error("Error in startCommit:", error);
             return {status : false, error: error};
         }

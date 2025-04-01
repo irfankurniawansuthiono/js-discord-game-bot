@@ -1882,7 +1882,7 @@ client.once("ready", async () => {
       });
     }
     toggle = !toggle;
-  }, 5000); // Ubah status setiap 2 detik
+  }, 5000); // Ubah status setiap 5 detik
 
   // Configure player and load extractors
   const soundcloudExtractorPlayer = await player.extractors.register(SoundcloudExtractor, {});
