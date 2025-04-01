@@ -1847,7 +1847,15 @@ ${description}
       return message.reply("Please provide a valid YouTube link.");
     }
     return await apiManagement.transcribeYT(message, ytLink);
-  }
+  },
+  resetCDN: async (message) => {
+    if (message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");  
+    try {
+      await githubCron.resetPublicUploads();
+    } catch (error) {
+      console.error("Error in resetCDN command:", error);
+    }
+  },
 }
 
 // Event Handlers

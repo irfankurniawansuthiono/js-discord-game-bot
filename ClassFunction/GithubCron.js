@@ -12,6 +12,7 @@ class GithubCron {
             this.githubUsername = process.env.GITHUB_USERNAME;
             this.githubToken = process.env.GITHUB_TOKEN;
             this.filePath = path.join("./assets/githubCron");
+            this.resetCommitId = "b49c9e2"
             GithubCron.instance = this;
         }
         return GithubCron.instance;
@@ -58,6 +59,52 @@ class GithubCron {
             return {status : false, error: error};
         }
     }
+
+    async resetPublicUploads() {
+        try {
+            const octokit = new myOctokit({ auth: this.githubToken });
+    
+            if (!this.resetCommitId) {
+                throw new Error("resetCommitId is not defined");
+            }
+    
+            const response = await octokit.rest.git.updateRef({
+                owner: this.githubUsername,
+                repo: "public-uploads",
+                ref: "heads/main", // Mengupdate branch 'main'
+                sha: this.resetCommitId,
+                force: true // Paksa reset ke commit tertentu
+            });
+    
+            console.log("Repository successfully reset to commit:", this.resetCommitId);
+            const embed = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("⚠️ Repository Reset")
+            .addFields(
+                { name: "Status", value: "Repository reset successfully", inline: false },
+            )
+            .setDescription(`Repository public-uploads reset to commit: ${this.resetCommitId}`);
+            const userId = config.ownerId[0];
+            const user = await this.client.users.fetch(userId);
+            await user.send({ embeds: [embed] });
+            return { status: true, response: response };
+        } catch (error) {
+            const embed = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("⚠️ Repository Reset")
+            .addFields(
+                { name: "Error", value: error.message, inline: false },
+            )
+            .setDescription(`Repository public-uploads reset to commit: ${this.resetCommitId}`);
+            const userId = config.ownerId[0];
+            const user = await this.client.users.fetch(userId);
+            await user.send({ embeds: [embed] });
+            console.error("Error in reset PublicUploads:", error);
+            return { status: false, error: error };
+        }
+    }
+    
+
     async startCommit() {
         const octokit = new myOctokit({ auth: this.githubToken });
 
@@ -98,6 +145,15 @@ class GithubCron {
             console.log("GITHUB CRON STATUS : SUCCESS", cdnURL);
             return {status : true, githubURL: cdnURL};
         } catch (error) {
+            const userId = config.ownerId[0];
+            const user = await this.client.users.fetch(userId);
+            const embed = new EmbedBuilder()
+                .setColor("#FF0000")
+                .setTitle("⚠️ Cron JOB - Github Upload")
+                .setDescription(`Error: ${error.message}`)
+                .setTimestamp()
+                .setFooter({ text: "Github Commit Stream" });
+            await user.send({ embeds: [embed] });
             console.error("GITHUB CRON STATUS : FAILED");
             console.error("Error in startCommit:", error);
             return {status : false, error: error};
