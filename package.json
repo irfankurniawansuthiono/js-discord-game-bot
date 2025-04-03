@@ -18,7 +18,7 @@
     "canvas": "^3.1.0",
     "discord-player": "^7.1.0",
     "discord-player-soundcloud": "^1.0.4",
-    "discord-player-spotify": "^1.0.1",
+    "discord-player-spotify": "^1.0.4",
     "discord-player-youtubei": "^1.4.3",
     "discord.js": "^14.18.0",
     "ffmpeg-static": "^5.2.0",

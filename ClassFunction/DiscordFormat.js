@@ -275,9 +275,6 @@ class DiscordFormat {
             [PermissionFlagsBits.AddReactions]: false, // Mengatur agar role tidak bisa menambah reaksi
             [PermissionFlagsBits.CreatePublicThreads]: false, // Mengatur agar role tidak bisa membuat thread publik
             [PermissionFlagsBits.CreatePrivateThreads]: false, // Mengatur agar role tidak bisa membuat thread privat
-            [PermissionFlagsBits.UsePublicThreads]: false, // Mengatur agar role tidak bisa menggunakan thread publik
-            [PermissionFlagsBits.UsePrivateThreads]: false, // Mengatur agar role tidak bisa menggunakan thread privat
-            
           });
         } else if (channel.isVoiceBased()) {
           await channel.permissionOverwrites.create(role, {
@@ -329,7 +326,7 @@ class DiscordFormat {
         (role) => role.name === "Muted"
       );
       if (!role) {
-        return message.reply(`${discordEmotes.error} Muted role not found.`);
+        return message.reply(`${discordEmotes.error} Muted role not found (use N!cmr to create one).`);
       }
 
       await member.roles.remove(role);
@@ -378,7 +375,7 @@ class DiscordFormat {
       );
       if (!role) {
         return message.reply(
-          `${discordEmotes.error} Muted role not found. Please create a role named "Muted".`
+          `${discordEmotes.error} Muted role not found (use N!cmr to create one).`
         );
       }
 
