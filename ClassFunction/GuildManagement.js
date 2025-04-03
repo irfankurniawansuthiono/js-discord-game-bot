@@ -404,7 +404,7 @@ class GuildManagement {
         }
     }
 
-    async sendVoiceLogs(client, guildId, user, action) {
+    async sendVoiceLogs(client, guildId, user, action, embed = null) {
         try {
             const guildConfig = this.getGuild(guildId);
             if (!guildConfig || !guildConfig.voiceLogs) return;
@@ -412,9 +412,15 @@ class GuildManagement {
             const channel = client.channels.cache.get(guildConfig.voiceLogs);
             if (!channel) return;
     
-            await channel.send({
-                content: `🔊 **${user.user.tag}** has ${action} the voice channel!`
-            });
+            if (embed) {
+                await channel.send({
+                    embeds: [embed]
+                });
+            } else {
+                await channel.send({
+                    content: `🔊 **${user.user.tag}** has ${action} the voice channel!`
+                });
+            }
         } catch (error) {
             console.error('Error sending voice logs:', error);
         }

@@ -116,6 +116,7 @@ const pages = {
       {
         name: "⚔️ Moderation",
         value: [
+          "`👤 dprofile <@user?>` - Show discord profile details",
           "`🗑️ rbc` - Delete bot messages",
           "`📝 nick <@user>` - Set user nickname",
           "`🔒 lock` - Lock current channel",
@@ -139,8 +140,9 @@ const pages = {
           "`🔨 clearwarns <@user>` - Clear user warnings",
           "`🔊 setvoicelogs <#channel>` - Set Voice Logs Update Channel",
           "`🔇 disablevoicelogs` - Disable Voice Logs",
-          // "`🔨 unmute <@user>` - Unmute a user",
-          // "`🔨 mute <@user>` - Mute a user",
+          "`🔨 unmute <@user>` - Unmute a user",
+          "`🔨 mute <@user>` - Mute a user",
+          "`🔨 cmr` - Create muted role",
         ].join("\n"),
         inline: false,
       },

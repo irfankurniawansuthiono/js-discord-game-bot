@@ -1854,6 +1854,29 @@ ${description}
     if (message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");  
     return await githubCron.resetPublicUploads();
   },
+  dprofile: async(message, args) => {
+    if (args.length < 1) return message.reply(`Usage: ${prefix}dprofile <user>`);
+    let user = message.mentions.users.first();
+    if (!user) user = message.author;
+    return await discordFormat.DiscordProfileDetail(message, user.id);
+  },
+  cmr: async (message) => {
+    // administrator
+    if (!guildAdmin(message)) return;
+    await discordFormat.createMutedRole(message);
+  },
+  mute: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    const user = message.mentions.users.first();
+    if (!user) return message.reply("Please mention a user to mute.");
+    await discordFormat.muteUser(message, user.id);
+  },
+  unmute: async (message, args) => {
+    if (!guildAdmin(message)) return;
+    const user = message.mentions.users.first();
+    if (!user) return message.reply("Please mention a user to unmute.");
+    await discordFormat.unmuteUser(message, user.id);
+  },
 }
 
 // Event Handlers
@@ -1962,21 +1985,226 @@ client.on("guildMemberAdd", async (member) => {
 client.on("voiceStateUpdate", async (oldState, newState) => {
   const user = newState.member || oldState.member;
   const guildId = newState.guild.id;
+  
+  // Check if this was a forced move by getting the guild audit logs
+  let mover = null;
+  let wasForced = false;
+  
+  // Check for a recent MEMBER_DISCONNECT audit log
+  if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+    try {
+      const auditLogs = await newState.guild.fetchAuditLogs({
+        limit: 1,
+        type: 24,
+      });
+      
+      const moveLog = auditLogs.entries.first();
+      
+      // Check if this log is recent (within the last 5 seconds) and for this user
+      if (moveLog && 
+          moveLog.target.id === user.id && 
+          moveLog.createdTimestamp > Date.now() - 5000) {
+        mover = moveLog.executor;
+        wasForced = true;
+      }
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+    }
+  }
 
-  // check if user join a voice channel
+  // User joined a voice channel
   if (!oldState.channelId && newState.channelId) {
-      guildManagement.sendVoiceLogs(client, guildId, user, `joined ${newState.channel}`);
+    const channelName = newState.channel.name;
+    
+    const embed = {
+      color: 0x2ECC71, // Green color
+      title: '📥 Voice Channel Joined',
+      thumbnail: {
+        url: user.user.displayAvatarURL({ dynamic: true }),
+      },
+      description: `**${user.user.tag}** has joined <#${newState.channelId}>  !`,
+      fields: [
+        {
+          name: 'Channel Members',
+          value: `${newState.channel.members.size} members`,
+          inline: true,
+        }
+      ],
+      timestamp: new Date(),
+    };
+    
+    // Add status info if any special status exists
+    if (newState.mute || newState.deaf || newState.selfMute || 
+        newState.selfDeaf || newState.selfVideo || newState.streaming) {
+      
+      let statusInfo = [];
+      if (newState.mute) statusInfo.push('🔇 Server Muted');
+      if (newState.deaf) statusInfo.push('🔇 Server Deafened');
+      if (newState.selfMute) statusInfo.push('🎙️ Self Muted');
+      if (newState.selfDeaf) statusInfo.push('🎧 Self Deafened');
+      if (newState.selfVideo) statusInfo.push('📹 Camera On');
+      if (newState.streaming) statusInfo.push('🖥️ Streaming');
+      
+      embed.fields.push({
+        name: 'Status',
+        value: statusInfo.join('\n'),
+        inline: false,
+      });
+    }
+    
+    await guildManagement.sendVoiceLogs(
+      client, 
+      guildId, 
+      user, 
+      `joined ${channelName}`,
+      embed
+    );
   }
-  // check if user leave a voice channel
+  
+  // User left a voice channel
   else if (oldState.channelId && !newState.channelId) {
-      guildManagement.sendVoiceLogs(client, guildId, user, `left ${oldState.channel}`);
+    const channelName = oldState.channel.name;
+    const duration = oldState.joinedTimestamp ? (Date.now() - oldState.joinedTimestamp) : null;
+    
+    // Format duration to hours:minutes:seconds
+    let formattedDuration = 'Unknown';
+    if (duration) {
+      const seconds = Math.floor(duration / 1000) % 60;
+      const minutes = Math.floor(duration / (1000 * 60)) % 60;
+      const hours = Math.floor(duration / (1000 * 60 * 60));
+      formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    const embed = {
+      color: 0xE74C3C, // Red color
+      title: '📤 Voice Channel Left',
+      thumbnail: {
+        url: user.user.displayAvatarURL({ dynamic: true }),
+      },
+      description: `**${user.user.tag}** has left <#${oldState.channelId}>!`,
+      fields: [
+        {
+          name: 'Duration in Channel',
+          value: formattedDuration,
+          inline: true,
+        },
+        {
+          name: 'Channel Members',
+          value: `${oldState.channel.members.size} members left`,
+          inline: true,
+        }
+      ],
+      timestamp: new Date(),
+    };
+    
+    await guildManagement.sendVoiceLogs(
+      client, 
+      guildId, 
+      user, 
+      `left ${channelName}`,
+      embed
+    );
   }
-
-  // check if user move from one voice channel to another 
+  
+  // User moved from one voice channel to another
   else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-      guildManagement.sendVoiceLogs(client, guildId, user, `moved from ${oldState.channel} to ${newState.channel}`);
+    const oldChannelName = oldState.channel.name;
+    const newChannelName = newState.channel.name;
+    
+    let description = `**${user.user.tag}** has moved from <#${oldState.channelId}> to <#${newState.channelId}>!`;
+    
+    if (wasForced && mover) {
+      description = `**${user.user.tag}** was moved by **${mover.tag}** from <#${oldState.channelId}> to <#${newState.channelId}>!`;
+    }
+    
+    const embed = {
+      color: wasForced ? 0xF39C12 : 0x3498DB, // Orange for forced, Blue for voluntary
+      title: wasForced ? '📝 User Forcibly Moved' : '🔄 Voice Channel Moved',
+      thumbnail: {
+        url: user.user.displayAvatarURL({ dynamic: true }),
+      },
+      description: description,
+      timestamp: new Date(),
+    };
+    
+    await guildManagement.sendVoiceLogs(
+      client, 
+      guildId, 
+      user, 
+      wasForced ? 
+        `was moved from ${oldChannelName} to ${newChannelName} by ${mover ? mover.tag : 'a moderator'}` : 
+        `moved from ${oldChannelName} to ${newChannelName}`,
+      embed
+    );
+  }
+  
+  // User changed their audio/video settings
+  else if (oldState.channelId && newState.channelId && oldState.channelId === newState.channelId) {
+    // Check for changes in audio/video states
+    if (oldState.mute !== newState.mute || 
+        oldState.deaf !== newState.deaf ||
+        oldState.selfMute !== newState.selfMute || 
+        oldState.selfDeaf !== newState.selfDeaf ||
+        oldState.selfVideo !== newState.selfVideo ||
+        oldState.streaming !== newState.streaming) {
+      
+      const channelName = newState.channel.name;
+      
+      let statusChanges = [];
+      
+      // Server mute changes
+      if (oldState.mute !== newState.mute) {
+        statusChanges.push(newState.mute ? "🔇 was server muted" : "🔊 was server unmuted");
+      }
+      
+      // Server deafen changes
+      if (oldState.deaf !== newState.deaf) {
+        statusChanges.push(newState.deaf ? "🔇 was server deafened" : "🔊 was server undeafened");
+      }
+      
+      // Self mute changes
+      if (oldState.selfMute !== newState.selfMute) {
+        statusChanges.push(newState.selfMute ? "🎙️ muted themselves" : "🎙️ unmuted themselves");
+      }
+      
+      // Self deafen changes
+      if (oldState.selfDeaf !== newState.selfDeaf) {
+        statusChanges.push(newState.selfDeaf ? "🎧 deafened themselves" : "🎧 undeafened themselves");
+      }
+      
+      // Video changes
+      if (oldState.selfVideo !== newState.selfVideo) {
+        statusChanges.push(newState.selfVideo ? "📹 turned on camera" : "📹 turned off camera");
+      }
+      
+      // Stream changes
+      if (oldState.streaming !== newState.streaming) {
+        statusChanges.push(newState.streaming ? "🖥️ started streaming" : "🖥️ stopped streaming");
+      }
+      
+      const statusChangeText = statusChanges.join(", ");
+      
+      const embed = {
+        color: 0x9B59B6, // Purple color
+        title: '⚙️ Voice Status Changed',
+        thumbnail: {
+          url: user.user.displayAvatarURL({ dynamic: true }),
+        },
+        description: `**${user.user.tag}** in <#${newState.channelId}>   ${statusChangeText}`,
+        timestamp: new Date(),
+      };
+      
+      await guildManagement.sendVoiceLogs(
+        client, 
+        guildId, 
+        user, 
+        statusChangeText,
+        embed
+      );
+    }
   }
 });
+
 
 client.on("messageCreate", async (message) => {
   if (message.channel.type === ChannelType.DM && !message.content.startsWith(prefix)) {
