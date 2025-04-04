@@ -208,6 +208,7 @@ const pages = {
           "`🔄 setstatus <status>` - Set status",
           "`🎒 checkinv <@user>` - Check user inventory",
           "`👤 resetap` - reset all players",
+          "`💸 resetab` - reset all players balance",
           "`😎 spamsendto <@user> <amount>` - Spam DM Message to a user",
           "`😎 spamsay <amount>` - Spam Message to current channel",
           "`🗣️ say <message>` - Send chat to current channel",

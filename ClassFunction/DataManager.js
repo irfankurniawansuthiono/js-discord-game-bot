@@ -386,7 +386,18 @@ setbait(userId, bait) {
     this.saveData();
     return this.users[userId];
   }
-
+  async resetAllBalance(message) {
+    try {
+      for (const userId in this.users) {
+        this.users[userId].balance = 0;
+      }
+      this.saveData();
+      await message.reply({content:`${discordEmotes.success} All player's balance have been reset.`, ephemeral: true});
+    } catch (error) {
+      console.error('Error resetting all balances:', error);
+      await message.reply({content:`${discordEmotes.error} An error occurred while resetting all player's balance. Please try again later.`, ephemeral: true});
+    }
+  }
   updateBalance(userId, amount) {
     if (!this.users[userId]) return false;
     this.users[userId].balance += amount;

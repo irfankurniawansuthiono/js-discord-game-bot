@@ -566,6 +566,10 @@ const commands = {
     const user = dataManager.createUser(message.author.id);
     return message.reply(`Welcome! You start with $${user.balance}.`);
   },
+  resetab: async (message) => {
+    if (!ownerHelperFirewall(message.author.id, message)) return;
+    await dataManager.resetAllBalance(message);
+  },
   balance: async (message) => {
     const isUserMentioned = message.mentions.users.first();
     const user = await dataManager.getUserProfile(
