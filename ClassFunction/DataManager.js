@@ -389,7 +389,7 @@ setbait(userId, bait) {
   async resetAllBalance(message) {
     try {
       for (const userId in this.users) {
-        this.users[userId].balance = 0;
+        this.users[userId].balance = config.startingBalance;
       }
       this.saveData();
       await message.reply({content:`${discordEmotes.success} All player's balance have been reset.`, ephemeral: true});
