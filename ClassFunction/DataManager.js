@@ -162,7 +162,7 @@ class DataManager {
     return this.users;
   }
   async resetPlayer(userId) {
-    this.users[userId] = newPlayerData;
+    this.users[userId] = JSON.parse(JSON.stringify(newPlayerData));
     this.saveData();
     return this.users[userId];
   }
@@ -239,7 +239,7 @@ class DataManager {
         .setFooter({ text: "this balance giveaway is only given to current registered users" })
         .setTimestamp();
 
-        return await replyGiveawayAll.edit({ embeds: [giveawayAllEmbed], message: `${discordEmotes.success} Giveaway All Succeed` });
+        return await replyGiveawayAll.edit({content: "", embeds: [giveawayAllEmbed], message: `${discordEmotes.success} Giveaway All Succeed` });
     } catch (error) {
       console.error("Error in giveawayAll:", error.message);
     }
