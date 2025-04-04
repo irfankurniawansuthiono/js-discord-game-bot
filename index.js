@@ -1852,10 +1852,10 @@ ${description}
 // Event Handlers
 client.once("ready", async () => {
   // Jalankan sekali saat bot pertama kali start
-// (async () => {
-//   console.log("Running GithubCron commit on startup...");
-//   await githubCron.startCommit();
-// })();
+(async () => {
+  console.log("Running GithubCron commit on startup...");
+  await githubCron.startCommit();
+})();
 
   // setup github cron every 11 hours
   setInterval(async () => {
