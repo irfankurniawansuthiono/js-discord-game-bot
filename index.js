@@ -1970,13 +1970,13 @@ client.on("guildMemberAdd", async (member) => {
 });
 
 client.on("voiceStateUpdate", async (oldState, newState) => {
+  const voiceJoinLogs = new Map();
   const user = newState.member || oldState.member;
   const guildId = newState.guild.id;
   
   // Check if this was a forced move by getting the guild audit logs
   let mover = null;
   let wasForced = false;
-  const voiceJoinTimestamps = new Map();
   // Check for a recent MEMBER_DISCONNECT audit log
   if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
     try {
