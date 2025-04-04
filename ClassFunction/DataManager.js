@@ -258,7 +258,7 @@ class DataManager {
   updateInventory(userId, type, item) {
     this.users[userId].inventory[type] = item;
   }
-  async getInventory(message, userId, user) {
+  async getInventory(context, userId, user) {
     const rarityEmojis = {
         "common": "⚪",
         "uncommon": "🟢",
@@ -287,7 +287,7 @@ class DataManager {
             .setTitle(`🎒 ${user.username} Inventory`)
             .setDescription(`Total Fish in Inventory: ${totalFish}`)
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `Page ${page + 1} of ${totalPages}`, iconURL: user.displayAvatarURL({ dynamic: true, size: 256 }) })
+            .setFooter({ text: `Page ${page + 1} of ${totalPages === 0 ? 1 : totalPages}`, iconURL: user.displayAvatarURL({ dynamic: true, size: 256 }) })
             .setTimestamp()
             .addFields({ name: "🎣 Fishing", value: fishingItems });
     }
@@ -302,35 +302,50 @@ class DataManager {
         .setCustomId("nextPage")
         .setLabel("▶️")
         .setStyle(1)
-        .setDisabled(currentPage === totalPages - 1);
+        .setDisabled(currentPage === totalPages - 1 || totalPages === 0);
 
     const row = new ActionRowBuilder().addComponents(previousButton, nextButton);
-    const reply = await message.reply({ embeds: [generateEmbed(currentPage)], components: [row] });
 
+    // ✅ Cek apakah ini slash command atau prefix command
+    const isSlashCommand = context.isChatInputCommand?.() ?? false;
+    const userIdCheck = isSlashCommand ? context.user.id : context.author.id;
+
+    // ✅ Gunakan metode reply yang benar
+    let reply;
+    if (isSlashCommand) {
+        reply = await context.reply({ embeds: [generateEmbed(currentPage)], components: [row], fetchReply: true, ephemeral: true });
+    } else {
+        reply = await context.reply({ embeds: [generateEmbed(currentPage)], components: [row], ephemeral: true });
+    }
+
+    // ✅ Perbaikan collector agar bekerja di semua tipe command
     const collector = reply.createMessageComponentCollector({ time: 60000 });
 
-    collector.on("collect", async (interaction) => {
-        if (interaction.user.id !== message.author.id) {
-            return interaction.reply({ content: "You can't use this button!", ephemeral: true });
+    collector.on("collect", async (btnInteraction) => {
+        if (btnInteraction.user.id !== userIdCheck) {
+            return btnInteraction.reply({ content: "You can't use this button!", ephemeral: true });
         }
 
-        if (interaction.customId === "nextPage" && currentPage < totalPages - 1) {
+        if (btnInteraction.customId === "nextPage" && currentPage < totalPages - 1) {
             currentPage++;
-        } else if (interaction.customId === "prevPage" && currentPage > 0) {
+        } else if (btnInteraction.customId === "prevPage" && currentPage > 0) {
             currentPage--;
         }
 
         previousButton.setDisabled(currentPage === 0);
         nextButton.setDisabled(currentPage === totalPages - 1);
 
-        await interaction.update({ embeds: [generateEmbed(currentPage)], components: [row] });
+        await btnInteraction.update({ embeds: [generateEmbed(currentPage)], components: [row], ephemeral:true });
     });
+
     collector.on("end", () => {
         previousButton.setDisabled(true);
         nextButton.setDisabled(true);
-        reply.edit({ components: [row] });
-    })
+        reply.edit({ components: [row], ephemeral:true }).catch(console.error);
+    });
 }
+
+
 getUserBait(userId) {
   return this.users[userId]?.fishingItems.bait || 0;
 }
@@ -356,6 +371,9 @@ setbait(userId, bait) {
     this.saveData();
   }
   resetInventory(userId) {
+    const checkUser = this.users[userId];
+    if (!checkUser) return false;
+    // Reset inventory to default state 
     this.users[userId].inventory = {
       fishing:[]
     };

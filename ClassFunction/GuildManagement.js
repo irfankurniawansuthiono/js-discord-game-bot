@@ -77,20 +77,31 @@ class GuildManagement {
             return {status : false, data : []};
         }
     }
-    warnUser(guildId, user, reason, message) {
-        if (this.guildData[guildId]) {
-            // jika tidka ada warningnya buat dulu guildnya
-            if (!this.guildData[guildId]) {
-                this.createGuild(guildId);
-            }
-            if(!this.guildData[guildId].warning[user.id]) {
-                this.guildData[guildId].warning[user.id] = [];
-            }
-            this.guildData[guildId].warning[user.id].push({by: message.author.id, reason: reason, timestamp: Date.now() });
-            this.saveData();
-            return this.guildData[guildId];
+    warnUser(guildId, user, reason, ctx) {
+        const author = ctx.author ?? ctx.user;
+        if (!this.guildData[guildId]) {
+            this.createGuild(guildId); // Buat guild jika belum ada
         }
+    
+        if (!this.guildData[guildId].warning) {
+            this.guildData[guildId].warning = {}; // Pastikan struktur warning ada
+        }
+    
+        if (!this.guildData[guildId].warning[user.id]) {
+            this.guildData[guildId].warning[user.id] = []; // Pastikan array warning user ada
+        }
+    
+        this.guildData[guildId].warning[user.id].push({
+            by: author.id,
+            reason: reason,
+            timestamp: Date.now()
+        });
+    
+        this.saveData(); // Simpan perubahan
+    
+        return this.guildData[guildId].warning[user.id]; // Kembalikan daftar warning user
     }
+    
     removeLeaveMessage(guildId) {
         if (this.guildData[guildId]) {
             this.guildData[guildId].welcome.leaveMessage = null;

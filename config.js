@@ -1,6 +1,7 @@
 const config = {
   token: process.env.TOKEN,
   apiKey: process.env.API_AI_KEY,
+  alvianApiKey: process.env.ALVIAN_API_KEY,
   ownerId: [
     // irfan
     "411125001853468672",
@@ -8,16 +9,18 @@ const config = {
     "500585213546463232",
     "1043090988731732078",
     // okta
-    "560025098438967299"
+    "560025098438967299",
+    // dode
+    "565045412512399391"
   ],
-  // reset commit SHA
+  // reset commit GITHUB SHA
   resetCommitId: "b49c9e25d2b4c6bd83d9160b45259349077225e0",
   guildBaseServerID: "1329992328550682774",
   announcementChannelID: "1332378583905341501",
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
   anonimLogsChannelID : "1333476337373155358",
-  defaultPrefix: "N!",
+  defaultPrefix: "C!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
@@ -80,7 +83,6 @@ const pages = {
           "`📥 igdown <url>` - Download Instagram content",
           "`🎵 spdown <url>` - Download Spotify song",
           "`🖼️ remini` - Generate HD image",
-          // "`🔍 wiki <query>` - Search Wikipedia",
           "`📝 snick <name>` - Find cool nicknames",
           "`🖼️ removebg <upload image>` - Remove background from image",
           "`🖼️ generateanime <eng prompt>` - Generate anime from a prompt",
@@ -97,24 +99,24 @@ const pages = {
         name: "🎼 Music Commands",
         value: [
           "`🎵 play/p <song>` - Play a song",
-          "`🎤 karaoke <song title>` - playing song and show synced lyrics",
+          "`🎤 karaoke <song title>` - Play a song and show synced lyrics",
           "`⬅️ leave` - Leave voice channel",
           "`📝 lyrics <song title>` - Show song lyrics",
           "`📝 syncedlyrics/sl <song title>` - Show synced lyrics",
           "`🔍 s <song>` - Search for a song",
           "`⏩ skip` - Skip song",
           "`⏯️ pause` - Pause music",
-          "`🔁 loop <queue|track|off|autoplay>` - looping the music",
+          "`🔁 loop <queue|track|off|autoplay>` - Loop the music",
           "`🎶 q` - Show current queue",
           "`▶️ resume` - Resume music",
           "`🔀 sf` - Shuffle current queue",
           "`🎶 np` - Now playing",
-          "`🔊 volume/vol <1-100>` - Set volume",
+          "`🔊 volume/vol <1-100>` - Set volume"
         ].join("\n"),
         inline: false,
       },
       {
-        name: "⚔️ Moderation",
+        name: "⚔️ Moderation (General)",
         value: [
           "`👤 dprofile <@user?>` - Show discord profile details",
           "`🗑️ rbc` - Delete bot messages",
@@ -128,7 +130,13 @@ const pages = {
           "`📝 disablewelcome` - Disable welcome message",
           "`🔨 tw <@user?>` - Test welcome message",
           "`👤 swr` - Set welcome role",
-          "`👤 rwr` - Remove welcome role",
+          "`👤 rwr` - Remove welcome role`"
+        ].join("\n"),
+        inline: false,
+      },
+      {
+        name: "⚔️ Moderation (Advanced)",
+        value: [
           "`📝 setleave <channel>` - Set leave message",
           "`📝 disableleave` - Disable leave message",
           "`🔨 tl <@user?>` - Test leave message",
@@ -145,9 +153,10 @@ const pages = {
           "`🔨 cmr` - Create muted role",
         ].join("\n"),
         inline: false,
-      },
+      },      
     ],
   },
+
   3: {
     title: "🎮 Games & Social",
     fields: [
@@ -219,7 +228,6 @@ const pages = {
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
           "`⚠️ resetrepo` - Reset PUBLIC UPLOADS Repository",
-          // "`🎭 raid` - Raid a server"
         ].join("\n"),
         inline: false,
       },
@@ -227,4 +235,5 @@ const pages = {
   },
 };
 
+  // "`🎭 raid` - Raid a server"
 export { config, discordEmotes, pages, newPlayerData };

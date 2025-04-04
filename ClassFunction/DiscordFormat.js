@@ -108,29 +108,26 @@ class DiscordFormat {
       );
     }
   }
-  async setWelcome(guildId, channelId, message = "Welcome New Member!!") {
+  async setWelcome(guildId, channelId, message = "Welcome New Member!!", ctx) {
     try {
       // Cek validitas channel ID
-      const channel = await message.guild.channels.fetch(channelId);
+      const channel = await ctx.guild.channels.fetch(channelId);
+      const messageReply = await ctx.reply({content:`${discordEmotes.loading} Setting welcome message channel...`, ephemeral: true});
       if (!channel) {
-        return message.reply(
-          `${discordEmotes.error} Invalid channel ID. Please provide a valid channel.`
-        );
+        return messageReply.edit({content:`${discordEmotes.error} Invalid channel ID. Please provide a valid channel.`, ephemeral: true});
       }
 
       // Atur welcome message di data
       await guildManagement.setWelcome(guildId, channelId);
 
       // Konfirmasi ke pengguna
-      return message.channel.send(
-        `${discordEmotes.success} Welcome message channel set successfully for <#${channelId}>!`
-      );
+      return messageReply.edit({content:`${discordEmotes.success} Welcome message channel set successfully for <#${channelId}>!`, ephemeral: true});
     } catch (error) {
       console.error("Error setting welcome message:", error);
 
       // Kirim pesan kesalahan ke saluran pengguna
-      return message.channel.send(
-        `${discordEmotes.error} An error occurred while setting the welcome message. Please try again later.`
+      return ctx.channel.send(
+        `${discordEmotes.error} An error occurred while setting the welcome message. Please try again later.`, {ephemeral: true}
       );
     }
   }
@@ -720,100 +717,159 @@ class DiscordFormat {
       );
     }
   }
-  warnInfo(guildId, userId, message) {
+  warnInfo(guildId, user, ctx) {
+    const author = ctx.user ?? ctx.author; // Slash Command: ctx.user, Prefix Command: ctx.author
     try {
-      const res = guildManagement.warnInfo(guildId, userId, message);
+      const res = guildManagement.warnInfo(guildId, user.id, ctx);
       if (!res.status) {
         const embed = new EmbedBuilder()
           .setColor("#FF0000")
           .setTitle("⚠️ User Warnings Info")
-          .setDescription(`No warnings for <@${userId}>`);
-        return message.reply({ embeds: [embed] });
+          .setDescription(`No warnings for ${user}`);
+        return ctx.reply({ embeds: [embed], ephemeral: true });
       }
       if (res.status) {
         const embed = new EmbedBuilder()
           .setColor("#FF0000")
           .setTitle("⚠️ User Warnings Info")
-          .setDescription(`Warnings for <@${userId}>`)
+          .setDescription(`Warnings for ${user}`)
           .setFooter({
-            text: `total warnings: ${res.data.length}`,
-            iconURL: message.author.displayAvatarURL(),
+            text: `Total Warnings: ${res.data.length}`,
+            iconURL: author.displayAvatarURL(),
           });
-        res.data.forEach((warning) => {
-          const fetchWarningBy = message.guild.members.cache.get(warning.by);
-          embed.addFields({
-            name: `Warned by: ${fetchWarningBy.user.tag}`,
-            value: `\nReason: ${warning.reason}\nDate: ${formatDate(
-              warning.timestamp
-            )}`,
-          });
+          res.data.forEach((warning, index) => {
+            const fetchWarningBy = ctx.guild.members.cache.get(warning.by);
+            const warnedByTag = fetchWarningBy ? `<@${fetchWarningBy.id}>` : "Unknown User"; // Menampilkan tag atau fallback jika user tidak ditemukan
+        
+            embed.addFields({
+                name: `Warned by:`,
+                value: warnedByTag
+            });
+            embed.addFields({
+                name: `Reason:`,
+                value: warning.reason
+            });
+            embed.addFields({
+                name: `Date:`,
+                value: formatDate(warning.timestamp)
+            });
+            // add line kosong 
+            if(index !== res.data.length - 1) {
+                embed.addFields({
+                    name: "\u200B",
+                    value: "\u200B",
+                    inline: false,
+                });
+            }
         });
+      
 
-        return message.reply({ embeds: [embed] });
+        return ctx.reply({ embeds: [embed], ephemeral: true });
       }
     } catch (error) {
       console.error("Error warning user:", error);
-      return message.reply(
-        `${discordEmotes.error} An error occurred while checking user warnings. Please try again later.`
+      return ctx.reply(
+        `${discordEmotes.error} An error occurred while checking user warnings. Please try again later.`, {ephemeral: true}
       );
     }
   }
-  warnUser(guildId, user, reason, message) {
+  warnUser(guildId, user, reason, ctx) {
     try {
-      guildManagement.warnUser(guildId, user, reason, message);
-      const embedReply = new EmbedBuilder()
-        .setColor("#FF0000")
-        .setTitle("⚠️ User Warnings")
-        .setDescription(`Warned ${user} for ${reason}`)
-        .setFooter({
-          text: `warned by: ${message.author.tag}`,
-          iconURL: message.author.displayAvatarURL(),
-        });
-      return message.reply({ embeds: [embedReply] });
+        guildManagement.warnUser(guildId, user, reason, ctx);
+
+        // Menentukan siapa yang memberi peringatan
+        const warner = ctx.user ?? ctx.author;  // Slash Command: ctx.user, Prefix Command: ctx.author
+
+        const embedReply = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("⚠️ User Warning")
+            .setDescription(`Warned ${user} for: **${reason}**`)
+            .setFooter({
+                text: `Warned by: ${warner.tag}`,
+                iconURL: warner.displayAvatarURL(),
+            });
+
+        return ctx.reply?.({ embeds: [embedReply], content: `${user} got a warning from <@${warner.id}>` }) ?? ctx.channel.send({ embeds: [embedReply], content: `${user} got a warning from <@${warner.id}>` });
     } catch (error) {
-      console.error("Error warning user:", error);
-      return message.reply(
-        `${discordEmotes.error} An error occurred while warning the user. Please try again later.`
-      );
+        console.error("Error warning user:", error);
+        return ctx.reply?.(`${discordEmotes.error} An error occurred while warning the user. Please try again later.`)
+            ?? ctx.channel.send(`${discordEmotes.error} An error occurred while warning the user. Please try again later.`);
     }
-  }
+}
+
   async bugReport(message, bug) {
     const replyMessage = await message.reply(
-      `${discordEmotes.loading} Sending bug report.. (Thx for reporting!)\n\nYou can also participate in the development of this bot by contributing to the source code (${config.prefix}sc)`
+      {content: `${discordEmotes.loading} Sending bug report.. (Thx for reporting!)\n\nYou can also participate in the development of this bot by contributing to the source code (${config.prefix}sc)`, ephemeral: true}
     );
     try {
       const channel = await client.channels.fetch(config.bugReportChannelID);
       if (!channel) {
         return replyMessage.edit("Bug Report channel not found.");
       }
-
+      const author = message.user ?? message.author; // Slash Command: ctx.user, Prefix Command: ctx.author
       const embed = new EmbedBuilder()
         .setColor("#FF0000")
         .setTitle("🐛 Bug Report")
         .setDescription(bug)
         .setFooter({
-          text: `Reported by ${message.author.tag}`,
-          iconURL: message.author.displayAvatarURL(),
+          text: `Reported by ${author.tag}`,
+          iconURL: author.displayAvatarURL(),
         })
         .setTimestamp();
       // getBotOwner
       const botOwner = await client.users.fetch(config.ownerId[0]);
       const sentMessage = await channel.send({
         embeds: [embed],
-        content: `${botOwner}`,
+        content: `${botOwner}`
       });
       // Try to crosspost if it's an announcement channel
       if (channel.type === ChannelType.GuildAnnouncement) {
         await sentMessage.crosspost();
-        await replyMessage.edit("🐛 Bug report has been sent!");
-        dataManager.updateBugReport(message.author.id, new Date());
+        await replyMessage.edit({content:"🐛 Bug report has been sent!", ephemeral: true});
+        dataManager.updateBugReport(author.id, new Date());
       } else {
-        await replyMessage.edit("🐛 Bug report has been sent!");
+        await replyMessage.edit({content:"🐛 Bug report has been sent!", ephemeral: true});
       }
     } catch (error) {
       console.error("Error saat mengirim bug report:", error);
       message.channel.send(
-        `${discordEmotes.error} There was an error while sending bug report.`
+        {content:`${discordEmotes.error} There was an error while sending bug report.`, ephemeral: true}
+      );
+    }
+  }
+  async guildAnnouncement(message, announcement) {
+    const author = message.user ?? message.author; // Slash Command: ctx.user, Prefix Command: ctx.author
+    try {
+      if(!announcement){
+        return message.reply({content:"Please provide an announcement.", ephemeral: true});
+      }
+      const channel = await client.channels.fetch(config.announcementChannelID);
+      if (!channel) {
+        return message.reply({content:"Announcement channel not found.", ephemeral: true});
+      }
+      const embed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle("📢 Guild Announcement")
+        .setDescription(announcement)
+        .setFooter({
+          text: `Announced by ${author.tag}`,
+          iconURL: author.displayAvatarURL(),
+        })
+        .setTimestamp();
+      // getBotOwner
+      const sentMessage = await channel.send({
+        embeds: [embed],
+        ephemeral: true
+      });
+      // Try to crosspost if it's an announcement channel
+      if (channel.type === ChannelType.GuildAnnouncement) {
+        await sentMessage.crosspost();
+      }
+      await message.reply({content: "📢 Announcement has been sent!", ephemeral: true});
+    } catch (error) {
+      console.error("Error sending guild announcement:", error);
+      message.reply(
+        {content: `${discordEmotes.error} There was an error while sending the announcement.`, ephemeral: true}
       );
     }
   }

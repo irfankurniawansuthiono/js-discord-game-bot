@@ -14,6 +14,7 @@ import {
   Player,
 } from "discord-player";
 import { ApiManagement } from "./ClassFunction/ApiManagement.js";
+import { SlashCommands } from "./ClassFunction/SlashCommandBuilder.js";
 import { Games } from "./ClassFunction/GamesManagement.js";
 import { DataManager } from "./ClassFunction/DataManager.js";
 import { DiscordFormat } from "./ClassFunction/DiscordFormat.js";
@@ -73,7 +74,7 @@ export const client = new Client({
 let prefix = config.defaultPrefix;
 
 // help embed
-const createHelpEmbed = (page = 1, user) => {
+export const createHelpEmbed = (page = 1, user) => {
   // Tambahkan parameter user
   const embedColors = {
     1: "#FF69B4", // Pink untuk Basic & Tools
@@ -81,7 +82,6 @@ const createHelpEmbed = (page = 1, user) => {
     3: "#F1C40F", // Gold untuk Games & Social
     4: "#E74C3C", // Red untuk Owner Commands
   };
-
   const embed = new EmbedBuilder()
     .setColor(embedColors[page])
     .setTitle(`Nanami Help Menu - ${pages[page].title}`)
@@ -104,6 +104,7 @@ const dataManager = new DataManager();
 const apiManagement = new ApiManagement();
 const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
+const slashCommands = new SlashCommands(client);
 const guildManagement = new GuildManagement(client);
 const githubCron = new GithubCron(client);
 const shopManagement = new ShopManagement(client);
@@ -112,7 +113,7 @@ const gamesManagement = new Games();
 const fishingManagement = new FishingManagement();
 const anonChat = new AnonChat();
 
-const ownerHelperFirewall = (authorId, message) => {
+export const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
     message.reply("This command is only available to the bot owner!");
     return false;
@@ -120,30 +121,54 @@ const ownerHelperFirewall = (authorId, message) => {
   return true;
 };
 
-const guildAdmin = (message) => {
-  if(message.channel.type === ChannelType.DM) {
-    return message.reply("You can't use this command in DMs.");
-  }
-  if (config.ownerId[0] === message.author.id) {
+
+export const guildAdmin = (ctx) => {
+    let user, member, channelType;
+
+    // Cek apakah konteks berasal dari Slash Command atau Prefix Command
+    if (ctx.isChatInputCommand?.()) {  
+        // Jika Slash Command
+        user = ctx.user;
+        member = ctx.member;
+        channelType = ctx.channel?.type;
+    } else {  
+        // Jika Prefix Command (Message)
+        user = ctx.author;
+        member = ctx.member;
+        channelType = ctx.channel?.type;
+    }
+
+    // Tidak bisa digunakan di DM
+    if (channelType === ChannelType.DM) {
+        ctx.reply?.("You can't use this command in DMs.") ?? ctx.channel.send("You can't use this command in DMs.");
+        return false;
+    }
+
+    // Jika user adalah pemilik bot
+    if (config.ownerId.includes(user.id)) {
+        return true;
+    }
+
+    // Jika bukan admin
+    if (!member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        ctx.reply?.("You do not have permission to use this command.") ?? ctx.channel.send("You do not have permission to use this command.");
+        return false;
+    }
+
     return true;
-  }else if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    message.reply("You do not have permission to use this command.");
-    return false;
-  }
-  return true;
 };
+
 
 
 const commands = {
   setbait: (message, args)=>{
     if(!ownerHelperFirewall) return;
     if(args.length < 2) return message.reply(`Usage: ${prefix}setbait <amount>`);
-    const ammount = message.mentions.users.first() ? parseInt(args[2]) : parseInt(args[1]);
+    const amount = message.mentions.users.first() ? parseInt(args[2]) : parseInt(args[1]);
     const user = message.mentions.users.first() ? message.mentions.users.first().id : message.author.id;
-    dataManager.setbait(user, ammount);
-    message.reply(`Set bait for ${message.mentions.users.first() ? message.mentions.users.first() : message.author} to ${ammount}`);
+    dataManager.setbait(user, amount);
+    message.reply(`Set bait for ${message.mentions.users.first() ? message.mentions.users.first() : message.author} to ${amount}`);
   },
-
   inv:(message)=>{
     const user = message.author
     dataManager.getInventory(message, user.id, user)
@@ -167,7 +192,8 @@ const commands = {
     const user = message.author.id;
     const userMention = message.mentions.users.first();
     try {
-      dataManager.resetInventory(userMention ? userMention.id : user);
+      const status = dataManager.resetInventory(userMention ? userMention.id : user);
+      if(!status) return message.reply("User not found! please register them first.");
       message.reply(userMention ? `${userMention}'s inventory has been reset.` : "Your Inventory has been reset.");
     } catch (error) {
       message.reply("An error occurred while resetting the inventory.");
@@ -183,8 +209,7 @@ const commands = {
     const guildId = message.guild.id;
     const user = message.mentions.users.first();
     if(!user) return message.reply("Please mention a valid user.");
-    const userId = user.id;
-    await discordFormat.warnInfo(guildId, userId, message);
+    await discordFormat.warnInfo(guildId, user, message);
   },
   warn: async(message, args) => {
     if(!guildAdmin(message)) return;
@@ -277,8 +302,7 @@ const commands = {
   },
   karaoke: async (message, args) => {
     const title = args.slice(1).join(" ");
-    await voiceManager.playMusic(message, title);
-    await voiceManager.getSyncedLyrics(message, title);
+    await voiceManager.karaokeMusic(message, title);
   },
   skip: (message) => {
     voiceManager.skipMusic(message);
@@ -308,62 +332,7 @@ const commands = {
 
       // Get the announcement message
       const announcement = args.slice(1).join(" ");
-      if (!announcement) {
-        return message.reply(
-          `${discordEmotes.error} Please provide an announcement message.`
-        );
-      }
-
-      // Fetch the announcement channel using the correct config property
-      const channelId = config.announcementChannelID; // Fixed: Using correct config property
-
-      // Validate channel ID
-      if (!channelId) {
-        return message.reply(
-          `${discordEmotes.error} Configuration error: Missing announcement channel ID.`
-        );
-      }
-      const announcementEmbed = new EmbedBuilder()
-        .setColor("#FF0000")
-        .setTitle("📢 ANNOUNCEMENT")
-        .setDescription(announcement)
-        .setThumbnail(client.user.displayAvatarURL())
-        .setTimestamp()
-        .setFooter({
-          text: `Announced by ${message.author.tag}`,
-          iconURL: message.author.displayAvatarURL(),
-        });
-      try {
-        // Fetch the announcement channel
-        const channel = await client.channels.fetch(channelId);
-
-        // Validate if the channel exists and is a text channel
-        if (!channel || !channel.isTextBased()) {
-          return message.reply(
-            `${discordEmotes.error} The specified channel does not exist or is not a text channel.`
-          );
-        }
-
-        // Send the announcement
-        const sentMessage = await channel.send({
-          embeds: [announcementEmbed],
-          allowedMentions: { parse: ["users", "roles"] }, // Safer mention handling
-        });
-
-        // Try to crosspost if it's an announcement channel
-        if (channel.type === ChannelType.GuildAnnouncement) {
-          await sentMessage.crosspost();
-          await message.reply(
-            "✅ Announcement successfully sent and published!"
-          );
-        } else {
-          await message.reply("✅ Announcement successfully sent!");
-        }
-      } catch (channelError) {
-        return message.reply(
-          `${discordEmotes.error} Failed to access the announcement channel. Please check channel permissions.`
-        );
-      }
+      discordFormat.guildAnnouncement(message, announcement);
     } catch (error) {
       console.error("Error in 'ga' command:", error);
       await message.reply(
@@ -516,6 +485,7 @@ const commands = {
     const url = args[1];
     await apiManagement.youtubeDownload(message, url);
   },
+  // last 4-4-25
   ttfind: async (message, args) => {
     if (args.length < 2) {
       return message.reply(`Usage: ${prefix}ttfind <prompt>`);
@@ -1855,10 +1825,10 @@ ${description}
     return await githubCron.resetPublicUploads();
   },
   dprofile: async(message, args) => {
-    if (args.length < 1) return message.reply(`Usage: ${prefix}dprofile <user>`);
+    if (args.length < 1) return message.reply(`${discordEmotes.error} Usage: ${prefix}dprofile <@user?>`);
     let user = message.mentions.users.first();
     if (!user) user = message.author;
-    return await discordFormat.DiscordProfileDetail(message, user.id);
+    return await discordFormat.DiscordProfileDetail(message, user);
   },
   cmr: async (message) => {
     // administrator
@@ -1882,10 +1852,10 @@ ${description}
 // Event Handlers
 client.once("ready", async () => {
   // Jalankan sekali saat bot pertama kali start
-(async () => {
-  console.log("Running GithubCron commit on startup...");
-  await githubCron.startCommit();
-})();
+// (async () => {
+//   console.log("Running GithubCron commit on startup...");
+//   await githubCron.startCommit();
+// })();
 
   // setup github cron every 11 hours
   setInterval(async () => {
@@ -1893,6 +1863,12 @@ client.once("ready", async () => {
     await githubCron.startCommit();
 }, 11 * 60 * 60 * 1000); 
 
+  await slashCommands.setupSlashCommands();
+    
+  // Setup event listener untuk interaksi
+  client.on('interactionCreate', async interaction => {
+      await slashCommands.handleInteraction(interaction);
+  });
   guildManagement.setClient(client)
   anonChat.setClient(client);
   console.log(`Bot logged in as ${client.user.tag}`);
@@ -1975,7 +1951,6 @@ client.once("ready", async () => {
   });
   
 });
-
 
 client.on("guildMemberAdd", async (member) => {
   guildManagement.applyWelcomeRole(member.guild.id, member);

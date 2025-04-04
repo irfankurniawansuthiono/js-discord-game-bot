@@ -39,65 +39,82 @@ class FishingManagement {
         return FishingManagement.instance;
     }
 
-    async startFishing(interaction) {
+    async startFishing(input) {
         try {
-            // Check if user is registered
-            const user = await this.dataManager.getUser(interaction.author.id);
-            if (!user) {
-                return interaction.reply({ 
-                    content: `You need to register first! Use ${this.config.defaultPrefix}register`, 
-                    ephemeral: true 
-                });
+            // Deteksi apakah input dari prefix command atau slash command
+            const isInteraction = !!input.user;
+            const user = isInteraction ? input.user : input.author;
+            const userId = user.id;
+            const username = user.username;
+    
+            // Jika dari interaction, cegah timeout dulu
+            if (isInteraction) await input.deferReply();
+    
+            // Cek apakah user terdaftar
+            const userData = await this.dataManager.getUser(userId);
+            if (!userData) {
+                return isInteraction 
+                    ? input.editReply({ content: `You need to register first! Use ${this.config.defaultPrefix}register`, ephemeral: true })
+                    : input.reply(`You need to register first! Use ${this.config.defaultPrefix}register`);
             }
-            // check user bait
-            const userBait = await this.dataManager.getUserBait(interaction.author.id);
-            if (!userBait) {
-                return interaction.reply({ 
-                    content: `${interaction.author} need to buy bait first! Use ${this.config.defaultPrefix}shop`
-                });
+    
+            // Cek apakah user memiliki bait
+            const userBait = await this.dataManager.getUserBait(userId);
+            if (userBait <= 0) {
+                return isInteraction 
+                    ? input.editReply({ content: `${user} needs to buy bait first! Use ${this.config.defaultPrefix}shop`, ephemeral: true })
+                    : input.reply({ content: `${user} needs to buy bait first! Use ${this.config.defaultPrefix}shop`, ephemeral: true });
             }
-
-            // Prepare fishing animation
+    
+            // Buat animasi memancing
             const attachment = await this.createFishingAnimation();
-            
-            // Send initial fishing message
-            const fishingMessage = await interaction.reply({
-                content: `${interaction.author} is fishing... 🎣`,
-                files: [attachment],
-                fetchReply: true
-            });
-
-            // Catch fish and create embed
-            this.dataManager.updateBait(interaction.author.id, -1);
-            this.dataManager.addFishCaught(interaction.author.id);
-            const fish = this.catchFish(interaction.author.id);
-            
-            let embed = fish ? this.createFishEmbed(fish, interaction.author.username, interaction.author.id): this.failedToCatchEmbed();
+    
+            // Kirim pesan awal saat memancing
+            const fishingMessage = isInteraction
+                ? await input.editReply({ content: `${user} is fishing... 🎣`, files: [attachment] })
+                : await input.reply({ content: `${user} is fishing... 🎣`, files: [attachment] });
+    
+            // Kurangi bait dan tambahkan statistik ikan
+            this.dataManager.updateBait(userId, -1);
+            this.dataManager.addFishCaught(userId);
+    
+            // Tangkap ikan
+            const fish = this.catchFish(userId);
+    
+            // Buat embed berdasarkan hasil tangkapan
+            let embed = fish 
+                ? this.createFishEmbed(fish, username, userId) 
+                : this.failedToCatchEmbed();
+    
+            // Buat tombol aksi
             const actionRow = this.createActionRow();
-
-            // Save to inventory
-            fish && this.dataManager.saveInventory(interaction.author.id, fish, "fishing");
-
-            // Update message after delay
+    
+            // Simpan ke inventory jika berhasil menangkap ikan
+            if (fish) {
+                this.dataManager.saveInventory(userId, fish, "fishing");
+            }
+    
+            // Update pesan setelah 7 detik
             setTimeout(async () => {
-                await fishingMessage.edit({
-                    embeds: [embed],
-                    components: [actionRow],
-                    files: [],
-                    content: ""
-                });
+                if (isInteraction) {
+                    await input.editReply({ embeds: [embed], components: [actionRow], files: [], content: "" });
+                } else {
+                    await fishingMessage.edit({ embeds: [embed], components: [actionRow], files: [], content: "" });
+                }
             }, 7000);
-
-            // Set up button collector
-            this.setupButtonCollector(fishingMessage, interaction, attachment);
+    
+            // Setup button collector
+            this.setupButtonCollector(fishingMessage, input, attachment);
+    
         } catch (error) {
             console.error("Error in startFishing:", error);
-            return interaction.reply({
-                content: "Sorry, something went wrong while fishing!",
-                ephemeral: true
-            });
+            return isInteraction
+                ? input.editReply({ content: "Sorry, something went wrong while fishing!", ephemeral: true })
+                : input.reply("Sorry, something went wrong while fishing!");
         }
     }
+    
+    
 
     async sellFish(interaction) {
         try {

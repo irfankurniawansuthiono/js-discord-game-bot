@@ -25,36 +25,118 @@ class VoiceManager {
         try {
           // Validasi volume input
           if (isNaN(volume) || volume < 0 || volume > 100) {
-            return message.reply(`${discordEmotes.error} Volume must be a number between 0 and 100.`);
+            return message.reply({content:`${discordEmotes.error} Volume must be a number between 0 and 100.`, ephemeral: true});
           }
       
           // Fetch queue
           const queue = useQueue(message.guild.id);
           if (!queue || !queue.node.isPlaying()) {
-            return message.reply(`${discordEmotes.error} No music is currently playing.`);
+            return message.reply({content: `${discordEmotes.error} No music is currently playing.`, ephemeral: true});
           }
       
           // Set volume menggunakan queue
           queue.node.setVolume(volume);
-          return message.reply(`${discordEmotes.success} Volume set to ${volume}%`);
+          return message.reply({content:`${discordEmotes.success} Volume set to ${volume}%`, ephemeral: true});
         } catch (error) {
           console.error("Error while setting volume:", error);
       
           // Tangani berbagai jenis error
           if (error.code === "ERR_ILLEGAL_HOOK_INVOCATION") {
-            return message.reply(`${discordEmotes.error} An internal error occurred. Please try again later.`);
+            return message.reply({content: `${discordEmotes.error} An internal error occurred. Please try again later.`, ephemeral: true});
           }
       
-          return message.reply(`${discordEmotes.error} Error setting volume!`);
+          return message.reply({content: `${discordEmotes.error} Error setting volume!`, ephemeral: true});
         }
       }
-      
+    async karaokeMusic(message, title) {
+      try {
+          // Cek apakah user berada di voice channel
+          const userVoiceChannel = message.member.voice.channel;
+          if (!userVoiceChannel) {
+              return message.reply(`${discordEmotes.error} You need to be in a voice channel first!`);
+          }
+  
+          // Cek apakah bot sudah berada di voice channel
+          const botVoiceChannel = message.guild.members.me.voice.channel;
+          if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
+              return message.reply(`${discordEmotes.error} You need to be in the same voice channel as the bot!`);
+          }
+  
+          // Kirim pesan awal bahwa karaoke sedang dimulai
+          const loadingMsg = await message.reply(`🎤 **Starting Karaoke Mode...** 🎶`);
+  
+          // Ambil instance player dan mainkan musik
+          const player = useMainPlayer();
+          const { track } = await player.play(userVoiceChannel, title, {
+              nodeOptions: {
+                  metadata: { channel: message.channel },
+                  selfDeaf: true,
+                  leaveOnEnd: true,
+                  leaveOnEndCooldown: 300000, // 5 menit
+              },
+              requestedBy: message.author,
+          });
+  
+          // Ambil queue dan pastikan ada track yang sedang diputar
+          const queue = useQueue(message.guild.id);
+          if (!queue || !queue.currentTrack) {
+              return loadingMsg.edit(`${discordEmotes.error} Failed to play music.`);
+          }
+  
+          // Ambil lirik berdasarkan judul lagu
+          const results = await player.lyrics.search({ q: title });
+          if (!results || results.length === 0) {
+              return loadingMsg.edit(`${discordEmotes.error} No lyrics found for this track.`);
+          }
+  
+          // Ambil hasil pertama dan pastikan ada lirik sinkron
+          const first = results[0];
+          if (!first.syncedLyrics) {
+              return loadingMsg.edit(`${discordEmotes.error} Synced lyrics are not available for this track.`);
+          }
+  
+          // Perbarui pesan awal dengan informasi lagu
+          await loadingMsg.edit(`🎤 **Karaoke Mode Activated** 🎶\nNow playing: **${track.title}**`);
+  
+          // Muat lirik sinkron ke dalam queue
+          const syncedLyrics = queue.syncedLyrics(first);
+  
+          // Fungsi untuk mengirimkan lirik secara real-time
+          const onLyricsUpdate = async (lyrics, timestamp) => {
+              const formattedTime = new Date(timestamp).toISOString().substr(14, 5); // Format MM:SS
+              try {
+                  await message.channel.send({
+                      content: `\`[${formattedTime}]\` ${lyrics}`,
+                      allowedMentions: { parse: [] },
+                  });
+              } catch (error) {
+                  console.error("Error sending synced lyrics:", error);
+              }
+          };
+  
+          // Jalankan lirik secara live
+          syncedLyrics.onChange((lyrics, timestamp) => {
+              onLyricsUpdate(lyrics, timestamp).catch(console.error);
+          });
+  
+          // Langganan event selesai
+          const unsubscribe = syncedLyrics.subscribe();
+          player.events.on("playerFinish", () => {
+              unsubscribe();
+          });
+  
+      } catch (error) {
+          console.error("Error in karaokeMusic:", error);
+          return message.reply(`${discordEmotes.error} An error occurred while starting karaoke.`);
+      }
+  }  
     async queueMusic(message) {
+      const author = message.user ?? message.author;
       try {
         // Check if the user is in a voice channel
         if (!message.member.voice.channel) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            content: `${discordEmotes.error} You need to be in a voice channel first!`, ephemeral:true
           });
         }
   
@@ -65,18 +147,18 @@ class VoiceManager {
         // Check if the bot is in a voice channel and if it's the same as the user's
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`, ephemeral:true
           });
         }
         const queue = useQueue(message.guild.id);
         if (!queue)
           return message.reply({
-            content: `${discordEmotes.error} No music in queue.`,
+            content: `${discordEmotes.error} No music in queue.`, ephemeral:true
           });
         const currentQueue = queue.tracks.toArray();
         if (currentQueue.length === 0)
           return message.reply({
-            content: `${discordEmotes.error} No music in queue.`,
+            content: `${discordEmotes.error} No music in queue.`, ephemeral:true
           });
         if (currentQueue.length > 10) {
           let currentPage = 1;
@@ -125,6 +207,7 @@ class VoiceManager {
           const queueMsg = await message.reply({
             embeds: [embed],
             components: [row],
+            ephemeral:true
           });
   
           // Buat collector
@@ -159,6 +242,7 @@ class VoiceManager {
             await interaction.update({
               embeds: [embed],
               components: [row],
+              ephemeral:true
             });
           });
   
@@ -179,16 +263,16 @@ class VoiceManager {
                 .join("\n")
             )
             .setFooter({
-              text: `Requested by ${message.author.tag}`,
-              iconURL: message.author.displayAvatarURL(),
+              text: `Requested by ${author.tag}`,
+              iconURL: author.displayAvatarURL(),
             });
   
-          await message.reply({ embeds: [embed] });
+          await message.reply({ embeds: [embed], ephemeral:true });
         }
       } catch (error) {
         console.error("Error in queueMusic:", error);
         return message.reply({
-          content: `${discordEmotes.error} An error occurred while displaying the queue.`,
+          content: `${discordEmotes.error} An error occurred while displaying the queue.`, ephemeral: true
         });
       }
     }
@@ -197,7 +281,7 @@ class VoiceManager {
         // Check if the user is in a voice channel
         if (!message.member.voice.channel) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            content: `${discordEmotes.error} You need to be in a voice channel first!`, ephemeral:true
           });
         }
   
@@ -208,7 +292,7 @@ class VoiceManager {
         // Check if the bot is in a voice channel and if it's the same as the user's
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`, ephemeral:true
           });
         }
         // Get the queue for the current guild
@@ -216,11 +300,11 @@ class VoiceManager {
   
         if (!queue || !queue.isPlaying()) {
           return message.reply(
-            `${discordEmotes.error} No music is currently playing!`
+            `${discordEmotes.error} No music is currently playing!`, {ephemeral:true}
           );
         } else if (queue.tracks.length < 2) {
           return message.reply(
-            `${discordEmotes.error} The queue must have at least 2 tracks to shuffle!`
+            `${discordEmotes.error} The queue must have at least 2 tracks to shuffle!` ,{ephemeral:true}
           );
         }
   
@@ -242,6 +326,7 @@ class VoiceManager {
         if (!message.member.voice.channel) {
           return message.reply({
             content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            ephemeral: true,
           });
         }
   
@@ -252,14 +337,14 @@ class VoiceManager {
         // Check if the bot is in a voice channel and if it's the same as the user's
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`, ephemeral:true
           });
         }
         // Mendapatkan queue untuk server saat ini
         const queue = useQueue(message.guild.id);
         if (!queue || !queue.isPlaying()) {
           return message.reply(
-            `${discordEmotes.error} No music is currently playing!`
+            {content:`${discordEmotes.error} No music is currently playing!`, ephemeral: true}
           );
         }
   
@@ -280,7 +365,7 @@ class VoiceManager {
             break;
           default:
             return message.reply(
-              `${discordEmotes.error} Invalid option: \`${option}\`. Available options: queue, track, off, autoplay.`
+              {content:`${discordEmotes.error} Invalid option: \`${option}\`. Available options: queue, track, off, autoplay.`, ephemeral: true}
             );
         }
   
@@ -295,21 +380,22 @@ class VoiceManager {
           [QueueRepeatMode.AUTOPLAY]: "🎵 Autoplay mode enabled.",
         };
   
-        return message.reply(modeText[repeatMode]);
+        return message.reply({content:`${discordEmotes.success} ${modeText[repeatMode]}`, ephemeral: true});
       } catch (error) {
         console.error("Error in loopMusic:", error);
         return message.reply(
-          `${discordEmotes.error} An error occurred while setting the loop mode.`
+          {content: `${discordEmotes.error} An error occurred while setting the loop mode.`, ephemeral: true}
         );
       }
     }
   
     async getSyncedLyrics(message, title) {
+      const author = message.user ?? message.author
       try {
         // Check if the user is in a voice channel
         if (!message.member.voice.channel) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            content: `${discordEmotes.error} You need to be in a voice channel first!`,  ephemeral:true
           });
         }
   
@@ -320,7 +406,7 @@ class VoiceManager {
         // Check if the bot is in a voice channel and if it's the same as the user's
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`, ephemeral:true
           });
         }
   
@@ -330,7 +416,7 @@ class VoiceManager {
         const results = await player.lyrics.search({ q: title });
         if (!results || results.length === 0) {
           return message.reply({
-            content: `${discordEmotes.error} No lyrics found for this track.`,
+            content: `${discordEmotes.error} No lyrics found for this track.`, ephemeral:true
           });
         }
   
@@ -338,7 +424,7 @@ class VoiceManager {
         const first = results[0];
         if (!first.syncedLyrics) {
           return message.reply({
-            content: `${discordEmotes.error} Synced lyrics are not available for this track.`,
+            content: `${discordEmotes.error} Synced lyrics are not available for this track.`, ephemeral:true
           });
         }
   
@@ -346,7 +432,7 @@ class VoiceManager {
         const queue = useQueue(message.guild.id);
         if (!queue || !queue.currentTrack) {
           return message.reply({
-            content: `${discordEmotes.error} No active music queue or track playing.`,
+            content: `${discordEmotes.error} No active music queue or track playing.`, ephemeral:true
           });
         }
   
@@ -389,15 +475,15 @@ class VoiceManager {
             }**`
           )
           .setThumbnail(
-            queue.currentTrack.thumbnail ?? message.author.displayAvatarURL()
+            queue.currentTrack.thumbnail ?? author.displayAvatarURL()
           )
           .setTimestamp();
   
-        await message.reply({ embeds: [embed] });
+        await message.reply({ embeds: [embed], ephemeral:true });
       } catch (error) {
         console.error("Error in getSyncedLyrics:", error);
         return message.reply({
-          content: `${discordEmotes.error} Failed to get synced lyrics: ${error.message}`,
+          content: `${discordEmotes.error} Failed to get synced lyrics: ${error.message}`, ephemeral:true
         });
       }
     }
@@ -410,7 +496,7 @@ class VoiceManager {
         // Check if queue exists
         if (!queue || !queue.isPlaying()) {
           return message.reply({
-            content: `${discordEmotes.error} No music is currently playing!`,
+            content: `${discordEmotes.error} No music is currently playing!`, ephemeral: true
           });
         }
   
@@ -418,7 +504,7 @@ class VoiceManager {
         const currentTrack = queue.currentTrack;
         if (!currentTrack) {
           return message.reply({
-            content: `${discordEmotes.error} No track is currently playing!`,
+            content: `${discordEmotes.error} No track is currently playing!`, ephemeral: true
           });
         }
   
@@ -470,11 +556,11 @@ class VoiceManager {
           .setTimestamp();
   
         // Send response
-        return message.reply({ embeds: [embed] });
+        return message.reply({ embeds: [embed], ephemeral: true });
       } catch (error) {
         console.error("Error in nowPlaying command:", error);
         return message.reply({
-          content: `${discordEmotes.error} An error occurred while getting the current track information.`,
+          content: `${discordEmotes.error} An error occurred while getting the current track information.`, ephemeral: true
         });
       }
     }
@@ -516,16 +602,17 @@ class VoiceManager {
     async getLyrics(message, title) {
       try {
         const player = useMainPlayer();
+        const author = message.user ?? message.author
         const lyricsData = await player.lyrics.search({ q: title });
         if (!lyricsData || lyricsData.length === 0) {
-          return message.reply(`${discordEmotes.error} No lyrics found!`);
+          return message.reply(`${discordEmotes.error} No lyrics found!`, {ephemeral: true});
         }
         const lyrics = lyricsData[0]?.plainLyrics || "No lyrics available.";
         const trackName = lyricsData[0]?.trackName ?? title;
         const artistName = lyricsData[0]?.artistName ?? "Unknown Artist";
-        const artistImage = lyricsData[0]?.artist?.image ?? message.author.displayAvatarURL();
+        const artistImage = lyricsData[0]?.artist?.image ?? author.displayAvatarURL();
         const artistUrl = lyricsData[0]?.artist?.url ?? "https://irfanks.site";
-        const thumbnail = lyricsData[0]?.thumbnail ?? message.author.displayAvatarURL();
+        const thumbnail = lyricsData[0]?.thumbnail ?? author.displayAvatarURL();
     
         const chunks = lyrics.match(/.{1,1900}/gs) || [];
         let page = 0;
@@ -540,7 +627,7 @@ class VoiceManager {
           .setTimestamp();
     
         if (chunks.length === 1) {
-          return message.reply({ embeds: [embed] });
+          return message.reply({ embeds: [embed], ephemeral: true });
         }
     
         const prevButton = new ButtonBuilder()
@@ -557,7 +644,7 @@ class VoiceManager {
     
         const row = new ActionRowBuilder().addComponents(prevButton, nextButton);
     
-        const reply = await message.reply({ embeds: [embed], components: [row] });
+        const reply = await message.reply({ embeds: [embed], components: [row], ephemeral: true });
         
         const collector = reply.createMessageComponentCollector({ time: 60000 });
     
@@ -576,7 +663,7 @@ class VoiceManager {
           prevButton.setDisabled(page === 0);
           nextButton.setDisabled(page === chunks.length - 1);
           
-          await interaction.update({ embeds: [embed], components: [row] });
+          await interaction.update({ embeds: [embed], components: [row], ephemeral: true});
         });
     
         collector.on("end", () => {
@@ -590,18 +677,13 @@ class VoiceManager {
       }
     }
     async playMusic(message, query) {
+      const author = message.user ?? message.author
         try {
           const guildId = message.guild.id;
           const voiceChannel = message.member.voice.channel;
-           // Regex untuk mendeteksi semua tautan YouTube
-          // const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/;
-
-          // if (youtubeRegex.test(message.content)) {
-          //     return message.reply(`${discordEmotes.error} This bot does not support YouTube links yet.`);
-          // }
           // Basic checks
           if (!voiceChannel) {
-            return message.reply("You need to be in a voice channel first!");
+            return message.reply({content: "You need to be in a voice channel first!", ephemeral:true});
           }
       
           if (
@@ -609,7 +691,7 @@ class VoiceManager {
             message.guild.members.me.voice.channel !== voiceChannel
           ) {
             return message.reply(
-              "I am already playing in a different voice channel!"
+              {content: "I am already playing in a different voice channel!", ephemeral:true}
             );
           }
       
@@ -617,24 +699,22 @@ class VoiceManager {
           const permissions = voiceChannel.permissionsFor(message.guild.members.me);
           if (!permissions.has(PermissionsBitField.Flags.Connect)) {
             return message.reply(
-              "I do not have permission to join your voice channel!"
+              {content: "I do not have permission to join your voice channel!", ephemeral:true }
             );
           }
       
           if (!permissions.has(PermissionsBitField.Flags.Speak)) {
             return message.reply(
-              "I do not have permission to speak in your voice channel!"
+              {content: "I do not have permission to speak in your voice channel!", ephemeral:true }
             );
           }
       
           const loadingMsg = await message.reply(
-            `${discordEmotes.loading} Loading music...`
+            {content:`${discordEmotes.loading} Loading music...`, ephemeral:true }
           );
       
           try {
             const player = useMainPlayer();
-
-      
             const { track } = await player.play(voiceChannel, query, {
               nodeOptions: {
                 metadata: {
@@ -646,25 +726,25 @@ class VoiceManager {
                 leaveOnEnd: true,
                 leaveOnEndCooldown: 300000, // 5 minutes
               },
-              requestedBy: message.author,
+              requestedBy: author,
             });
       
             // Update loading message with track info
-            await loadingMsg.edit(`🎶 Added to queue: **${track.title}**`);
+            await loadingMsg.edit({content:`${discordEmotes.success} 🎶 Added to queue: **${track.title}**`, ephemeral:true});
       
             // Store the connection
             this.voiceConnections.set(guildId, player);
           } catch (error) {
             console.error("Error playing track:", error);
-            await loadingMsg.edit(`${discordEmotes.error} Error: ${error.message}`);
+            await loadingMsg.edit({content: `${discordEmotes.error} Error: ${error.message}`, ephemeral:true});
             this.cleanupConnection(guildId);
           }
         } catch (error) {
           console.error("Error in playMusic:", error);
           message.reply(
-            `${discordEmotes.error} Error: ${
+            {content:`${discordEmotes.error} Error: ${
               error.message || "Failed to play music"
-            }`
+            }`, ephemeral:true}
           );
         }
       }
@@ -778,13 +858,13 @@ class VoiceManager {
   
         if (!player) {
           return message.reply({
-            content: `${discordEmotes.error} No active player found in this server!`,
+            content: `${discordEmotes.error} No active player found in this server!`, ephemeral:true
           });
         }
         // Check if the user is in a voice channel
         if (!message.member.voice.channel) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            content: `${discordEmotes.error} You need to be in a voice channel first!`, ephemeral: true
           });
         }
   
@@ -796,6 +876,7 @@ class VoiceManager {
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
             content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            ephemeral: true
           });
         }
         // Get the queue for the current guild
@@ -803,7 +884,7 @@ class VoiceManager {
   
         if (!queue || !queue.isPlaying()) {
           return message.reply({
-            content: `${discordEmotes.error} No music is currently playing!`,
+            content: `${discordEmotes.error} No music is currently playing!`, ephemeral: true
           });
         }
   
@@ -817,10 +898,10 @@ class VoiceManager {
           .setDescription("The current track has been skipped!");
   
         // Send the embed response
-        message.reply({ embeds: [embed] });
+        message.reply({ embeds: [embed], ephemeral: true });
       } catch (error) {
         console.error("Error in skipMusic:", error);
-        message.reply(`${discordEmotes.error} Error skipping music!`);
+        message.reply({content:`${discordEmotes.error} Error skipping music!`, ephemeral: true});
       }
     }
     async pauseMusic(message) {
@@ -830,14 +911,14 @@ class VoiceManager {
   
         if (!player) {
           return message.reply({
-            content: `${discordEmotes.error} No active player found in this server!`,
+            content: `${discordEmotes.error} No active player found in this server!`, ephemeral:true
           });
         }
   
         // Check if the user is in a voice channel
         if (!message.member.voice.channel) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in a voice channel first!`,
+            content: `${discordEmotes.error} You need to be in a voice channel first!`, ephemeral: true
           });
         }
   
@@ -848,7 +929,7 @@ class VoiceManager {
         // Check if the bot is in a voice channel and if it's the same as the user's
         if (botVoiceChannel && userVoiceChannel.id !== botVoiceChannel.id) {
           return message.reply({
-            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`,
+            content: `${discordEmotes.error} You need to be in the same voice channel with the bot!`, ephemeral: true
           });
         }
   
@@ -857,7 +938,7 @@ class VoiceManager {
   
         if (!queue || !queue.isPlaying()) {
           return message.reply({
-            content: `${discordEmotes.error} No music is currently playing!`,
+            content: `${discordEmotes.error} No music is currently playing!`, ephemeral: true
           });
         }
   
@@ -882,19 +963,21 @@ class VoiceManager {
             )
             .setTimestamp();
   
-          return message.reply({ embeds: [embed] });
+          return message.reply({ embeds: [embed], ephemeral: true });
         } catch (playbackError) {
           console.error("Error toggling pause state:", playbackError);
           return message.reply({
             content: `${discordEmotes.error} Failed to ${
               wasPaused ? "resume" : "pause"
             } playback: ${playbackError.message}`,
+            ephemeral: true,
           });
         }
       } catch (error) {
         console.error("Error in pauseMusic command:", error);
         return message.reply({
           content: `${discordEmotes.error} An error occurred while trying to pause/resume the music.`,
+          ephemeral: true,
         });
       }
     }
@@ -905,9 +988,9 @@ class VoiceManager {
       const connection = useQueue(guildId);
       if (connection) {
         connection.delete();
-        message.reply("👋 Left the voice channel");
+        message.reply("👋 Left the voice channel", {ephemeral:true});
       } else {
-        message.reply("I am not in a voice channel");
+        message.reply("I am not in a voice channel", {ephemeral:true});
       }
     }
   }

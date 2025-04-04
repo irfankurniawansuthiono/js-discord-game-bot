@@ -10,11 +10,13 @@ import { JSDOM } from "jsdom";
 import { config, discordEmotes } from "../config.js";
 import FormData from "form-data";
 const API_URL = "https://api.itzky.xyz";
+const ALVIAN_API_URL = "https://api.alvianuxio.eu.org/api"
 const KRIZZ_API_URL = "https://free-apiz.vercel.app";
 class ApiManagement {
   constructor() {
     if (!ApiManagement.instance) {
       this.apiKey = config.apiKey;
+      this.alvianApiKey = config.alvianApiKey;
       this.krizzApiKey = config.krizzApiKey;
       ApiManagement.instance = this;
     }
@@ -305,7 +307,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const removebgMessage = await message.reply(
-        `${discordEmotes.loading} Processing Image...`
+        `${discordEmotes.loading} Processing Image...` , {ephemeral: true}
       );
 
       try {
@@ -321,7 +323,7 @@ class ApiManagement {
         });
 
         await removebgMessage.edit(
-          `${discordEmotes.loading} Uploading Image...`
+          `${discordEmotes.loading} Uploading Image...`, {ephemeral: true}
         );
         const uploadResponse = await axios.post(
           "https://cdn.itzky.xyz/",
@@ -332,29 +334,30 @@ class ApiManagement {
             },
           }
         );
-
+        console.log(uploadResponse.data)
         if (!uploadResponse.data?.fileUrl) {
           return await removebgMessage.edit(
-            `${discordEmotes.error} Failed to upload image to CDN. Please try again.`
+            `${discordEmotes.error} Failed to upload image to CDN. Please try again.`, {ephemeral: true}
           );
         }
 
         // Process with Remini API
         await removebgMessage.edit(
-          `${discordEmotes.loading} Generating Transparent Image...`
+          `${discordEmotes.loading} Generating Transparent Image...`, {ephemeral: true}
         );
         const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
         const response = await axios.get(
           `${API_URL}/tools/removebg?url=${encodedUrl}&apikey=${this.apiKey}`
         );
+        console.log(response.data)
         if (!response.data && !response.data.status !== 200) {
           return await removebgMessage.edit(
-            `${discordEmotes.error} Invalid response from Remini API. Please try again.`
+            `${discordEmotes.error} Invalid response from Remini API. Please try again.`, {ephemeral: true}
           );
         }
         // Get enhanced image
         await removebgMessage.edit(
-          `${discordEmotes.loading} Building Image...`
+          `${discordEmotes.loading} Building Image...`,{ephemeral: true}
         );
         const enhancedImageResponse = await axios.get(response.data.result, {
           responseType: "arraybuffer",
@@ -373,7 +376,7 @@ class ApiManagement {
           .setColor("#00FF00")
           .setTitle("📸 Transparent Image")
           .setFooter({
-            text: "Special Thanks to https://itzky.us.kg",
+            text: "Special Thanks to Itzky API",
           })
           .setTimestamp();
 
@@ -391,11 +394,12 @@ class ApiManagement {
           files: [attachment],
           components: [rowBuilder],
           content: "✨ Here's your Transparent Image!",
+          ephemeral: true,
         });
       } catch (error) {
         console.error("Error in image processing:", error);
         await removebgMessage.edit(
-          `${discordEmotes.error} Error processing image. Please try again later.`
+          `${discordEmotes.error} Error processing image. Please try again later.`, {ephemeral: true}
         );
       }
     } catch (error) {
@@ -440,21 +444,22 @@ class ApiManagement {
       for (let style in obj) {
         responseText += `${style}: ${obj[style]}\n`;
       }
+      const author = message.user ?? message.author; 
       const embedReply = new EmbedBuilder()
         .setTitle("Stylized Text")
         .setDescription(responseText)
         .setColor("#FFFF00")
         .setFooter({
-          text: "Special Thanks to https://itzky.us.kg",
-          iconURL: message.author.displayAvatarURL(),
+          text: "Special Thanks to Itzky API",
+          iconURL: author.displayAvatarURL(),
         });
       // Reply with the formatted result
-      return message.reply({ embeds: [embedReply] });
+      return message.reply({ embeds: [embedReply], ephemeral: true });
     } catch (error) {
       // Handle errors gracefully
       console.error(error);
       return message.reply(
-        "An error occurred while processing your request. Please try again."
+        "An error occurred while processing your request. Please try again.", {ephemeral: true}
       );
     }
   }
@@ -499,7 +504,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const reminiMessage = await message.reply(
-        `${discordEmotes.loading} Processing Image...`
+        {content:`${discordEmotes.loading} Processing Image...`, ephemeral: true}
       );
 
       try {
@@ -514,7 +519,7 @@ class ApiManagement {
           contentType: "image/png",
         });
 
-        await reminiMessage.edit(`${discordEmotes.loading} Uploading Image...`);
+        await reminiMessage.edit({content:`${discordEmotes.loading} Uploading Image...`, ephemeral: true});
         const uploadResponse = await axios.post(
           "https://cdn.itzky.xyz/",
           form,
@@ -524,28 +529,29 @@ class ApiManagement {
             },
           }
         );
-
+        console.log("uploadResponse :", uploadResponse.data)
         if (!uploadResponse.data?.fileUrl) {
           return await reminiMessage.edit(
-            `${discordEmotes.error} Failed to upload image to CDN. Please try again.`
+            {content:`${discordEmotes.error} Failed to upload image to CDN. Please try again.`, ephemeral: true}
           );
         }
 
         // Process with Remini API
         await reminiMessage.edit(
-          `${discordEmotes.loading} Generating HD Image...`
+          {content:`${discordEmotes.loading} Generating HD Image...`, ephemeral: true}
         );
         const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
         const response = await axios.get(
           `${API_URL}/tools/remini?url=${encodedUrl}&apikey=${this.apiKey}`
         );
+        console.log("ReminiResponse :", response.data)
         if (!response.data && !response.data.status !== 200) {
           return await reminiMessage.edit(
-            `${discordEmotes.error} Invalid response from Remini API. Please try again.`
+            {content: `${discordEmotes.error} Invalid response from Remini API. Please try again.`, ephemeral: true}
           );
         }
         // Get enhanced image
-        await reminiMessage.edit(`${discordEmotes.loading} Building Image...`);
+        await reminiMessage.edit({content:`${discordEmotes.loading} Building Image...`, ephemeral: true});
         const enhancedImageResponse = await axios.get(response.data.result, {
           responseType: "arraybuffer",
         });
@@ -563,7 +569,7 @@ class ApiManagement {
           .setColor("#00FF00")
           .setTitle("📸 Enhanced Image")
           .setFooter({
-            text: "Special Thanks to https://itzky.us.kg",
+            text: "Special Thanks to Itzky API",
           })
           .setTimestamp();
 
@@ -581,17 +587,18 @@ class ApiManagement {
           files: [attachment],
           components: [rowBuilder],
           content: "✨ Here's your HD Image!",
+          ephemeral: true,
         });
       } catch (error) {
         console.error("Error in image processing:", error);
         await reminiMessage.edit(
-          `${discordEmotes.error} Error processing image. Please try again later.`
+          {content:`${discordEmotes.error} Error processing image. Please try again later.`, ephemeral: true}
         );
       }
     } catch (error) {
       console.error("Error in remini command:", error);
       await message.channel.send(
-        `${discordEmotes.error} There was an error processing your request. Please try again later.`
+        {content:`${discordEmotes.error} There was an error processing your request. Please try again later.`, ephemeral: true}
       );
     }
   }
@@ -604,12 +611,12 @@ class ApiManagement {
       );
 
       if (!isValidUrl) {
-        return message.reply("Please provide a valid Spotify URL.");
+        return message.reply({content:"Please provide a valid Spotify URL.", ephemeral: true});
       }
 
       // Mengirim pesan loading
       const spotifyMessage = await message.reply(
-        `${discordEmotes.loading} Connecting to server...`
+        {content:`${discordEmotes.loading} Connecting to server...`, ephemeral: true}
       );
 
       // Mengambil data musik dari API dengan timeout
@@ -619,14 +626,14 @@ class ApiManagement {
         }`,
         { timeout: 10000 } // Timeout 10 detik
       );
-
-      spotifyMessage.edit(`${discordEmotes.loading} Processing music...`);
+      console.log(response.data)
+      spotifyMessage.edit({content:`${discordEmotes.loading} Processing music...`, ephemeral: true});
       const data = response.data;
 
       // Validasi response data
       if (!data || !data.result) {
         return spotifyMessage.edit(
-          `${discordEmotes.error} There was an error processing your request, please try again later.`
+          {content:`${discordEmotes.error} There was an error processing your request, please try again later.`, ephemeral: true}
         );
       }
 
@@ -638,12 +645,12 @@ class ApiManagement {
 
       if (!musicUrl) {
         return spotifyMessage.edit(
-          `${discordEmotes.error} No valid download link found. Please try again later.`
+          {content:`${discordEmotes.error} No valid download link found. Please try again later.`, ephemeral: true}
         );
       }
 
       // Mendownload musik sebagai buffer
-      spotifyMessage.edit(`${discordEmotes.loading} Building music file...`);
+      spotifyMessage.edit({content:`${discordEmotes.loading} Building music file...`, ephemeral: true});
       const musicResponse = await axios.get(musicUrl, {
         responseType: "arraybuffer",
       });
@@ -676,6 +683,7 @@ class ApiManagement {
         content: "Here's your downloaded music:",
         files: [musicAttachment],
         embeds: [successEmbed],
+        ephemeral: true
       });
     } catch (error) {
       console.error("Error in Spotify Download command:", error);
@@ -689,7 +697,7 @@ class ApiManagement {
       }
 
       try {
-        await message.reply(errorMessage);
+        await message.reply({content:errorMessage, ephemeral: true});
       } catch (replyError) {
         console.error("Error sending error message:", replyError);
       }
@@ -697,12 +705,12 @@ class ApiManagement {
   }
   async instagramDownload(message, url) {
     if (!url || !url.startsWith("https://www.instagram.com/")) {
-        return message.reply("Please provide a valid Instagram URL.");
+        return message.reply({content: "Please provide a valid Instagram URL.", ephemeral: true});
     }
 
     try {
         const igMessage = await message.reply(
-            `${discordEmotes.loading} Processing...`
+            {content: `${discordEmotes.loading} Processing...`, ephemeral: true}
         );
 
         const response = await axios.get(
@@ -710,15 +718,14 @@ class ApiManagement {
             { timeout: 10000 }
         );
         const data = response.data;
-        console.dir(response.data);
 
         if (!data || !data.result) {
             return igMessage.edit(
-                `${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`
+                `${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`, {ephemeral: true}
             );
         }
 
-        await igMessage.edit(`${discordEmotes.loading} Downloading...`);
+        await igMessage.edit(`${discordEmotes.loading} Downloading...`, {ephemeral: true});
         const postInfo = data.result;
         const mediaUrls = Array.isArray(postInfo.url) ? postInfo.url : [postInfo.url]; // Tangani banyak post
         const postCaption = postInfo.metadata.caption;
@@ -728,7 +735,7 @@ class ApiManagement {
 
         if (!mediaUrls.length) {
             return igMessage.edit(
-                `${discordEmotes.error} No media URL found in the response.`
+                {content: `${discordEmotes.error} No media URL found in the response.`, ephemeral: true}
             );
         }
 
@@ -748,7 +755,7 @@ class ApiManagement {
             })
             .setTimestamp();
 
-        await igMessage.edit(`${discordEmotes.loading} Building...`);
+        await igMessage.edit({content:`${discordEmotes.loading} Building...`, ephemeral: true});
 
         let attachments = [];
         let totalSize = 0;
@@ -790,6 +797,7 @@ class ApiManagement {
                 content: "✨ Here's your Instagram content!",
                 embeds: [igEmbed],
                 files: attachments,
+                ephemeral: true
             });
         }
 
@@ -810,6 +818,7 @@ class ApiManagement {
             await message.channel.send({
                 content: "📎 Some media were sent as links due to size limitations:",
                 embeds: [igEmbed],
+                ephemeral: true
             });
         }
     } catch (error) {
@@ -817,18 +826,18 @@ class ApiManagement {
 
         if (error.code === "ECONNABORTED" || error.name === "AbortError") {
             return message.reply(
-                `${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`
+                `${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`, {ephemeral: true}
             );
         }
 
         if (error.response?.status === 413) {
             return message.reply(
-                `${discordEmotes.error} The file is too large to process. Please try a different post.`
+                `${discordEmotes.error} The file is too large to process. Please try a different post.`, {ephemeral: true}
             );
         }
 
         return message.reply(
-            `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`
+            `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`, {ephemeral: true}
         );
     }
   }
@@ -839,7 +848,7 @@ class ApiManagement {
 
     try {
         const igMessage = await message.reply(
-            `${discordEmotes.loading} Processing...`
+            {content: `${discordEmotes.loading} Processing...`, ephemeral: true}
         );
 
         const response = await axios.get(
@@ -851,11 +860,11 @@ class ApiManagement {
 
         if (!data || !data.result) {
             return igMessage.edit(
-                `${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`
+                {content:`${discordEmotes.error} Failed to fetch Instagram content. Please try again later.`, ephemeral: true}
             );
         }
 
-        await igMessage.edit(`${discordEmotes.loading} Scrapping...`);
+        await igMessage.edit({content:`${discordEmotes.loading} Scrapping...`, ephemeral: true});
         const postInfo = data.result;
         const postCaption = postInfo.metadata.caption;
         const username = String(postInfo.metadata.username);
@@ -882,6 +891,7 @@ class ApiManagement {
         await igMessage.edit({
             content: "✨ Here's your Instagram content!",
             embeds: [igEmbed],
+            ephemeral: true
         });
 
     } catch (error) {
@@ -889,126 +899,130 @@ class ApiManagement {
 
         if (error.code === "ECONNABORTED" || error.name === "AbortError") {
             return message.reply(
-                `${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`
+                {content:`${discordEmotes.error} The download timed out. The file might be too large or the server is busy. Please try again later.`, ephemeral: true}
             );
         }
 
         if (error.response?.status === 413) {
             return message.reply(
-                `${discordEmotes.error} The file is too large to process. Please try a different post.`
+                {content: `${discordEmotes.error} The file is too large to process. Please try a different post.`, ephemeral: true}
             );
         }
 
         return message.reply(
-            `${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`
+            {content:`${discordEmotes.error} There was an error processing your Instagram content. Please try again later.`, ephemeral: true}
         );
     }
   }
   async youtubeDownload(message, url) {
+    const author =  message.user ?? message.author
     try {
-      // Validasi URL YouTube
-      const validDomains = [
-        "www.youtube.com",
-        "youtu.be",
-        "m.youtube.com",
-        "music.youtube.com",
-      ];
-      const isValidUrl = validDomains.some((domain) =>
-        url.startsWith(`https://${domain}/`)
-      );
-
-      if (!isValidUrl) {
-        return message.reply("Please provide a valid YouTube URL.");
-      }
-
-      // Mengirim pesan loading
-      const ytMessage = await message.reply(
-        `${discordEmotes.loading} Connecting to server...`
-      );
-
-      // Mengambil data video dari API dengan timeout
-      const response = await axios.get(
-        `${API_URL}/download/youtube?url=${encodeURIComponent(url)}&apikey=${
-          this.apiKey
-        }`,
-        { timeout: 10000 } // Timeout 10 detik
-      );
-
-      const { result } = response.data;
-      if (!result) {
-        return ytMessage.edit(
-          `${discordEmotes.error} Failed to fetch video data. Please try again later.`
+        // Validasi URL YouTube
+        const validDomains = [
+            "www.youtube.com",
+            "youtu.be",
+            "m.youtube.com",
+            "music.youtube.com",
+        ];
+        const isValidUrl = validDomains.some((domain) =>
+            url.startsWith(`https://${domain}/`)
         );
-      }
 
-      const videoTitle = result.title;
-      const videoThumbnail = result.image;
-      const videoUrl = result.url;
+        if (!isValidUrl) {
+            return message.reply({ content: "Please provide a valid YouTube URL.", ephemeral: true });
+        }
 
-      if (!videoUrl || !videoUrl.mp3 || !videoUrl.mp4) {
-        return ytMessage.edit(
-          `${discordEmotes.error} No valid download links found. Please try again later.`
+        // Kirim pesan loading
+        const ytMessage = await message.reply({
+            content: `${discordEmotes.loading} Connecting to server...`,
+            ephemeral: true,
+        });
+
+        // Mengambil data video dari API
+        const response = await axios.get(
+            `${ALVIAN_API_URL}/ytdl?url=${encodeURIComponent(url)}&apikey=${this.alvianApiKey}`,
         );
-      }
 
-      // Membuat tombol untuk mengunduh MP3 dan MP4
-      const buttons = [];
-      if (videoUrl.mp3) {
-        buttons.push(
-          new ButtonBuilder()
-            .setLabel("🎵 Download MP3")
-            .setStyle(ButtonStyle.Link)
-            .setURL(videoUrl.mp3)
-        );
-      }
-      if (videoUrl.mp4) {
-        buttons.push(
-          new ButtonBuilder()
-            .setLabel("🎥 Download MP4")
-            .setStyle(ButtonStyle.Link)
-            .setURL(videoUrl.mp4)
-        );
-      }
+        const { data: { response: result } } = response.data;
+        if (!result) {
+            return ytMessage.edit({
+                content: `${discordEmotes.error} Failed to fetch video data. Please try again later.`,
+                ephemeral: true,
+            });
+        }
 
-      const row = new ActionRowBuilder().addComponents(buttons);
+        const { title, thumbnail, duration, views, video_url, audio_url } = result;
 
-      // Membuat embed dengan informasi video
-      const ytEmbed = new EmbedBuilder()
-        .setColor("#FFFF00")
-        .setTitle(videoTitle || "YouTube Video")
-        .setURL(url) // Link ke video YouTube
-        .setThumbnail(videoThumbnail || null)
-        .setFooter({
-          text: `Downloaded via ${API_URL}`,
-          iconURL: message.author.displayAvatarURL(),
-        })
-        .setTimestamp();
+        if (!video_url && !audio_url) {
+            return ytMessage.edit({
+                content: `${discordEmotes.error} No valid download links found. Please try again later.`,
+                ephemeral: true,
+            });
+        }
 
-      // Mengedit pesan dengan embed dan tombol download
-      await ytMessage.edit({
-        content: "Here's the download link:",
-        embeds: [ytEmbed],
-        components: [row],
-      });
+        // Membuat tombol download
+        const buttons = [];
+        if (audio_url) {
+            buttons.push(
+                new ButtonBuilder()
+                    .setLabel("🎵 Download MP3")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(audio_url)
+            );
+        }
+        if (video_url) {
+            buttons.push(
+                new ButtonBuilder()
+                    .setLabel("🎥 Download MP4")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(video_url)
+            );
+        }
+
+        const row = new ActionRowBuilder().addComponents(buttons);
+
+        // Membuat embed dengan informasi video
+        const ytEmbed = new EmbedBuilder()
+            .setColor("#FFFF00")
+            .setTitle(title || "YouTube Video")
+            .setURL(url)
+            .setThumbnail(thumbnail || null)
+            .setDescription(`**Duration:** ${duration}\n**Views:** ${views.toLocaleString()}`)
+            .setFooter({
+                text: `Special thanks to Alvian UXIO`,
+                iconURL: author.displayAvatarURL(),
+            })
+            .setTimestamp();
+
+        // Edit pesan dengan embed dan tombol download
+        await ytMessage.edit({
+            content: "Here's the download link:",
+            embeds: [ytEmbed],
+            components: [row],
+            ephemeral: true,
+        });
+
     } catch (error) {
-      console.error("Error in youtubeDownload command:", error);
+        console.error("Error in youtubeDownload command:", error);
 
-      let errorMessage = `${discordEmotes.error} An error occurred while processing your request. Please try again later.`;
+        let errorMessage = `${discordEmotes.error} An error occurred while processing your request. Please try again later.`;
 
-      if (error.code === "ECONNABORTED") {
-        errorMessage = `${discordEmotes.error} Download timed out. The video might be too large or the server is slow.`;
-      } else if (error.response?.status === 404) {
-        errorMessage = `${discordEmotes.error} Video not found. It might have been deleted or made private.`;
-      }
+        if (error.code === "ECONNABORTED") {
+            errorMessage = `${discordEmotes.error} Download timed out. The video might be too large or the server is slow.`;
+        } else if (error.response?.status === 404) {
+            errorMessage = `${discordEmotes.error} Video not found. It might have been deleted or made private.`;
+        }
 
-      try {
-        await message.reply(errorMessage);
-      } catch (replyError) {
-        console.error("Error sending error message:", replyError);
-      }
+        try {
+            await message.channel.send({content:errorMessage, ephemeral: true});
+        } catch (replyError) {
+            console.error("Error sending error message:", replyError);
+        }
     }
-  }
+}
+
   async tiktokInfo(message, url) {
+    const author = message.user ?? message.author;
     try {
       // Validasi URL TikTok
       if (
@@ -1016,12 +1030,12 @@ class ApiManagement {
         !url.startsWith("https://vt.tiktok.com/") &&
         !url.startsWith("https://www.tiktok.com/")
       ) {
-        return message.reply("Please provide a valid TikTok URL.");
+        return message.reply({content:"Please provide a valid TikTok URL.", ephemeral: true});
       }
 
       // Mengirimkan pesan loading
       const tiktokMessage = await message.reply(
-        `${discordEmotes.loading} Fetching...`
+        {content:`${discordEmotes.loading} Fetching...`, ephemeral: true}
       );
 
       // Mengambil data video dari API
@@ -1033,7 +1047,7 @@ class ApiManagement {
       // Validasi response data
       if (!data || !data.result || !data.result.author) {
         return tiktokMessage.edit(
-          "Failed to fetch video data. Please try again later."
+          {content:`${discordEmotes.error} Failed to fetch video data. Please try again later.`, ephemeral: true},
         );
       }
 
@@ -1085,11 +1099,12 @@ class ApiManagement {
       await tiktokMessage.edit({
         content: "Here's the video information:",
         embeds: [embed],
+        ephemeral: true
       });
     } catch (error) {
       console.error("Error fetching TikTok video information:", error);
       message.reply(
-        "An error occurred while fetching TikTok video information. Please try again later."
+        {content: `${discordEmotes.error} An error occurred while processing your request. Please try again later.`, ephemeral: true}
       );
     }
   }
@@ -1102,12 +1117,12 @@ class ApiManagement {
       );
 
       if (!isValidUrl) {
-        return message.reply("Please provide a valid TikTok URL.");
+        return message.reply({content:"Please provide a valid TikTok URL.", ephemeral: true});
       }
 
       // Send loading message
       const tiktokMessage = await message.reply(
-        `${discordEmotes.loading} Connecting to server...`
+        {content :`${discordEmotes.loading} Connecting to server...`, ephemeral: true}
       );
 
       // Fetch video data with timeout
@@ -1121,11 +1136,11 @@ class ApiManagement {
       const { result } = response.data;
       if (!result?.data?.[0]) {
         return tiktokMessage.edit(
-          `${discordEmotes.error} Failed to fetch video data. Please try again later.`
+          {content :`${discordEmotes.error} Failed to fetch video data. Please try again later.`, ephemeral: true}
         );
       }
 
-      await tiktokMessage.edit(`${discordEmotes.loading} Processing video...`);
+      await tiktokMessage.edit({content :`${discordEmotes.loading} Processing video...`, ephemeral: true});
 
       // Get video URLs and check their lengths
       const normalVideo = result.data.find(
@@ -1193,25 +1208,29 @@ class ApiManagement {
             content: "Video is too large for Discord!",
             embeds: [embed],
             components: componentsArray,
+            ephemeral: true
           });
 
           // If URLs are too long, send them separately
           if (!normalUrlValid && normalVideo) {
             await message.channel.send(
-              `Normal Quality Download Link:\n${normalVideo}`
+              {content:`Normal Quality Download Link:\n${normalVideo}`, ephemeral: true}
             );
           }
           if (!hdUrlValid && hdVideo) {
-            await message.channel.send(`HD Quality Download Link:\n${hdVideo}`);
+            await message.channel.send({content:`HD Quality Download Link:\n${hdVideo}`, ephemeral: true});
           }
           return;
         }
       } catch (error) {
         console.error("Error checking file size:", error);
+        await tiktokMessage.edit(
+          {content :`${discordEmotes.error} Failed to check file size. Please try again later.`, ephemeral: true}
+        );
       }
 
       // Download video if size is acceptable
-      await tiktokMessage.edit(`${discordEmotes.loading} Downloading...`);
+      await tiktokMessage.edit({content :`${discordEmotes.loading} Downloading...`, ephemeral: true});
       const videoResponse = await axios.get(videoUrl, {
         responseType: "arraybuffer",
         timeout: 30000, // 30 second timeout
@@ -1281,22 +1300,24 @@ class ApiManagement {
         content: "Download complete! 🎉",
         embeds: [embed],
         components: componentsArray,
+        ephemeral: true
       });
 
       // Send video in separate message
       await message.channel.send({
         content: "Here's your TikTok video!",
         files: [videoFile],
+        ephemeral: true
       });
 
       // Send any long URLs separately
       if (!normalUrlValid && normalVideo) {
         await message.channel.send(
-          `Normal Quality Download Link:\n${normalVideo}`
+          {content : `Normal Quality Download Link:\n${normalVideo}`, ephemeral: true}
         );
       }
       if (!hdUrlValid && hdVideo) {
-        await message.channel.send(`HD Quality Download Link:\n${hdVideo}`);
+        await message.channel.send({content :`HD Quality Download Link:\n${hdVideo}`, ephemeral: true});
       }
     } catch (error) {
       console.error("Error while downloading TikTok video:", error);
@@ -1312,17 +1333,18 @@ class ApiManagement {
       }
 
       try {
-        await message.reply(errorMessage);
+        await message.reply({content: errorMessage, ephemeral: true});
       } catch (replyError) {
         console.error("Error sending error message:", replyError);
       }
     }
   }
   async tiktokSearch(message, prompt) {
+    const author = message.user ?? message.author;
     try {
       // Send loading message
       const tiktokMessage = await message.reply(
-        `${discordEmotes.loading} Searching...`
+        {content :`${discordEmotes.loading} Searching...`, ephemeral: true}
       );
 
       // Fetch video data with timeout
@@ -1338,11 +1360,11 @@ class ApiManagement {
       // Validate response data
       if (!result || !result.no_watermark) {
         return tiktokMessage.edit(
-          `${discordEmotes.error} No results found for the given query.`
+          {content :`${discordEmotes.error} No results found for the given query.`, ephemeral: true}
         );
       }
 
-      await tiktokMessage.edit(`${discordEmotes.loading} Processing video...`);
+      await tiktokMessage.edit({content : `${discordEmotes.loading} Processing video...`, ephemeral: true});
 
       // Check if URL is within Discord's limit
       const urlValid = result.no_watermark.length <= 512;
@@ -1350,7 +1372,7 @@ class ApiManagement {
       // Check file size before downloading
       try {
         const headResponse = await axios.head(result.no_watermark, {
-          timeout: 5000,
+          timeout: 60000,
         });
         const fileSize = parseInt(headResponse.headers["content-length"]);
         const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB Discord limit
@@ -1387,19 +1409,20 @@ class ApiManagement {
             content: "Video is too large for Discord!",
             embeds: [embed],
             components: componentsArray,
+            ephemeral: true
           });
 
           // If URL is too long, send it separately
           if (!urlValid) {
             await message.channel.send(
-              `Download Link:\n${result.no_watermark}`
+              {content : `Download Link:\n${result.no_watermark}`, ephemeral: true}
             );
           }
           return;
         }
 
         // Download video if size is acceptable
-        await tiktokMessage.edit(`${discordEmotes.loading} Downloading...`);
+        await tiktokMessage.edit({content :`${discordEmotes.loading} Downloading...`, ephemeral: true});
 
         const videoResponse = await axios.get(result.no_watermark, {
           responseType: "arraybuffer",
@@ -1422,7 +1445,7 @@ class ApiManagement {
           .setURL(result.no_watermark)
           .setFooter({
             text: `Downloaded via ${API_URL}`,
-            iconURL: message.author.displayAvatarURL(),
+            iconURL:author.displayAvatarURL(),
           })
           .setTimestamp();
 
@@ -1448,11 +1471,12 @@ class ApiManagement {
           embeds: [embed],
           components: componentsArray,
           files: [videoFile],
+          ephemeral: true
         });
 
         // Send long URL separately if needed
         if (!urlValid) {
-          await message.channel.send(`Download Link:\n${result.no_watermark}`);
+          await message.channel.send({content : `Download Link:\n${result.no_watermark}`, ephemeral: true});
         }
       } catch (error) {
         console.error("Error checking file size:", error);
@@ -1472,7 +1496,7 @@ class ApiManagement {
       }
 
       try {
-        await message.reply(errorMessage);
+        await message.reply({content :errorMessage, ephemeral: true});
       } catch (replyError) {
         console.error("Error sending error message:", replyError);
       }

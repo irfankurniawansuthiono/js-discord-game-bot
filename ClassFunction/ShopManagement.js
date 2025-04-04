@@ -56,6 +56,7 @@ class ShopManagement {
     const reply = await message.reply({
       embeds: [embed],
       components: [row],
+      ephemeral: true,
     });
 
     const collector = reply.createMessageComponentCollector({
