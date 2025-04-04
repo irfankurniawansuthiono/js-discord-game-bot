@@ -18,7 +18,8 @@ class DataManager {
   }
   setBalance(user, balance) {
     this.users[user.id].balance = balance;
-    this.saveData();
+    console.log(`Balance for user ${user} has been set to ${balance}.`);
+    return this.saveData();
   }
 
   async robUser(authorId, user, message) {

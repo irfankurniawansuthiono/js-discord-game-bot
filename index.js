@@ -30,6 +30,7 @@ import { SoundcloudExtractor } from "discord-player-soundcloud";
 import { YoutubeiExtractor } from "discord-player-youtubei"
 import { SpotifyExtractor } from "discord-player-spotify";
 import GithubCron from "./ClassFunction/GithubCron.js";
+import BackupFiles from "./ClassFunction/BackupFiles.js";
 export const formatClockHHMMSS = (milliseconds) => {
   if (typeof milliseconds !== "number" || milliseconds < 0) {
     throw new Error("Input must be a non-negative number.");
@@ -106,6 +107,7 @@ const voiceManager = new VoiceManager();
 const fileManagement = new FileManagement();
 const slashCommands = new SlashCommands(client);
 const guildManagement = new GuildManagement(client);
+const backupManager = new BackupFiles(client);
 const githubCron = new GithubCron(client);
 const shopManagement = new ShopManagement(client);
 const player = new Player(client);
@@ -1855,12 +1857,14 @@ client.once("ready", async () => {
 (async () => {
   console.log("Running GithubCron commit on startup...");
   await githubCron.startCommit();
+  backupManager.startBackup();
 })();
 
   // setup github cron every 11 hours
   setInterval(async () => {
     console.log("Running scheduled GithubCron commit...");
     await githubCron.startCommit();
+    backupManager.startBackup();
 }, 11 * 60 * 60 * 1000); 
 
   await slashCommands.setupSlashCommands();
