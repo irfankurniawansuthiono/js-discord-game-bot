@@ -155,7 +155,8 @@ class DataManager {
 
   async resetAllPlayer() {
     for (const userId in this.users) {
-      this.users[userId] = newPlayerData;
+        // Gunakan deep clone agar tiap user dapat data yang unik
+        this.users[userId] = JSON.parse(JSON.stringify(newPlayerData));
     }
     this.saveData();
     return this.users;
