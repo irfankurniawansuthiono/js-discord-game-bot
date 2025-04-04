@@ -1984,8 +1984,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
         limit: 1,
         type: 24,
       });
-      const key = `${newState.id}-${newState.channelId}`;
-      voiceJoinLogs.set(key, Date.now());
+      
       const moveLog = auditLogs.entries.first();
       
       // Check if this log is recent (within the last 5 seconds) and for this user
@@ -2003,7 +2002,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // User joined a voice channel
   if (!oldState.channelId && newState.channelId) {
     const channelName = newState.channel.name;
-    
+    const key = `${newState.id}-${newState.channelId}`;
+    voiceJoinLogs.set(key, Date.now());
     const embed = {
       color: 0x2ECC71, // Green color
       title: '📥 Voice Channel Joined',
