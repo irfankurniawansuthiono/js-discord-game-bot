@@ -228,6 +228,7 @@ const pages = {
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
           "`⚠️ resetrepo` - Reset PUBLIC UPLOADS Repository",
+          "`⚠️ backupfiles` - Backup files (players and guilds)",
         ].join("\n"),
         inline: false,
       },

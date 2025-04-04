@@ -1849,6 +1849,10 @@ ${description}
     if (!user) return message.reply("Please mention a user to unmute.");
     await discordFormat.unmuteUser(message, user.id);
   },
+  backupfiles: async (message) => {
+    if (message.author.id !== config.ownerId[0]) return;
+    await backupManager.startBackup();
+  }
 }
 
 // Event Handlers
