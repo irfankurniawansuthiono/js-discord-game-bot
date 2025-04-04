@@ -1826,7 +1826,6 @@ ${description}
     return await apiManagement.transcribeYT(message, ytLink);
   },
   resetrepo: async (message) => {
-    console.log(`Command C!resetCDN dipanggil oleh ${message.author.id}`); // Debugging
     if (message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");  
     return await githubCron.resetPublicUploads();
   },
@@ -1969,11 +1968,11 @@ client.on("guildMemberAdd", async (member) => {
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
 
+const voiceJoinLogs = new Map();
+
 client.on("voiceStateUpdate", async (oldState, newState) => {
-  const voiceJoinLogs = new Map();
   const user = newState.member || oldState.member;
   const guildId = newState.guild.id;
-  
   // Check if this was a forced move by getting the guild audit logs
   let mover = null;
   let wasForced = false;
@@ -2002,8 +2001,9 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // User joined a voice channel
   if (!oldState.channelId && newState.channelId) {
     const channelName = newState.channel.name;
-    const key = `${newState.id}-${newState.channelId}`;
+    const key = `${user.id}-${newState.channelId}`; 
     voiceJoinLogs.set(key, Date.now());
+    
     const embed = {
       color: 0x2ECC71, // Green color
       title: '📥 Voice Channel Joined',
@@ -2052,10 +2052,12 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // User left a voice channel
   else if (oldState.channelId && !newState.channelId) {
     const channelName = oldState.channel.name;
-    const key = `${oldState.id}-${oldState.channelId}`;
+    const key = `${user.id}-${oldState.channelId}`; // Ubah oldState.id menjadi user.id agar konsisten
     const joinTime = voiceJoinLogs.get(key);
+    
     const duration = joinTime ? (Date.now() - joinTime) : null;
     voiceJoinLogs.delete(key);
+    
     // Format duration to hours:minutes:seconds
     let formattedDuration = 'Unknown';
     if (duration) {
@@ -2100,6 +2102,20 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
     const oldChannelName = oldState.channel.name;
     const newChannelName = newState.channel.name;
+    
+    // Tangani waktu bergabung saat berpindah channel
+    const oldKey = `${user.id}-${oldState.channelId}`;
+    const newKey = `${user.id}-${newState.channelId}`;
+    const joinTime = voiceJoinLogs.get(oldKey);
+    
+    // Pindahkan waktu bergabung ke channel baru jika tersedia
+    if (joinTime) {
+      voiceJoinLogs.delete(oldKey);
+      voiceJoinLogs.set(newKey, joinTime);
+    } else {
+      // Jika tidak ada waktu bergabung, buat baru
+      voiceJoinLogs.set(newKey, Date.now());
+    }
     
     let description = `**${user.user.tag}** has moved from <#${oldState.channelId}> to <#${newState.channelId}>!`;
     
