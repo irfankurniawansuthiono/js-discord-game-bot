@@ -1976,7 +1976,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // Check if this was a forced move by getting the guild audit logs
   let mover = null;
   let wasForced = false;
-  
+  const voiceJoinTimestamps = new Map();
   // Check for a recent MEMBER_DISCONNECT audit log
   if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
     try {
@@ -1984,7 +1984,8 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
         limit: 1,
         type: 24,
       });
-      
+      const key = `${newState.id}-${newState.channelId}`;
+      voiceJoinLogs.set(key, Date.now());
       const moveLog = auditLogs.entries.first();
       
       // Check if this log is recent (within the last 5 seconds) and for this user
@@ -2051,8 +2052,10 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // User left a voice channel
   else if (oldState.channelId && !newState.channelId) {
     const channelName = oldState.channel.name;
-    const duration = oldState.joinedTimestamp ? (Date.now() - oldState.joinedTimestamp) : null;
-    
+    const key = `${oldState.id}-${oldState.channelId}`;
+    const joinTime = voiceJoinLogs.get(key);
+    const duration = joinTime ? (Date.now() - joinTime) : null;
+    voiceJoinLogs.delete(key);
     // Format duration to hours:minutes:seconds
     let formattedDuration = 'Unknown';
     if (duration) {
