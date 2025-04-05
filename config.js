@@ -1,4 +1,5 @@
 const config = {
+  botVersion: "3.5.1",
   token: process.env.TOKEN,
   apiKey: process.env.API_AI_KEY,
   alvianApiKey: process.env.ALVIAN_API_KEY,

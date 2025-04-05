@@ -992,6 +992,7 @@ async nanamiHelpMenu (message) {
   }
 }
 async nanamiBotInfo(client, message){
+  const author = message.user ?? message.author
   try {
     // Get guild count
         const guildCount = client.guilds.cache.size;
@@ -1081,8 +1082,8 @@ async nanamiBotInfo(client, message){
             }
           )
           .setFooter({
-            text: `Requested by ${message.author.tag} | Bot Version 1.0.0`,
-            iconURL: message.author.displayAvatarURL({ dynamic: true }),
+            text: `Requested by ${author.tag} | Bot Version ${config.botVersion}`,
+            iconURL: author.displayAvatarURL({ dynamic: true }),
           })
           .setTimestamp();
     
