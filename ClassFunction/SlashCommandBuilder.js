@@ -1295,7 +1295,7 @@ class SlashCommands {
                 .setDescription("Show bot information"),
                 execute: async (interaction) => {
                     try {
-                        return this.discordFormat.nanamiBotInfo(interaction);
+                        return this.discordFormat.nanamiBotInfo(this.client,interaction);
                     } catch (error) {
                         console.error('Error in slash botinfo command:', error);
                         await interaction.reply({
