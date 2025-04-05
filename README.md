@@ -73,6 +73,8 @@ ALVIAN_API_KEY=
    ```
 
 ##### 🐱 **GitHub Token (Classic Token)**
+> **⚠️ Peringatan**: Silahkan buat repository bernama public-uploads dan didalamnya ada folder file dengan 1 gambar random di dalamnya lalu push ke repository tersebut. fitur ini hanya membantu agar bot melakukan otomatisasi commit ke repository, agar github profile tetap hijau. JANGAN LUPA GANTI config.resetCommitId di file config.js dan salin SHA init pertama kali agar repository tidak berantakan. bisa di reset dengan command resetrepo.
+
 1. Masuk ke akun GitHub Anda di [https://github.com](https://github.com).
 2. Buka menu profil > **Settings**.
 3. Di sidebar kiri, pilih **Developer Settings**.
