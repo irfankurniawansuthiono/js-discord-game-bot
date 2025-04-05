@@ -2,6 +2,9 @@ const config = {
   token: process.env.TOKEN,
   apiKey: process.env.API_AI_KEY,
   alvianApiKey: process.env.ALVIAN_API_KEY,
+  ownerWebsite: "https://irfanks.site",
+  ownerGithub: "https://github.com/irfankurniawansuthiono",
+  nanamiWebsite: "https://nanami.irfanks.site",
   ownerId: [
     // irfan
     "411125001853468672",
@@ -20,7 +23,7 @@ const config = {
   bugReportChannelID: "1332378606038548510",
   newCommandsChannelID: "1332378586614599752",
   anonimLogsChannelID : "1333476337373155358",
-  defaultPrefix: "N!",
+  defaultPrefix: "C!",
   startingBalance: 10000,
   guildFile: "./guilds.json",
   dataFile: "./players.json",
@@ -60,9 +63,10 @@ const pages = {
         value: [
           "`🔹 register` - Create new account",
           "`🔹 help` - Show this message",
-          "`🔹 profile` - View your profile/balance",
+          "`🔹 profile` - View your profile",
           "`🔹 ownerinfo` - Show bot owner information",
           "`🔹 botinfo` - Show bot information",
+          "`🔹 hostinginfo` - Show VPS details information",
           "`🔹 sc` - Bot Source Code",
           "`🐛 bugreport` - Report a BUG!",
         ].join("\n"),
@@ -130,7 +134,7 @@ const pages = {
           "`📝 disablewelcome` - Disable welcome message",
           "`🔨 tw <@user?>` - Test welcome message",
           "`👤 swr` - Set welcome role",
-          "`👤 rwr` - Remove welcome role`"
+          "`👤 rwr` - Remove welcome role"
         ].join("\n"),
         inline: false,
       },
@@ -214,7 +218,7 @@ const pages = {
           "`🗣️ say <message>` - Send chat to current channel",
           "`🗣️ sendto <message>` - DM a user",
           "`👤 resetplayer <@user>` - reset a players",
-          "`🎉 giveawayall <ammount>` - Send giveaway to all current registered players"
+          "`🎉 giveawayall <amount>` - Send giveaway to all current registered players"
         ].join("\n"),
         inline: false,
       },
@@ -229,7 +233,7 @@ const pages = {
           "`🔧 setupbusinessguild` - Setup business server",
           "`📝 nc <new cmd> <description>` - Announce new commands",
           "`⚠️ resetrepo` - Reset PUBLIC UPLOADS Repository",
-          "`⚠️ backupfiles` - Backup files (players and guilds)",
+          "`⚠️ backup` - Backup files (players and guilds)",
         ].join("\n"),
         inline: false,
       },

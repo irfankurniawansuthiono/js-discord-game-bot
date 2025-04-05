@@ -1,8 +1,9 @@
-import { EmbedBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
-import { client, formatDate } from "../index.js";
+import { EmbedBuilder, ChannelType, PermissionFlagsBits, ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { client, createHelpEmbed, formatDate } from "../index.js";
 import { config, discordEmotes } from "../config.js";
 import { DataManager } from "./DataManager.js";
 import GuildManagement from "./GuildManagement.js";
+import os from "os";
 const dataManager = new DataManager();
 const guildManagement = new GuildManagement();
 class DiscordFormat {
@@ -60,6 +61,7 @@ class DiscordFormat {
     );
   }
   async unlockChannel(message) {
+    const author = message.user ?? message.author;
     try {
       const guildId = message.guild.id;
       const channel = message.channel;
@@ -67,7 +69,7 @@ class DiscordFormat {
       const embedBuilder = new EmbedBuilder()
         .setColor("#00FF00")
         .setDescription(
-          `Channel ${message.channel} has been unlocked by ${message.author}`
+          `Channel ${message.channel} has been unlocked by ${author}`
         );
       return message.channel.send({ embeds: [embedBuilder] });
     } catch (error) {
@@ -78,6 +80,7 @@ class DiscordFormat {
     }
   }
   async lockChannel(message) {
+    const author = message.user ?? message.author;
     try {
       const guildId = message.guild.id;
       const channel = message.channel;
@@ -85,7 +88,7 @@ class DiscordFormat {
       const embedBuilder = new EmbedBuilder()
         .setColor("#FF0000")
         .setDescription(
-          `Channel ${message.channel} has been locked by ${message.author}`
+          `Channel ${message.channel} has been locked by ${author}`
         );
       return message.channel.send({ embeds: [embedBuilder] });
     } catch (error) {
@@ -522,12 +525,13 @@ class DiscordFormat {
     }
   }
 
-  async deleteMessages(message, amount = 1000) {
+  async deleteMessages(message, amount) {
     try {
+      amount += 1 //user chat command
       if (isNaN(amount) || amount < 1 || amount > 1000) {
-        return message.channel.send(
-          "Please provide a number between 1 and 1000."
-        );
+        return message.reply (
+          {content : `${discordEmotes.error} Please provide a valid number of messages to delete (1-1000).`, ephemeral: true},
+        )
       }
 
       let totalDeleted = 0;
@@ -556,7 +560,9 @@ class DiscordFormat {
 
       // Kirim pesan konfirmasi
       const confirmationMessage = await message.channel.send(
-        `<a:success:1331856899070496819> Successfully deleted ${totalDeleted} messages!`
+        {
+          content: `${discordEmotes.success} Successfully deleted ${totalDeleted} messages.`,
+          ephemeral: true}
       );
 
       // Hapus pesan konfirmasi setelah 5 detik
@@ -566,7 +572,7 @@ class DiscordFormat {
     } catch (error) {
       console.error("Error saat menghapus pesan:", error);
       message.channel.send(
-        "An error occurred while trying to delete messages."
+        {content: `${discordEmotes.error} An error occurred while deleting messages.`, ephemeral: true}
       );
     }
   }
@@ -640,66 +646,627 @@ class DiscordFormat {
       );
     }
   }
-  async kickUser(message, mentionedUser) {
+  async kickUser(message, mentionedUser, reason) {
     try {
       // Validate user object and permissions
       const member = message.guild.members.resolve(mentionedUser);
 
       if (!member) {
-        return message.channel.send(
-          "Invalid user. Please mention a valid server member."
+        return message.reply(
+          {content: `${discordEmotes.error} User not found.`, ephemeral: true}
         );
       }
 
       if (!member.kickable) {
-        return message.channel.send(
-          "I cannot kick this user due to role hierarchy or permissions."
+        return message.reply(
+          {content: `${discordEmotes.error} I cannot kick this user due to role hierarchy or permissions.`, ephemeral: true}
         );
       }
 
       // Kick the user
-      await member.kick({ reason: `Kicked by ${message.author.tag}` });
-      message.channel.send(
+      await member.kick({ reason: reason || "No reason provided" });
+      message.reply(
         `${discordEmotes.success} ${member.user.tag} has been kicked.`
       );
     } catch (error) {
       console.error("Error kicking user:", error);
-
       switch (error.code) {
         case 50013:
-          message.channel.send("Insufficient permissions to kick this user.");
+          message.channel.send({content:`${discordEmotes.error} Insufficient permissions to kick this user.`, ephemeral: true});
           break;
         default:
           message.channel.send(
-            "An unexpected error occurred while trying to kick the user."
+            {content:`${discordEmotes.error} An error occurred while kicking the user. Please try again later.`, ephemeral: true}
           );
       }
     }
   }
 
+  async removeBotChats(message) {
+    const author = message.user ?? message.author;
+    if (message.channel.type === ChannelType.DM) {
+      try {
+        await message.delete();
+        console.log(`[DM] Deleted message from ${author.username}`);
+      } catch (err) {
+        console.error("Failed to delete message in DM:", err);
+      }
+  
+      const reply = await message.channel.send(`${discordEmotes.success} Succeed to delete messages.`);
+      setTimeout(() => reply.delete().catch(console.error), 5000);
+      return;
+    }
+  
+    if (!guildAdmin(message)) return;
+  
+    try {
+      // Hapus command message-nya terlebih dahulu
+      await message.delete().catch(console.error);
+  
+      // Ambil 100 pesan terakhir
+      const fetched = await message.channel.messages.fetch({ limit: 100 });
+  
+      // Filter hanya pesan dari bot
+      const botMessages = fetched.filter((msg) => msg.author.id  === client.user.id);
+  
+      let deleted = 0;
+  
+      // Hapus setiap pesan dari bot
+      for (const msg of botMessages.values()) {
+        try {
+          await msg.delete();
+          deleted++;
+          await new Promise((resolve) => setTimeout(resolve, 500)); // delay untuk hindari rate limit
+        } catch (err) {
+          if (err.code !== 10008) {
+            console.error(`Error deleting message: ${err}`);
+          }
+        }
+      }
+  
+      const reply = await message.channel.send({content:`${discordEmotes.success} Successfully deleted ${deleted} bot messages.`, ephemeral: true});
+      setTimeout(() => reply.delete().catch(console.error), 5000);
+  
+    } catch (error) {
+      console.error("Error in removeBotChats:", error);
+      return message.channel
+        .send("An error occurred while deleting messages.")
+        .then((msg) => setTimeout(() => msg.delete().catch(console.error), 5000));
+    }
+  }
+  inviteBot(message) {
+     const inviteEmbed = new EmbedBuilder()
+          .setColor("#FF0000")
+          .setTitle("Nanami Invite")
+          .setDescription("Invite Nanami to your server!")
+          .setURL(
+            `https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot`
+          )
+          .setFooter({ text: "Nanami Stats" })
+          .setTimestamp();
+    
+        return message.reply({ embeds: [inviteEmbed], ephemeral: true });
+  }
+  setBotStatus(client, mode, type, status, message) {
+    const activityTypes = {
+      listening: ActivityType.Listening,
+      watching: ActivityType.Watching,
+      playing: ActivityType.Playing,
+      streaming: ActivityType.Streaming,
+    }
+    try {
+      client.user.setPresence({
+        activities: [
+          {
+            name: status,
+            type: activityTypes[type], // Gunakan ActivityType enum
+          },
+        ],
+        status: String(mode).toLowerCase(),
+      });
+      return message.reply({content: `${discordEmotes.success} Status set to: ${mode} | ${type} | ${status}`});
+    } catch (error) {
+      console.error("Error setting bot status:", error);
+      return message.reply({content: `${discordEmotes.error} There was an error while setting status`});
+    }
+
+  }
+  async spamSendTo(target, messageContent, amount, originalMessage) {
+    console.log("Target:", target, "Message:", messageContent, "Amount:", amount);
+    try {
+      if (!messageContent) {
+        const tempMsg = await originalMessage.channel.send({
+          content: `${discordEmotes.error} Please provide a message to send.`,
+          ephemeral: true
+        });
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      if (isNaN(amount) || amount < 1 || amount > 100) {
+        const tempMsg = await originalMessage.channel.send({
+          content: `${discordEmotes.error} Please provide a valid amount of messages to send (1-100).`,
+          ephemeral: true
+        });
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      if (!target) {
+        const tempMsg = await originalMessage.channel.send({
+          content: `${discordEmotes.error} Please provide either a channel or a user to send the message to.`,
+          ephemeral: true
+        });
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      let successCount = 0;
+      const delay = 1500; // 1.5 seconds delay between messages to avoid rate limits
+      
+      // Function to send message with delay
+      const sendMessageWithDelay = async (target, index) => {
+        try {
+          await new Promise((resolve) => setTimeout(resolve, delay * index));
+          await target.send(messageContent);
+          successCount++;
+        } catch (err) {
+          console.error(`Error sending message ${index + 1}:`, err);
+        }
+      };
+      
+      const promises = Array(amount)
+        .fill()
+        .map((_, index) => sendMessageWithDelay(target, index));
+      
+      // Wait for all messages to be sent
+      await Promise.all(promises);
+      
+      // Send confirmation message that will be deleted after 5 seconds
+      try {
+        const confirmMsg = await originalMessage.channel.send(
+          `Successfully sent ${successCount}/${amount} messages to ${
+            target?.name || target?.username || "target"
+          }.`
+        );
+        setTimeout(() => confirmMsg.delete().catch(e => console.warn("Failed to delete confirm message:", e)), 5000);
+      } catch (confirmError) {
+        console.error("Error sending confirmation message:", confirmError);
+      }
+    } catch (error) {
+      console.error("Error in spamSendTo:", error);
+      try {
+        return originalMessage.channel.send({
+          content: `${discordEmotes.error} There was an error while sending messages`,
+          ephemeral: true
+        });
+      } catch (replyError) {
+        console.error("Failed to send error message:", replyError);
+      }
+    }
+  }
+ // For the core function
+ async spamSay(source, text, amount) {
+  try {
+    // Check if the source is an interaction or a message
+    const isInteraction = source.commandId !== undefined;
+    const channel = isInteraction ? source.channel : source.channel;
+    
+    // This is the correction - use the text parameter, not message.content
+    const messageToSend = text;
+    
+    // Set a reasonable delay between messages (1500ms = 1.5s)
+    const delay = 1500;
+    let successCount = 0;
+    
+    // Send messages with delay to avoid rate limit
+    for (let i = 0; i < amount; i++) {
+      try {
+        // Add a delayed promise
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Send the message
+        await channel.send(messageToSend);
+        successCount++;
+      } catch (err) {
+        console.error(`Error sending message ${i + 1}:`, err);
+        
+        // If we hit a rate limit, increase the delay for subsequent messages
+        if (err.code === 10008 || err.code === 10023 || err.code === 10013 || err.code === 50013) {
+          // These are common Discord API errors related to permissions or rate limits
+          console.warn("Hitting Discord API limits, increasing delay");
+          await new Promise(resolve => setTimeout(resolve, delay * 2));
+        }
+      }
+    }
+    
+    // Report success
+    if (isInteraction) {
+      if (!source.replied && !source.deferred) {
+        return await source.reply({
+          content: `Successfully sent ${successCount}/${amount} messages.`,
+          ephemeral: true
+        });
+      } else {
+        return await source.followUp({
+          content: `Successfully sent ${successCount}/${amount} messages.`,
+          ephemeral: true
+        });
+      }
+    } else {
+      const confirmMsg = await channel.send(
+        `Successfully sent ${successCount}/${amount} messages.`
+      );
+      setTimeout(() => confirmMsg.delete().catch(e => console.warn("Failed to delete confirm message:", e)), 5000);
+    }
+  } catch (error) {
+    console.error("Error in spamSay:", error);
+    
+    // Check if it's an interaction
+    if (source.commandId !== undefined) {
+      if (!source.replied && !source.deferred) {
+        return await source.reply({
+          content: `${discordEmotes.error} There was an error while sending messages`,
+          ephemeral: true
+        });
+      } else {
+        return await source.followUp({
+          content: `${discordEmotes.error} There was an error while sending messages`,
+          ephemeral: true
+        });
+      }
+    } else {
+      return source.channel.send({
+        content: `${discordEmotes.error} There was an error while sending messages`
+      });
+    }
+  }
+}
+async nanamiHelpMenu (message) {
+  const author = message.user ?? message.author; 
+  let currentPage = 1;
+  try {
+    const buttons = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("first")
+            .setLabel("⏪")
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId("prev")
+            .setLabel("◀️")
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId("next")
+            .setLabel("▶️")
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId("last")
+            .setLabel("⏩")
+            .setStyle(ButtonStyle.Primary)
+        );
+    
+    const helpMessage = await message.reply({
+      embeds: [createHelpEmbed(currentPage, author)], 
+      components: [buttons],
+      ephemeral: true
+    });
+    
+    const collector = helpMessage.createMessageComponentCollector({
+      filter: (i) => i.user.id === author.id,
+      time: 60000,
+    });
+
+    collector.on("collect", async (interaction) => {
+      await interaction.deferUpdate();
+      switch (interaction.customId) {
+        case "first":
+          currentPage = 1;
+          break;
+        case "prev":
+          currentPage = currentPage > 1 ? currentPage - 1 : 4;
+          break;
+        case "next":
+          currentPage = currentPage < 4 ? currentPage + 1 : 1;
+          break;
+        case "last":
+          currentPage = 4;
+          break;
+      }
+
+      await interaction.editReply({
+        embeds: [createHelpEmbed(currentPage, interaction.user)],
+        components: [buttons],
+      });
+    });
+    
+    collector.on("end", () => {
+      buttons.components.forEach((button) => button.setDisabled(true));
+      helpMessage.edit({ components: [buttons], ephemeral: true });
+    });
+  } catch (error) {
+    console.error("Error in nanamiHelpMenu:", error);
+    await message.reply({
+      content: `${discordEmotes.error} There was an error while sending help menu`,
+      ephemeral: true
+    })
+  }
+}
+async nanamiBotInfo(client, message){
+  try {
+    // Get guild count
+        const guildCount = client.guilds.cache.size;
+    
+        // Get total member count across all guilds
+        const totalMembers = client.guilds.cache.reduce(
+          (acc, guild) => acc + guild.memberCount,
+          0
+        );
+    
+        // Get registered users count
+        const registeredUsers = Object.keys(dataManager.users).length;
+    
+        // Calculate total balance across all users
+        const totalEconomy = Object.values(dataManager.users).reduce(
+          (acc, user) => acc + user.balance,
+          0
+        );
+    
+        // Get uptime
+        const uptime = process.uptime();
+        const days = Math.floor(uptime / 86400);
+        const hours = Math.floor(uptime / 3600) % 24;
+        const minutes = Math.floor(uptime / 60) % 60;
+        const seconds = Math.floor(uptime % 60);
+    
+        // Get memory usage
+        const memoryUsage = process.memoryUsage();
+        const memoryUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+        const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+    
+        // Fetch the full bot user to get banner
+        const botUser = await client.users.fetch(client.user.id, { force: true });
+    
+        const infoEmbed = new EmbedBuilder()
+          .setColor("#FFD700")
+          .setTitle("🤖 BOT Information")
+          .setThumbnail(client.user.displayAvatarURL({ size: 4096 }))
+          // Set banner if exists
+          .setImage(
+            botUser.bannerURL({ size: 4096 }) ||
+              "https://nanami.irfanks.site/avatar.jpg" // Ganti dengan URL banner default jika bot tidak punya banner
+          )
+          .addFields(
+            {
+              name: "📊 Bot Statistics",
+              value: `**Username:** ${client.user.username}
+                   **ID:** ${client.user.id}
+                   **Created:** ${client.user.createdAt.toLocaleDateString()}
+                   **Developer:** ${
+                     (await client.users.fetch(config.ownerId[0])).username
+                   }
+                   **Node.js:** ${process.version}
+                   **Banner:** ${botUser.banner ? "✅" : "❌"}
+                   **Verified:** ${client.user.verified ? "✅" : "❌"}
+                   **Bot Public:** ${client.user.bot ? "✅" : "❌"}`,
+              inline: false,
+            },
+            {
+              name: "🌐 Network Statistics",
+              value: `**Servers:** ${guildCount.toLocaleString()}
+                   **Total Members:** ${totalMembers.toLocaleString()}
+                   **Registered Users:** ${registeredUsers.toLocaleString()}
+                   **Total Economy:** ${formatBalance(totalEconomy)}
+                   **Ping:** ${client.ws.ping}ms
+                   **Shards:** ${
+                     client.shard ? `✅ (${client.shard.count})` : "❌"
+                   }`,
+              inline: false,
+            },
+            {
+              name: "⚙️ System Information",
+              value: `**Uptime:** ${days}d ${hours}h ${minutes}m ${seconds}s
+                   **Memory Usage:** ${memoryUsedMB}MB / ${totalMemoryMB}MB
+                   **Platform:** ${process.platform}
+                   **Architecture:** ${process.arch}
+                   **Process ID:** ${process.pid}`,
+              inline: false,
+            },
+            {
+              name: "🔗 Links",
+              value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
+                    • [Nanami Community Server](https://discord.gg/hXT5R2ND9a)
+                    • [Developer Website](${config.ownerWebsite})
+                    • [Nanami on WEBSITE!](${config.nanamiWebsite})`,
+              inline: false,
+            }
+          )
+          .setFooter({
+            text: `Requested by ${message.author.tag} | Bot Version 1.0.0`,
+            iconURL: message.author.displayAvatarURL({ dynamic: true }),
+          })
+          .setTimestamp();
+    
+        return message.reply({ embeds: [infoEmbed], ephemeral: true });
+      } catch (error) {
+        console.error("Error in nanamiBotInfo:", error);
+        await message.reply({
+          content: `${discordEmotes.error} There was an error while sending bot info`,
+          ephemeral: true
+        })
+  }
+}
+
+async nanamiHostingInfo(client, message) {
+  try {
+    const totalMemMB = (os.totalmem() / 1024 / 1024).toFixed(2);
+    const uptimeMinutes = Math.floor(os.uptime() / 60);
+    const cpuModel = os.cpus()[0].model;
+    // format uptime menjadi HH:MM:SS
+    const uptimeHours = Math.floor(uptimeMinutes / 60);
+    const uptimeMinutesRemaining = uptimeMinutes % 60;
+    const uptimeSeconds = Math.floor(os.uptime() % 60);
+    const formattedUptime = `${uptimeHours.toString().padStart(2, "0")} Hours ${uptimeMinutesRemaining.toString().padStart(2, "0")} Minutes ${uptimeSeconds.toString().padStart(2, "0")} Seconds`;
+    
+    const vpsEmbed = new EmbedBuilder()
+      .setColor("#FFD700")
+      .setTitle("🌐 VPS & Hosting Stats")
+      .setThumbnail("https://logos-world.net/wp-content/uploads/2022/04/Ubuntu-New-Logo-700x394.png")
+      .setDescription("The server is sponsored by <@598889864951496734> ✨💪")
+      .addFields(
+        {
+          name: "💻 System Information",
+          value: `> 🖥️ **Hostname:** \`${os.hostname()}\`\n` +
+                 `> 🧠 **OS Type:** \`${os.type()}\`\n` +
+                 `> 📦 **Platform:** \`${os.platform()}\`\n` +
+                 `> 🏗️ **Architecture:** \`${os.arch()}\`\n` +
+                 `> 🧮 **CPU:** \`${cpuModel}\`\n` +
+                 `> 💾 **Memory:** \`${totalMemMB} MB\`\n` +
+                 `> ⏱️ **Uptime:** \`${formattedUptime}\``,
+          inline: false,
+        },
+        {
+          name: "🔗 Useful Links",
+          value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
+          • [Nanami Community Server](https://discord.gg/hXT5R2ND9a)
+          • [Developer Website](${config.ownerWebsite})
+          • [Nanami on WEBSITE!](${config.nanamiWebsite})`,
+          inline: false,
+        },
+        {
+          name: "🎁 Sponsor",
+          value: `> 🙌 **Thanks to [MafiaPS Coder](https://www.growtopia.id) for sponsoring VPS!**`,
+        },
+        {
+          name: "📣 Note",
+          value: "> This bot has no Documentation! ask bot owner for further information!",
+          inline: false,
+        }
+      )
+      .setFooter({
+        text: "Nanami System Monitor 💡",
+        iconURL: client.user.displayAvatarURL(),
+      })
+      .setTimestamp();
+
+    return await message.reply({ embeds: [vpsEmbed], ephemeral: true });
+  } catch (error) {
+    console.error("Error in nanamiHostingInfo:", error);
+    return await message.reply({
+      content: "⚠️ There was an error while sending hosting info",
+      ephemeral: true
+    });
+  }
+}
+
+async globalAnnouncement(message, announcementMessage) {
+  const author = message.user ?? message.author;
+      // Buat embed untuk pengumuman
+      const announcementEmbed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle("📢 Global Announcement!")
+        .setDescription(announcementMessage)
+        .setTimestamp()
+        .setFooter({
+          text: `Announced by ${author.tag}`,
+          iconURL: author.displayAvatarURL(),
+        });
+  
+      // Kirim status awal
+      const statusMessage = await message.reply(
+        {content : "📤 Sending Announcement...", ephemeral:true}
+      );
+  
+      let successCount = 0;
+      let failCount = 0;
+  
+      // Iterate melalui semua server
+      try {
+        for (const guild of message.client.guilds.cache.values()) {
+          try {
+            // Cari channel yang cocok untuk pengumuman
+            const channel = guild.channels.cache.find(
+              (channel) =>
+                channel.type === 0 && 
+                channel
+                  .permissionsFor(guild.members.me)
+                  .has(["SendMessages", "ViewChannel"])
+            );
+  
+            if (channel) {
+              //tag everyone
+              await channel.send({ embeds: [announcementEmbed] });
+              successCount++;
+            } else {
+              failCount++;
+            }
+          } catch (error) {
+            console.error(`Gagal mengirim ke server ${guild.name}:`, error);
+            failCount++;
+          }
+        }
+  
+        // Update status akhir
+        const totalServers = message.client.guilds.cache.size;
+        await statusMessage.edit({content :
+          `✅ Announcement has been sent!\n\n` +
+            `📊 Statistik:\n` +
+            `- Succeed: ${successCount} server\n` +
+            `- Failure: ${failCount} server\n` +
+            `- Server Total: ${totalServers}`,
+            ephemeral: true}
+        );
+      } catch (error) {
+        console.error("Error sending announcement:", error);
+        await statusMessage.edit(
+          {content: `${discordEmotes.error} There was an error sending the announcement.`, ephemeral: true}
+        );
+      }
+}
+async nanamiOwnerInfo(client, message) {
+  const owner = await dataManager.getUserProfile(config.ownerId[0], client);
+      if (!owner) {
+        return message.reply(`You need to register first! Use ${prefix}register`);
+      }
+      const ownerHelpEmbed = new EmbedBuilder()
+        .setColor("#FFD700")
+        .setTitle("👤 BOT Owner Information")
+        .setThumbnail(owner.avatar)
+        .addFields({
+          name: "Discord Information :",
+          value: `**Username:** ${owner.username},
+                    **ID:** ${owner.id},
+                    **Account Created:** ${owner.createdAt.toLocaleDateString()}
+                    **Personal Site : [Click Here](${config.ownerWebsite})**
+                    **Github : [Click Here](${config.ownerGithub})**`,
+        })
+        .setFooter({ text: "Nanami Owner Info" })
+        .setTimestamp();
+  
+      return message.reply({ embeds: [ownerHelpEmbed] });
+}
   async setNickname(message, mentionedUser, newNick) {
     try {
       // Ambil GuildMember dari user yang disebut
       const member = message.guild.members.cache.get(mentionedUser.id);
 
       if (!member) {
-        return message.channel.send(`${discordEmotes.error} user not found.`);
+        return message.channel.send({content:`${discordEmotes.error} user not found.`, ephemeral: true});
       }
 
       // Ubah nickname
       // check if the bot can edit the nickname
       if (!member.manageable) {
         return message.channel.send(
-          `${discordEmotes.error} I cannot change the nickname of this user due to role hierarchy or permissions.`
+          {content: `${discordEmotes.error} I cannot change the nickname of this user due to role hierarchy or permissions.`, ephemeral: true}
         );
       }
       await member.setNickname(newNick);
       message.channel.send(
-        `Nickname for ${mentionedUser} success changed to ${newNick}!`
+        {content: `${discordEmotes.success} Nickname for ${mentionedUser} success changed to ${newNick}!`, ephemeral: true}
       );
     } catch (error) {
       console.error("Error saat mengubah nickname:", error);
-      message.channel.send("There was an error while changing nickname");
+      message.channel.send({content : `${discordEmotes.error} There was an error while changing nickname`, ephemeral: true});
     }
   }
   clearWarns(guildId, user, message) {

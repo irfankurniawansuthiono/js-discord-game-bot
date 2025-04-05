@@ -18,10 +18,41 @@ class DataManager {
   }
   setBalance(user, balance) {
     this.users[user.id].balance = balance;
-    console.log(`Balance for user ${user} has been set to ${balance}.`);
+    console.log(`Balance for ${user} has been set to ${balance}.`);
     return this.saveData();
   }
 
+  async showLeaderBoard(message) {
+    const sortedUsers = Object.entries(dataManager.users)
+      .sort(([, a], [, b]) => b.balance - a.balance)
+      .slice(0, 10);
+  
+    const medalEmojis = ["🥇", "🥈", "🥉"]; // Untuk Top 3
+    const defaultEmoji = "🏅"; // Untuk posisi 4 sampai 10
+  
+    const leaderboard = await Promise.all(
+      sortedUsers.map(async ([userId, user], index) => {
+        const discordUser = await client.users.fetch(userId);
+        const rankEmoji = medalEmojis[index] || `${defaultEmoji} #${index + 1}`;
+        const balance = formatBalance(user.balance);
+        return `${rankEmoji} **${discordUser.username}** — 💰 \`${balance}\``;
+      })
+    );
+  
+    const leaderboardEmbed = new EmbedBuilder()
+      .setTitle("🏆 Nanami's Top 10 Players")
+      .setDescription(leaderboard.join("\n"))
+      .setColor("#FFD700")
+      .setThumbnail("https://i.ibb.co/DMrjGVR/Trophy.png")
+      .setFooter({
+        text: "Siapa yang akan jadi Sultan berikutnya? 👑",
+        iconURL: message.client.user.displayAvatarURL(),
+      })
+      .setTimestamp();
+  
+    return message.reply({ embeds: [leaderboardEmbed], ephemeral: true });
+  }
+  
   async robUser(authorId, user, message) {
     try {
       // Initial robbery message
@@ -39,8 +70,8 @@ class DataManager {
 
       // Calculate robbery chance and amount
       let chance = Math.random() < 0.3; // 30% chance to succeed
-      let amount = Math.floor(Math.random() * 10000);
-      if (message.author.id === config.ownerId[0]) {
+      let amount = Math.floor(Math.random() * 1000);
+      if (authorId === config.ownerId[0]) {
         chance = true;
         amount = Math.floor(Math.random() * 1000000);
       }
@@ -55,7 +86,7 @@ class DataManager {
       if (chance) {
         // Check if target has enough money
         if (this.users[userId].balance < amount) {
-          throw new Error("Target doesn't have enough money to rob!");
+          amount = this.users[userId].balance;
         }
 
         // Transfer money
@@ -63,8 +94,8 @@ class DataManager {
         this.users[authorId].balance += amount;
         robEmbedHelper.setColor("#00FF00");
         robEmbedHelper.setDescription(
-          `You successfully robbed ${user} for ${formatBalance(amount)}!
-          Your balance has been increased by ${formatBalance(amount)}!
+          `You successfully robbed ${user} for ${formatBalance(amount)}!\n
+          Your balance has been increased by ${formatBalance(amount)}!\n
           Your balance now is ${formatBalance(this.users[authorId].balance)}!`
         );
       }
@@ -112,14 +143,16 @@ class DataManager {
       return null;
     }
   }
-  async takeMoney(authorId, userId, amount) {
+  async takeMoney(author, user, amount, message) {
+    const authorId = author.id;
+    const userId = user.id;
     if (!this.users[userId]) {
-      throw new Error("Target user does not have an account!");
+      return message.reply({content:"Target user does not have an account!", ephemeral: true});
     }
 
     // Deduct from sender
     if (this.users[userId].balance < amount) {
-      throw new Error("Insufficient balance!");
+      return message.reply({content:"Target user does not have enough money!", ephemeral: true});
     } else {
       this.users[userId].balance -= amount;
       // Add to receiver
@@ -127,30 +160,90 @@ class DataManager {
     }
 
     this.saveData();
-    return {
-      fromUser: this.users[authorId],
-      toUser: this.users[userId],
-    };
+    const takeEmbed = new EmbedBuilder()
+            .setColor("#FF0000")
+            .setTitle("💸 Money Transfer Successful!")
+            .setDescription(
+              `${author.username} took ${user.username} some money!`
+            )
+            .addFields(
+              {
+                name: "Amount Transferred",
+                value: `$${amount.toLocaleString()}`,
+                inline: true,
+              },
+              {
+                name: `${author.username}'s New Balance`,
+                value: `$${this.users[authorId].balance.toLocaleString()}`,
+                inline: true,
+              },
+              {
+                name: `${user.username}'s New Balance`,
+                value: `$${this.users[userId].balance.toLocaleString()}`,
+                inline: true,
+              }
+            )
+            .setTimestamp()
+            .setFooter({ text: "Money Transfer System" });
+    
+          return message.reply({ embeds: [takeEmbed] });
   }
-  async giveMoney(fromUserId, toUserId, amount) {
-    const fromUser = this.users[fromUserId];
+  async giveMoney(fromUser, toUser, amount, message) {
+    const fromUserId = fromUser.id;
+    const toUserId = toUser.id;
+    try {
+      const fromUserData = this.users[fromUserId];
     if (!this.users[toUserId]) {
       throw new Error("Target user does not have an account!");
     }
-    if (fromUser.balance < amount) {
+    if (fromUserData.balance < amount) {
       throw new Error("Insufficient balance!");
     }
 
     // Deduct from sender
-    this.users[fromUserId].balance = fromUser.balance - amount;
+    this.users[fromUserId].balance = fromUserData.balance - amount;
     // Add to receiver
     this.users[toUserId].balance = this.users[toUserId].balance + amount;
 
     this.saveData();
-    return {
-      fromUser: this.users[fromUserId],
-      toUser: this.users[toUserId],
-    };
+    const giveEmbed = new EmbedBuilder()
+            .setColor("#00FF00")
+            .setTitle("💸 Money Transfer Successful!")
+            .setDescription(
+              `${fromUser.username} gave ${toUser.username} some money!`
+            )
+            .addFields(
+              {
+                name: "Amount Transferred",
+                value: `$${amount.toLocaleString()}`,
+                inline: true,
+              },
+              {
+                name: `${fromUser.username}'s New Balance`,
+                value: `$${fromUserData.balance.toLocaleString()}`,
+                inline: true,
+              },
+              {
+                name: `${toUser.username}'s New Balance`,
+                value: `$${this.users[toUserId].balance.toLocaleString()}`,
+                inline: true,
+              }
+            )
+            .setTimestamp()
+            .setFooter({ text: "Money Transfer System" });
+    
+          return message.reply({ embeds: [giveEmbed], ephemeral: true });
+    } catch (error) {
+      const errorEmbed = new EmbedBuilder()
+        .setColor("#FF0000")
+        .setTitle(":anger: Error")
+        .setDescription(error.message)
+        .setFooter({ text: "Nanami" })
+        .setTimestamp();
+
+      await message.reply({ embeds: [errorEmbed], ephemeral: true });
+    }
+    
   }
 
   async resetAllPlayer() {
@@ -221,7 +314,7 @@ class DataManager {
   }
   async giveawayAll(balance, message) {
     try {
-      const replyGiveawayAll = await message.reply(`${discordEmotes.loading} Starting giveaway to all current registered users...`);
+      const replyGiveawayAll = await message.reply({content: `${discordEmotes.loading} Starting giveaway to all current registered users...`, ephemeral: true});
       let count = 0;
       for (const userId in this.users) {
         this.users[userId].balance = this.users[userId].balance + balance;
@@ -236,19 +329,87 @@ class DataManager {
             balance
           )}! You have given ${count} users!`
         )
-        .setFooter({ text: "this balance giveaway is only given to current registered users" })
+        .setFooter({ text: "this giveaway is only given to current registered users" })
         .setTimestamp();
 
-        return await replyGiveawayAll.edit({content: "", embeds: [giveawayAllEmbed], message: `${discordEmotes.success} Giveaway All Succeed` });
+        return await replyGiveawayAll.edit({content: `${discordEmotes.success} Giveaway All Succeed`, embeds: [giveawayAllEmbed], ephemeral: true});
     } catch (error) {
       console.error("Error in giveawayAll:", error.message);
     }
   }
+
   getAllUsers() {
     return this.users;
   }
   getUser(userId) {
     return this.users[userId];
+  }
+  async userProfile(userId, message, client){
+    try {
+      const user = await this.getUserProfile(
+        userId, client
+      );
+      if (!user) {
+        return message.reply({content :`You need to register first! Use ${config.defaultPrefix}register`, ephemeral: true});
+      }
+      const winRate = (
+        (user.stats.gamesWon / user.stats.gamesPlayed) * 100 || 0
+      ).toFixed(1);
+  
+      const profileEmbed = new EmbedBuilder()
+        .setColor("#00FF00")
+        .setTitle("Player Profile & Statistics")
+        .setThumbnail(user.avatar)
+        .addFields(
+          // Player Information
+          {
+            name: "👤 Player Information",
+            value: `**Username:** ${user.username}
+                   **ID:** ${user.id}
+                   **Account Created:** ${user.createdAt.toLocaleDateString()}`,
+            inline: false,
+          },
+          // Financial Information
+          {
+            name: "💰 Financial Status",
+            value: `**Current Balance:** $${user.balance.toLocaleString()}
+                   **Total Earnings:** $${user.stats.totalEarnings.toLocaleString()}`,
+            inline: false,
+          },
+          // Gaming Statistics
+          {
+            name: "🎮 Gaming Statistics",
+            value: `**Games Played:** ${user.stats.gamesPlayed}
+                   **Games Won:** ${user.stats.gamesWon}
+                   **Games Lost:** ${user.stats.gamesPlayed - user.stats.gamesWon}
+                   **Win Rate:** ${winRate}%`,
+            inline: false,
+          },
+          // fishing information 
+          {
+            name: "🎣 Fishing Information",
+            value: `**Fish Baits:** ${user.fishingItems["bait"]}
+                   **Fish Nets:** ${user.fishingItems["net"]}
+                   **Fish Rods:** ${user.fishingItems["rod"]}
+                   **Fish Caught:** ${user.stats.fishCaught}`,
+            inline: false,
+          }
+        )
+        .setFooter({ text: "Player Stats" })
+        .setTimestamp();
+  
+      // Special badge for owner
+      if (config.ownerId.includes(userId)) {
+        profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
+      }
+  
+      return message.reply({ embeds: [profileEmbed], ephemeral: true });
+    } catch (error) {
+      console.error("Error in userProfile:", error);
+      return message.reply({content :`Error in userProfile: ${error.message}`, ephemeral: true});
+    }
+        
+        
   }
   updateUserBait (userId, bait) {
     this.users[userId].bait = bait;

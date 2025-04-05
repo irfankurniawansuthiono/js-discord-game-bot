@@ -30,40 +30,54 @@ class Games {
     return Games.instance;
   }
   static async blackjack(message, bet) {
+    const author = message.user ?? message.author;
     // Check cooldown
-    const lastUsed = cooldowns.get(message.author.id);
+    const lastUsed = cooldowns.get(author.id);
     const now = Date.now();
 
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
       const remainingTime = Math.ceil(
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
       );
-      return message.reply(
-        `Please wait ${remainingTime} seconds before playing again!`
-      );
+      return message.reply({
+        ephemeral: true,
+        content: `${discordEmotes.error} Please wait ${remainingTime} seconds before playing again!`,
+      });
     }
-    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+    cooldowns.set(author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
-    let user = dataManager.getUser(message.author.id);
+    let user = dataManager.getUser(author.id);
     if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
+      return message.reply({
+        ephemeral: true,
+        content: `${discordEmotes.error} You need to register first! Use ${prefix}register`,
+      });
     }
 
     // Handle "all-in" bet
     if (bet === "all") {
       if (user.balance <= 0) {
-        return message.reply("You don't have any balance to bet!");
+        return message.reply({
+          ephemeral: true,
+          content: `${discordEmotes.error} You don't have any balance to bet!`,
+        });
       }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
       if (isNaN(bet) || bet <= 0) {
-        return message.reply("Please enter a valid bet amount!");
+        return message.reply({
+          ephemeral: true,
+          content: `${discordEmotes.error} Please enter a valid bet amount!`,
+        });
       }
     }
 
     if (bet > user.balance) {
-      return message.reply("Insufficient balance for this bet!");
+      return message.reply({
+        ephemeral: true,
+        content: `${discordEmotes.error} Insufficient balance for this bet!`,
+      });
     }
 
     try {
@@ -188,6 +202,7 @@ class Games {
       const gameMsg = await message.reply({
         content: createGameDisplay(playerHand, dealerHand),
         components: [row],
+        ephemeral: true,
       });
 
       // Check for natural blackjack
@@ -211,9 +226,9 @@ class Games {
           )}!`;
         }
 
-        dataManager.updateBalance(message.author.id, amount);
-        dataManager.updateStats(message.author.id, amount > 0, amount);
-        user = dataManager.getUser(message.author.id);
+        dataManager.updateBalance(author.id, amount);
+        dataManager.updateStats(author.id, amount > 0, amount);
+        user = dataManager.getUser(author.id);
 
         await gameMsg.edit({
           content: createGameDisplay(
@@ -222,6 +237,7 @@ class Games {
             false,
             `${resultMessage}\nCurrent balance: ${formatBalance(user.balance)}`
           ),
+          ephemeral: true,
           components: [],
         });
         return;
@@ -229,8 +245,7 @@ class Games {
 
       // Create button collector
       const filter = (i) =>
-        i.user.id === message.author.id &&
-        ["hit", "stand"].includes(i.customId);
+        i.user.id === author.id && ["hit", "stand"].includes(i.customId);
       const collector = gameMsg.createMessageComponentCollector({
         filter,
         time: 30000,
@@ -253,9 +268,9 @@ class Games {
             collector.stop();
 
             // Player busts
-            dataManager.updateBalance(message.author.id, -bet);
-            dataManager.updateStats(message.author.id, false, -bet);
-            user = dataManager.getUser(message.author.id);
+            dataManager.updateBalance(author.id, -bet);
+            dataManager.updateStats(author.id, false, -bet);
+            user = dataManager.getUser(author.id);
 
             await gameMsg.edit({
               content: createGameDisplay(
@@ -266,12 +281,14 @@ class Games {
                   bet
                 )}!\nCurrent balance: ${formatBalance(user.balance)}`
               ),
+              ephemeral: true,
               components: [],
             });
           } else {
             await gameMsg.edit({
               content: createGameDisplay(playerHand, dealerHand),
               components: [row],
+              ephemeral: true,
             });
           }
         } else if (interaction.customId === "stand") {
@@ -302,9 +319,9 @@ class Games {
             resultMessage = "Push - it's a tie!";
           }
 
-          dataManager.updateBalance(message.author.id, amount);
-          dataManager.updateStats(message.author.id, amount > 0, amount);
-          user = dataManager.getUser(message.author.id);
+          dataManager.updateBalance(author.id, amount);
+          dataManager.updateStats(author.id, amount > 0, amount);
+          user = dataManager.getUser(author.id);
 
           await gameMsg.edit({
             content: createGameDisplay(
@@ -315,6 +332,7 @@ class Games {
                 user.balance
               )}`
             ),
+            ephemeral: true,
             components: [],
           });
         }
@@ -322,9 +340,9 @@ class Games {
 
       collector.on("end", async () => {
         if (!gameEnded) {
-          dataManager.updateBalance(message.author.id, -bet);
-          dataManager.updateStats(message.author.id, false, -bet);
-          user = dataManager.getUser(message.author.id);
+          dataManager.updateBalance(author.id, -bet);
+          dataManager.updateStats(author.id, false, -bet);
+          user = dataManager.getUser(author.id);
 
           await gameMsg.edit({
             content: createGameDisplay(
@@ -335,52 +353,72 @@ class Games {
                 bet
               )}!\nCurrent balance: ${formatBalance(user.balance)}`
             ),
+            ephemeral: true,
             components: [],
           });
         }
       });
     } catch (error) {
       console.error("Error in blackjack game:", error);
-      return message.reply(
-        "An error occurred while playing the game. Please try again."
-      );
+      return message.reply({
+        content: `${discordEmotes.error} An error occurred while playing the game. Please try again.`,
+        ephemeral: true,
+      });
     }
   }
   static async slots(message, bet) {
+    const author = message.user ?? message.author;
     // Check cooldown
-    const lastUsed = cooldowns.get(message.author.id);
+    const lastUsed = cooldowns.get(author.id);
     const now = Date.now();
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
       const remainingTime = Math.ceil(
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
       );
-      return message.reply(
-        `Please wait ${remainingTime} seconds before playing again!`
-      );
+      return message.reply({
+        content: `${discordEmotes.error} Please wait ${remainingTime} seconds before playing again!`,
+        ephemeral: true,
+      });
     }
-    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+    cooldowns.set(author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
-    let user = dataManager.getUser(message.author.id);
+    let user = dataManager.getUser(author.id);
     if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
+      return message.reply({
+        content: `${discordEmotes.error} You need to register first! Use ${prefix}register`,
+        ephemeral: true,
+      });
     }
     if (user.balance <= 0) {
-      return message.reply("You don't have enough balance to play this game!");
+      return message.reply({
+        content: `${discordEmotes.error} You don't have enough balance to play this game!`,
+        ephemeral: true,
+      });
     }
 
     // Handle "all-in" bet
     if (bet === "all") {
       if (user.balance <= 0) {
-        return message.reply("You don't have any balance to bet!");
+        return message.reply({
+          content: `${discordEmotes.error} You don't have any balance to bet!`,
+          ephemeral: true,
+        });
       }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
-      if (isNaN(bet)) return message.reply("Please enter a valid bet amount!");
+      if (isNaN(bet))
+        return message.reply({
+          content: `${discordEmotes.error} Please enter a valid bet amount!`,
+          ephemeral: true,
+        });
     }
 
     if (bet > user.balance) {
-      return message.reply("Insufficient balance for this bet!");
+      return message.reply({
+        content: `${discordEmotes.error} Insufficient balance for this bet!`,
+        ephemeral: true,
+      });
     }
 
     try {
@@ -397,17 +435,15 @@ class Games {
 
       // Fungsi untuk membuat tampilan slot
       const createSlotDisplay = (slots) => {
-        return `
-   ╔══ 🎰 SLOTS 🎰 ══╗
-  ║                                          ║
-  ║     ${slots[0]}   |   ${slots[1]}   |   ${slots[2]}    ║
-  ║                                          ║
-  ╚═════════════╝
+        return `${slots[0]}   |   ${slots[1]}   |   ${slots[2]}
   `;
       };
 
       // Kirim pesan awal
-      const slotMsg = await message.reply("🎰 Starting the slot machine...");
+      const slotMsg = await message.reply({
+        content: `${discordEmotes.loading} 🎰 Starting the slot machine...`,
+        ephemeral: true,
+      });
 
       // Animasi spinning
       const animationFrames = 5;
@@ -416,7 +452,10 @@ class Games {
           .fill()
           .map(() => getRandomEmoji());
         await new Promise((resolve) => setTimeout(resolve, 500));
-        await slotMsg.edit(createSlotDisplay(randomSlots));
+        await slotMsg.edit({
+          content: createSlotDisplay(randomSlots),
+          ephemeral: true,
+        });
       }
 
       // Generate final result based on winningChance
@@ -438,7 +477,7 @@ class Games {
       }
 
       // jika bot owner yang melakukan spin dia akan selalu menang
-      if (message.author.id === config.ownerId[0]) {
+      if (author.id === config.ownerId[0]) {
         winningChance = true;
         starChance = true;
         finalSlots = Array(3).fill("⭐");
@@ -467,133 +506,153 @@ class Games {
           }
         }
         const winnings = bet * multiplier;
-        dataManager.updateBalance(message.author.id, winnings);
-        dataManager.updateStats(message.author.id, winningChance, winnings);
+        dataManager.updateBalance(author.id, winnings);
+        dataManager.updateStats(author.id, winningChance, winnings);
         resultMessage = `\n🎉 YOU WON $${winnings.toLocaleString()}! 🎉`;
       } else {
-        dataManager.updateBalance(message.author.id, -bet);
-        dataManager.updateStats(message.author.id, winningChance, -bet);
+        dataManager.updateBalance(author.id, -bet);
+        dataManager.updateStats(author.id, winningChance, -bet);
         resultMessage = `\n${
           discordEmotes.error
         } You lost $${bet.toLocaleString()}`;
       }
 
       // Get updated balance
-      user = dataManager.getUser(message.author.id);
+      user = dataManager.getUser(author.id);
 
       // Send final result
-      await slotMsg.edit(
-        createSlotDisplay(finalSlots) +
+      await slotMsg.edit({
+        content:
+          createSlotDisplay(finalSlots) +
           resultMessage +
-          `\nCurrent Balance: $${user.balance.toLocaleString()}`
-      );
+          `\nCurrent Balance: $${user.balance.toLocaleString()}`,
+        ephemeral: true,
+      });
     } catch (error) {
       console.error("Error in slots game:", error);
-      return message.reply(
-        "An error occurred while playing the game. Please try again."
-      );
+      return message.reply({
+        content: `${discordEmotes.error} An error occurred while playing the game. Please try again.`,
+        ephemeral: true,
+      });
     }
   }
-  static async coinFlip(message, bet, choice) {
-    // Check cooldown
-    const lastUsed = cooldowns.get(message.author.id);
+  static async coinFlip(interaction, bet, choice) {
+    const author = interaction.user ?? interaction.author;
     const now = Date.now();
-
+  
+    const lastUsed = cooldowns.get(author.id);
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
-      const remainingTime = Math.ceil(
-        (COOLDOWN_DURATION - (now - lastUsed)) / 1000
-      );
-      return message.reply(
-        `Please wait ${remainingTime} seconds before playing again!`
-      );
+      const remainingTime = Math.ceil((COOLDOWN_DURATION - (now - lastUsed)) / 1000);
+      return interaction.reply({
+        content: `${discordEmotes.error} Please wait ${remainingTime} seconds before playing again!`,
+        ephemeral: true,
+      });
     }
+  
     if (choice !== "h" && choice !== "t") {
-      return message.reply(
-        "Invalid choice! Please choose 'h' for heads or 't' for tails."
-      );
+      return interaction.reply({
+        content: `${discordEmotes.error} Invalid choice! Please choose 'h' for heads or 't' for tails.`,
+        ephemeral: true,
+      });
     }
-
-    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
-
-    let user = dataManager.getUser(message.author.id);
+  
+    cooldowns.set(author.id, now);
+  
+    let user = dataManager.getUser(author.id);
     if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
+      return interaction.reply({
+        content: `${discordEmotes.error} You need to register first! Use ${prefix}register`,
+        ephemeral: true,
+      });
     }
+  
     if (user.balance <= 0) {
-      return message.reply("You don't have enough balance to play this game!");
+      return interaction.reply({
+        content: `${discordEmotes.error} You don't have enough balance to play this game!`,
+        ephemeral: true,
+      });
     }
-
-    // Handle "all-in" bet
+  
     if (bet === "all") {
-      if (user.balance <= 0) {
-        return message.reply("You don't have any balance to bet!");
-      }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
       if (isNaN(bet) || bet <= 0) {
-        return message.reply("Please enter a valid bet amount!");
+        return interaction.reply({
+          content: `${discordEmotes.error} Please enter a valid bet amount!`,
+          ephemeral: true,
+        });
       }
     }
-
+  
     if (bet > user.balance) {
-      return message.reply("Insufficient balance for this bet!");
+      return interaction.reply({
+        content: `${discordEmotes.error} Insufficient balance for this bet!`,
+        ephemeral: true,
+      });
     }
-
+  
     try {
-      // Send initial flipping message
-      const flipMsg = await message.reply(
-        "The <a:coinflip:1329758909572841482> Coin is Flipping..."
-      );
-
-      // Add delay for suspense
+      // 💡 Start ephemeral response
+  
+      // Simulasi animasi flipping koin
+      const flipMsg =await interaction.reply({
+        content: "The <a:coinflip:1329758909572841482> Coin is Flipping...",
+        ephemeral: true,
+      });
+  
+      // Delay 3 detik buat efek dramatis
       await new Promise((resolve) => setTimeout(resolve, 3000));
-
-      // Tentukan dulu apakah pemain akan menang (20% chance)
-      const willWin = Math.random() < 0.2; // 20% chance menang
-
-      // Tentukan outcome berdasarkan apakah pemain akan menang
-      let outcome;
-      if (willWin) {
-        // Jika menang, outcome sama dengan pilihan pemain
-        outcome = choice;
-      } else {
-        // Jika kalah, outcome berbeda dengan pilihan pemain
-        outcome = choice === "h" ? "t" : "h";
-      }
-
-      const won = willWin; // sama dengan willWin karena sudah ditentukan di atas
+  
+      // Simulasi hasil
+      const willWin = Math.random() < 0.2;
+      const outcome = willWin ? choice : choice === "h" ? "t" : "h";
+      const won = willWin;
       const amount = won ? bet : -bet;
-
-      // Update user data
-      dataManager.updateBalance(message.author.id, amount);
-      dataManager.updateStats(message.author.id, won, amount);
-
-      // Get fresh user data
-      user = dataManager.getUser(message.author.id);
-
-      // Delete the flipping message
-      await flipMsg.delete().catch(console.error);
-
-      // Send result
-      const resultMessage = `Coin shows ${
-        outcome === "h" ? "Heads" : "Tails"
-      }! You ${won ? "won" : "lost"} ${formatBalance(
-        amount
-      )}. Current balance: ${formatBalance(user.balance)}`;
-
-      return message.reply(resultMessage);
+  
+      // Update data user
+      dataManager.updateBalance(author.id, amount);
+      dataManager.updateStats(author.id, won, amount);
+      user = dataManager.getUser(author.id);
+  
+      // Buat embed hasil akhir
+      const resultEmbed = new EmbedBuilder()
+        .setTitle("🪙 Coin Flip Result")
+        .setDescription(
+          `Coin shows **${outcome === "h" ? "Heads" : "Tails"}**!\nYou **${won ? "won" : "lost"}** ${formatBalance(amount)}.`
+        )
+        .addFields({
+          name: "Current Balance",
+          value: formatBalance(user.balance),
+          inline: true,
+        })
+        .setFooter({
+          text: "Coin Flip Game",
+          iconURL: client.user.displayAvatarURL({ dynamic: true }),
+        })
+        .setColor(won ? "#2ECC71" : "#E74C3C")
+        .setTimestamp();
+  
+      // Edit ephemeral message dengan hasil
+      return await flipMsg.edit({
+        content: "",
+        embeds: [resultEmbed],
+        ephemeral: true,
+      });
+  
     } catch (error) {
       console.error("Error in coinFlip game:", error);
-      return message.reply(
-        "An error occurred while playing the game. Please try again."
-      );
+      return interaction.edit({
+        content: `${discordEmotes.error} An error occurred while playing the game. Please try again.`,
+      });
     }
   }
+  
 
   static async numberGuess(message, bet, guess) {
+    const author = message.user ?? message.author;
     // Check cooldown
-    const lastUsed = cooldowns.get(message.author.id);
+    const lastUsed = cooldowns.get(author.id);
     const now = Date.now();
 
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
@@ -601,65 +660,76 @@ class Games {
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
       );
       return message.reply(
-        `Please wait ${remainingTime} seconds before playing again!`
+        { ephemeral: true, content: `${discordEmotes.error} Please wait ${remainingTime} seconds before playing again!`}
       );
     }
 
-    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+    cooldowns.set(author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
-    let user = dataManager.getUser(message.author.id);
+    let user = dataManager.getUser(author.id);
     if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
+      return message.reply({ ephemeral: true, content: `${discordEmotes.error} You need to register first! Use ${prefix}register`});
     }
     if (bet === "all") {
       if (user.balance <= 0) {
-        return message.reply("You don't have any balance to bet!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} You don't have any balance to bet!`});
       }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
       if (isNaN(bet) || bet <= 0) {
-        return message.reply("Please enter a valid bet amount!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} Please enter a valid bet amount!`});
       }
       guess = parseInt(guess);
       if (isNaN(guess) || guess < 1 || guess > 10) {
-        return message.reply("Please enter a valid guess between 1 and 10!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} Please enter a valid guess between 1 and 10!`});
       }
     }
 
     if (bet > user.balance) {
-      return message.reply("Insufficient balance for this bet!");
+      return message.reply({ ephemeral: true, content: `${discordEmotes.error} Insufficient balance for this bet!`});
     }
 
     const number = Math.floor(Math.random() * 10) + 1;
     const won = parseInt(guess) === number;
     const amount = won ? bet * 5 : -bet;
 
-    dataManager.updateBalance(message.author.id, amount);
-    dataManager.updateStats(message.author.id, won, amount);
+    dataManager.updateBalance(author.id, amount);
+    dataManager.updateStats(author.id, won, amount);
 
-    user = dataManager.getUser(message.author.id);
+    user = dataManager.getUser(author.id);
 
     const diceMsg = await message.reply(
-      "Rolling the dice <a:dice-roll:1329767637151907861> <a:dice-roll:1329767637151907861>..."
+      { content: "Rolling the dice <a:dice-roll:1329767637151907861> <a:dice-roll:1329767637151907861>...", ephemeral: true }
     );
 
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    await diceMsg.delete().catch(console.error);
 
-    return message.reply(
-      `Number was ${number}! You ${won ? "won" : "lost"}! ${
-        won
-          ? `Congratulations! You won $${formatBalance(amount)}`
-          : `You lost ${formatBalance(amount)}`
-      }. Current balance: ${user.balance}`
-    );
+    const embed = new EmbedBuilder()
+      .setTitle("🔢 Number Guess")
+      .setDescription(
+        `The number was **${number}**!\nYou **${won ? "won" : "lost"}** ${formatBalance(amount)}.`
+      )
+      .addFields({
+        name: "Current Balance",
+        value: formatBalance(user.balance),
+        inline: true,
+      })
+      .setFooter({
+        text: "Number Guess Game",
+        iconURL: client.user.displayAvatarURL({ dynamic: true }),
+      })
+      .setColor(won ? "#2ECC71" : "#E74C3C")
+      .setTimestamp();
+
+    return await diceMsg.edit({content: "", embeds: [embed], ephemeral: true });
   }
 
   static async diceRoll(message, bet, guess) {
+    const author = message.user ?? message.author;
     // Check cooldown
-    const lastUsed = cooldowns.get(message.author.id);
+    const lastUsed = cooldowns.get(author.id);
     const now = Date.now();
 
     if (lastUsed && now - lastUsed < COOLDOWN_DURATION) {
@@ -667,11 +737,11 @@ class Games {
         (COOLDOWN_DURATION - (now - lastUsed)) / 1000
       );
       return message.reply(
-        `Please wait ${remainingTime} seconds before slots again!`
+        { ephemeral: true, content: `${discordEmotes.error} Please wait ${remainingTime} seconds before slots again!`}
       );
     }
 
-    cooldowns.set(message.author.id, now); // Set waktu terakhir pemain melakukan tindakan
+    cooldowns.set(author.id, now); // Set waktu terakhir pemain melakukan tindakan
 
     const diceTextReturn = [
       "<:1_:1329775714269925479>",
@@ -681,32 +751,32 @@ class Games {
       "<:5_:1329775788735860802>",
       "<:6_:1329775799565422684>",
     ];
-    let user = dataManager.getUser(message.author.id);
+    let user = dataManager.getUser(author.id);
     if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
+      return message.reply({ ephemeral: true, content: `${discordEmotes.error} You need to register first! Use ${prefix}register`});
     }
     if (bet === "all") {
       if (user.balance <= 0) {
-        return message.reply("You don't have any balance to bet!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} You don't have any balance to bet!`});
       }
       bet = user.balance;
     } else {
       bet = parseInt(bet);
       if (isNaN(bet) || bet <= 0) {
-        return message.reply("Please enter a valid bet amount!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} Please enter a valid bet amount!`});
       }
       guess = parseInt(guess);
       if (isNaN(guess) || guess < 2 || guess > 12) {
-        return message.reply("Please enter a valid guess between 2 and 12!");
+        return message.reply({ ephemeral: true, content: `${discordEmotes.error} Please enter a valid guess between 2 and 12!`});
       }
     }
     if (bet > user.balance) {
-      return message.reply("Insufficient balance for this bet!");
+      return message.reply({ ephemeral: true, content: `${discordEmotes.error} Insufficient balance for this bet!`});
     }
 
     try {
       const diceMsg = await message.reply(
-        "Rolling the dice <a:diceroll:1329767637151907861> <a:diceroll:1329767637151907861>..."
+        { content: "Rolling the dice <a:diceroll:1329767637151907861> <a:diceroll:1329767637151907861>...", ephemeral: true }
       );
       await new Promise((resolve) => setTimeout(resolve, 3000));
       const dice1 = Math.floor(Math.random() * 6) + 1;
@@ -715,24 +785,32 @@ class Games {
       const won = parseInt(guess) === total;
       const amount = won ? bet * 8 : -bet;
 
-      dataManager.updateBalance(message.author.id, amount);
-      dataManager.updateStats(message.author.id, won, amount);
+      dataManager.updateBalance(author.id, amount);
+      dataManager.updateStats(author.id, won, amount);
 
-      user = dataManager.getUser(message.author.id);
+      user = dataManager.getUser(author.id);
+      const embed = new EmbedBuilder()
+        .setTitle("🎲 Dice Roll")
+        .setDescription(
+          `You rolled **${diceTextReturn[dice1 - 1]}** + **${diceTextReturn[dice2 - 1]}** = **${total}**!\nYou **${won ? "won" : "lost"}** ${formatBalance(amount)}.`
+        )
+        .addFields({
+          name: "Current Balance",
+          value: formatBalance(user.balance),
+          inline: true,
+        })
+        .setFooter({
+          text: "Dice Roll Game",
+          iconURL: client.user.displayAvatarURL({ dynamic: true }),
+        })
+        .setColor(won ? "#2ECC71" : "#E74C3C")
+        .setTimestamp();
 
-      const resultMsg = `Dice rolled: ${diceTextReturn[dice1 - 1]} + ${
-        diceTextReturn[dice2 - 1]
-      } = ${total}! You ${won ? "won" : "lost"}! ${
-        won
-          ? `Amazing! You won ${formatBalance(amount)}`
-          : `You lost ${formatBalance(amount)}`
-      }. Current balance: ${formatBalance(user.balance)}`;
-
-      return diceMsg.edit(resultMsg);
+      return await diceMsg.edit({ content: "", embeds: [embed], ephemeral: true });
     } catch (error) {
       console.error("Error in diceRoll game:", error);
       return message.reply(
-        "An error occurred while playing the game. Please try again."
+        { ephemeral: true, content: `${discordEmotes.error} An error occurred while playing the game. Please try again.`}
       );
     }
   }

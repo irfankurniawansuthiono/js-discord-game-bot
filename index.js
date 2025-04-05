@@ -117,7 +117,7 @@ const anonChat = new AnonChat();
 
 export const ownerHelperFirewall = (authorId, message) => {
   if (!config.ownerId.includes(authorId)) {
-    message.reply("This command is only available to the bot owner!");
+    message.reply({ content: `${discordEmotes.error} This command is only available to the bot owner!`, ephemeral: true });
     return false;
   }
   return true;
@@ -164,7 +164,7 @@ export const guildAdmin = (ctx) => {
 
 const commands = {
   setbait: (message, args)=>{
-    if(!ownerHelperFirewall) return;
+    if(!ownerHelperFirewall(message.author.id, message)) return;
     if(args.length < 2) return message.reply(`Usage: ${prefix}setbait <amount>`);
     const amount = message.mentions.users.first() ? parseInt(args[2]) : parseInt(args[1]);
     const user = message.mentions.users.first() ? message.mentions.users.first().id : message.author.id;
@@ -176,7 +176,7 @@ const commands = {
     dataManager.getInventory(message, user.id, user)
   },
   checkinv: async (message) => {
-    if(!ownerHelperFirewall) return;
+    if(!ownerHelperFirewall(message.author.id, message)) return;
     const userMention = message.mentions.users.first();
     if(!userMention) return message.reply("Please mention a valid user.");
     try {
@@ -190,7 +190,7 @@ const commands = {
     await shopManagement.showShopCategories(client,message);
   },
   resetinv:(message)=> {
-    if(!ownerHelperFirewall) return;
+    if(!ownerHelperFirewall(message.author.id, message)) return;
     const user = message.author.id;
     const userMention = message.mentions.users.first();
     try {
@@ -498,23 +498,23 @@ const commands = {
   setbalance: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     if (args.length < 3) {
-      return message.reply(`Usage: ${prefix}setbalance <user> <amount>`);
+      return message.reply({content :`Usage: ${prefix}setbalance <user> <amount>`, ephemeral: true});
     }
     const user = message.mentions.users.first();
     const getUser = dataManager.getUser(user.id);
     if(!getUser) {
-      return message.reply(`${discordEmotes.error} User not found. please register them first!`);
+      return message.reply({content:`${discordEmotes.error} User not found. please register them first!`, ephemeral: true});
     }
     const amount = parseInt(args[2]);
     if (isNaN(amount) || amount <= 0) {
-      return message.reply("Please enter a valid amount.");
+      return message.reply({content:`${discordEmotes.error} Please enter a valid amount.`, ephemeral: true});
     }
     try {
       dataManager.setBalance(user, amount);
-      message.reply(`Balance for user ${user} has been set to ${amount}.`);
+      message.reply({content:`${discordEmotes.success} ${user}'s balance has been set to ${formatBalance(amount)}.`, ephemeral: true});
     } catch (error) {
       console.error("Error in setBalance command:", error);
-      message.reply("An error occurred while processing the command.");
+      message.reply({content:`${discordEmotes.error} An error occurred while processing the command.`, ephemeral: true});
     }
   },
   resetap: async (message, args) => {
@@ -548,7 +548,7 @@ const commands = {
       return message.reply("User already registered!");
     }
     const user = dataManager.createUser(mention.id);
-    return message.reply(`Welcome! ${mention} start with ${formatBalance(user.balance)}.`);
+    return message.reply(`Welcome! ${mention}! Your balance start with ${formatBalance(user.balance)}.`);
   },
   giveawayall:(message, args)=>{
     if (!ownerHelperFirewall(message.author.id, message)) return;
@@ -570,82 +570,22 @@ const commands = {
     if (!ownerHelperFirewall(message.author.id, message)) return;
     await dataManager.resetAllBalance(message);
   },
-  balance: async (message) => {
-    const isUserMentioned = message.mentions.users.first();
-    const user = await dataManager.getUserProfile(
-      isUserMentioned ? message.mentions.users.first().id : message.author.id,
-      client
-    );
-    if (!user) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
-    }
-    const winRate = (
-      (user.stats.gamesWon / user.stats.gamesPlayed) * 100 || 0
-    ).toFixed(1);
-
-    const profileEmbed = new EmbedBuilder()
-      .setColor("#00FF00")
-      .setTitle("Player Profile & Statistics")
-      .setThumbnail(user.avatar)
-      .addFields(
-        // Player Information
-        {
-          name: "👤 Player Information",
-          value: `**Username:** ${user.username}
-                 **ID:** ${user.id}
-                 **Account Created:** ${user.createdAt.toLocaleDateString()}`,
-          inline: false,
-        },
-        // Financial Information
-        {
-          name: "💰 Financial Status",
-          value: `**Current Balance:** $${user.balance.toLocaleString()}
-                 **Total Earnings:** $${user.stats.totalEarnings.toLocaleString()}`,
-          inline: false,
-        },
-        // Gaming Statistics
-        {
-          name: "🎮 Gaming Statistics",
-          value: `**Games Played:** ${user.stats.gamesPlayed}
-                 **Games Won:** ${user.stats.gamesWon}
-                 **Games Lost:** ${user.stats.gamesPlayed - user.stats.gamesWon}
-                 **Win Rate:** ${winRate}%`,
-          inline: false,
-        },
-        // fishing information 
-        {
-          name: "🎣 Fishing Information",
-          value: `**Fish Baits:** ${user.fishingItems["bait"]}
-                 **Fish Nets:** ${user.fishingItems["net"]}
-                 **Fish Rods:** ${user.fishingItems["rod"]}
-                 **Fish Caught:** ${user.stats.fishCaught}`,
-          inline: false,
-        }
-      )
-      .setFooter({ text: "Player Stats" })
-      .setTimestamp();
-
-    // Special badge for owner
-    if ((!isUserMentioned && config.ownerId.includes(message.author.id)) || (isUserMentioned && config.ownerId.includes(isUserMentioned.id))) {
-      profileEmbed.setDescription("🎭 **BOT OWNER**").setColor("#FFD700"); // Gold color for owner
-    }
-
-    return message.reply({ embeds: [profileEmbed] });
-  },
   kick: async (message, args) => {
 
     // cek permission
     if (!guildAdmin(message)) return
     ;
     if (args.length < 2) { 
-      return message.reply(`Usage: ${prefix}kick <@user>`);
+      return message.reply(`Usage: ${prefix}kick <@user> <reason>`);
     }
+    const reason = args.slice(2).join(" ");
+    if(!reason) return message.reply(`${discordEmotes.error} Please provide a reason for the kick.`);
     const mentionedUser = message.mentions.users.first();
     if (!mentionedUser) {
-      return message.reply("Please mention a user to kick.");
+      return message.reply(`${discordEmotes.error} Please mention a user to kick.`);
     }
     try {
-      await discordFormat.kickUser(message, mentionedUser);
+      await discordFormat.kickUser(message, mentionedUser, reason);
     } catch (error) {
       console.error("Error in kick command:", error);
       return message.reply("An error occurred while kicking the user.");
@@ -657,8 +597,8 @@ const commands = {
     if (!amount || amount <= 0 ) {
       return message.reply(`Usage: ${prefix}purge <amount>`);
     }
-    if(amount > 1000) {
-      return message.reply(`You can't purge that much messages! Max 1000 messages.`);
+    if(amount > 100) {
+      return message.reply(`You can't purge that much messages! Max 100 messages.`);
     }
     try {
       await discordFormat.deleteMessages(message, amount);
@@ -668,69 +608,12 @@ const commands = {
     }
   },
   rbc: async (message) => {
-    if(message.channel.type === ChannelType.DM) {
-        try {
-          await message.delete(); // Coba hapus pesan
-          console.log(`[DM] Deleted message from ${message.author.username}`);
-        } catch (err) {
-          console.error("Failed to delete message in DM:", err);
-        }
-      
-        // Lakukan operasi lainnya jika diperlukan
-        const reply = await message.channel.send(`${discordEmotes.success} Succeed to delete messages.`);
-        setTimeout(() => {
-          reply.delete().catch(console.error);
-        }, 5000);      
-      return;
-    }else if (!guildAdmin(message)) return;
-    try {
-      // Delete the command message first
-      await message.delete().catch(console.error);
-
-      let fetched;
-      let deleted = 0;
-      // Fetch messages in batches of 100
-      do {
-        fetched = await message.channel.messages.fetch({ limit: 100 });
-        const botMessages = fetched.filter(
-          (msg) => msg.author.id === client.user.id
-        );
-
-        for (const msg of botMessages.values()) {
-          try {
-            await msg.delete();
-            deleted++;
-            // Add a small delay to avoid rate limits
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          } catch (err) {
-            if (err.code !== 10008) {
-              // Ignore "Unknown Message" errors
-              console.error(`Error deleting message: ${err}`);
-            }
-          }
-        }
-      } while (fetched.size === 100);
-
-      // Send temporary success message
-      const reply = await message.channel.send(
-        `Successfully deleted ${deleted} bot messages from this channel.`
-      );
-
-      // Delete the success message after 5 seconds
-      setTimeout(() => {
-        reply.delete().catch(console.error);
-      }, 5000);
-    } catch (error) {
-      console.error("Error in rbc command:", error);
-      return message.channel
-        .send("An error occurred while deleting messages.")
-        .then((msg) => {
-          setTimeout(() => msg.delete().catch(console.error), 5000);
-        });
-    }
+    await discordFormat.removeBotChats(message);
   },
   profile: async (message) => {
-    return commands.balance(message);
+    const isUserMentioned = message.mentions.users.first();
+    const userId = isUserMentioned ? isUserMentioned.id : message.author.id;
+    return dataManager.userProfile(userId, message, client);
   },
   flip: (message, args) => {
     const bet = args[1];
@@ -767,21 +650,19 @@ const commands = {
     return Games.diceRoll(message, bet, guess);
   },
   invite: (message) => {
-    const inviteEmbed = new EmbedBuilder()
-      .setColor("#FF0000")
-      .setTitle("Nanami Invite")
-      .setDescription("Invite Nanami to your server!")
-      .setURL(
-        `https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot`
-      )
-      .setFooter({ text: "Nanami Stats" })
-      .setTimestamp();
-
-    return message.reply({ embeds: [inviteEmbed] });
+   return discordFormat.inviteBot(message);
   },
   setstatus: (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
-    const status = args.slice(1).join(" ");
+    const mode = args[1];
+    if (!mode) {
+      return message.reply(`Usage: ${prefix}setstatus <online | idle | dnd | invisible>  <listening | watching | playing | streaming> <status>`);
+    }
+    const type = args[2];
+    if (!["listening", "watching", "playing", "streaming"].includes(type)) {
+      return message.reply(`Usage: ${prefix}setstatus <online | idle | dnd | invisible> <listening | watching | playing | streaming> <status>`);
+    }
+    const status = args.slice(3).join(" ");
     if (!status) {
       return message.reply("Please provide a status message.");
     }
@@ -789,21 +670,7 @@ const commands = {
       console.error("Client user is undefined. Is the bot logged in?");
       return message.reply("Bot is not connected to Discord.");
     }
-    try {
-      client.user.setPresence({
-        activities: [
-          {
-            name: status,
-            type: ActivityType.Listening, // Gunakan ActivityType enum
-          },
-        ],
-        status: "online",
-      });
-      return message.reply(`Status set to: ${status}`);
-    } catch (error) {
-      console.error("Error setting status:", error);
-      return message.reply("An error occurred while setting the status.");
-    }
+    return discordFormat.setBotStatus(client,mode, type, status, message);
   },
   setprefix: (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
@@ -842,74 +709,45 @@ const commands = {
     if (!ownerHelperFirewall(message.author.id, message)) return;
 
     try {
-      await message.delete();
+      // Save a reference to the original message
+      const originalMessage = message;
+      
+      // Try to delete the command message but handle potential errors
+      try {
+        await message.delete();
+      } catch (deleteError) {
+        console.warn("Failed to delete command message:", deleteError);
+        // Continue with the command even if deletion fails
+      }
 
       if (args.length < 3) {
-        const tempMsg = await message.channel.send(
+        const tempMsg = await originalMessage.channel.send(
           `Usage: ${prefix}spamsendto <amount> <#channel/@user> <message>`
         );
         setTimeout(() => tempMsg.delete().catch(console.error), 5000);
         return;
       }
 
-      const amount = parseInt(args[2]);
+      const amount = parseInt(args[1]); 
       if (isNaN(amount) || amount < 1) {
-        const tempMsg = await message.channel.send(
+        const tempMsg = await originalMessage.channel.send(
           "Please provide a valid amount (minimum 1)"
         );
         setTimeout(() => tempMsg.delete().catch(console.error), 5000);
         return;
       }
 
-      const targetChannel = message.mentions.channels.first();
-      const targetUser = message.mentions.users.first();
-      const text = args.slice(3).join(" ");
-
-      if (!text) {
-        const tempMsg = await message.channel.send(
-          "Please provide a message to send."
-        );
-        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
-        return;
-      }
-
-      if (!targetChannel && !targetUser) {
-        const tempMsg = await message.channel.send(
-          "Please mention a valid channel or user."
-        );
-        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
-        return;
-      }
-
-      let successCount = 0;
-      const delay = 1500; // 1.5 detik delay antar pesan untuk menghindari rate limits
-
-      // Fungsi untuk mengirim pesan dengan delay
-      const sendMessageWithDelay = async (target, index) => {
-        try {
-          await new Promise((resolve) => setTimeout(resolve, delay * index));
-          await target.send(text);
-          successCount++;
-        } catch (err) {
-          console.error(`Error sending message ${index + 1}:`, err);
-        }
-      };
-
+      const targetChannel = originalMessage.mentions.channels.first();
+      const targetUser = originalMessage.mentions.users.first();
       const target = targetChannel || targetUser;
-      const promises = Array(amount)
-        .fill()
-        .map((_, index) => sendMessageWithDelay(target, index));
+      const text = args.slice(2).join(" "); 
 
-      // Tunggu semua pesan terkirim
-      await Promise.all(promises);
-
-      // Kirim pesan konfirmasi yang akan terhapus setelah 5 detik
-      const confirmMsg = await message.channel.send(
-        `Successfully sent ${successCount}/${amount} messages to ${
-          targetChannel?.name || targetUser?.username
-        }.`
+      return discordFormat.spamSendTo(
+        target,
+        text,
+        amount,
+        originalMessage
       );
-      setTimeout(() => confirmMsg.delete().catch(console.error), 5000);
     } catch (error) {
       console.error("Error in spamsendto command:", error);
       const errorMsg = await message.channel.send(
@@ -920,76 +758,41 @@ const commands = {
   },
   spamsay: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
-    await message.delete();
-    if (args.length < 2)
-      return message.reply(`Usage: ${prefix}spamsay <ammount> <message>`);
-    const ammount = Number(args[1]);
-    const text = args.slice(2).join(" ");
-    if (!text) {
-      return message.reply("Please provide a message to send.");
-    }
-    for (let i = 0; i < ammount; i++) {
-      message.channel.send(text);
+    try {
+      // Delete the command message
+      await message.delete().catch(console.error);
+      
+      if (args.length < 2) {
+        const tempMsg = await message.channel.send(`Usage: ${prefix}spamsay <amount> <message>`);
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      const amount = Number(args[1]);
+      const text = args.slice(2).join(" ");
+      
+      if (!text) {
+        const tempMsg = await message.channel.send("Please provide a message to send.");
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      if (isNaN(amount) || amount < 1) {
+        const tempMsg = await message.channel.send("Please provide a valid amount (minimum 1).");
+        setTimeout(() => tempMsg.delete().catch(console.error), 5000);
+        return;
+      }
+      
+      // Call the spamSay function with the correct text
+      return discordFormat.spamSay(message, text, amount);
+    } catch (error) {
+      console.error("Error in spamsay command:", error);
+      const tempMsg = await message.channel.send("An error occurred while executing the command.");
+      setTimeout(() => tempMsg.delete().catch(console.error), 5000);
     }
   },
   help: async (message) => {
-    let currentPage = 1;
-
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("first")
-        .setLabel("⏪")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("prev")
-        .setLabel("◀️")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("next")
-        .setLabel("▶️")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("last")
-        .setLabel("⏩")
-        .setStyle(ButtonStyle.Primary)
-    );
-
-    const helpMessage = await message.reply({
-      embeds: [createHelpEmbed(currentPage, message.author)], // Kirim message.author
-      components: [buttons],
-    });
-
-    const collector = helpMessage.createMessageComponentCollector({
-      filter: (i) => i.user.id === message.author.id,
-      time: 60000,
-    });
-
-    collector.on("collect", async (interaction) => {
-      switch (interaction.customId) {
-        case "first":
-          currentPage = 1;
-          break;
-        case "prev":
-          currentPage = currentPage > 1 ? currentPage - 1 : 4;
-          break;
-        case "next":
-          currentPage = currentPage < 4 ? currentPage + 1 : 1;
-          break;
-        case "last":
-          currentPage = 4;
-          break;
-      }
-
-      await interaction.update({
-        embeds: [createHelpEmbed(currentPage, interaction.user)], // Gunakan interaction.user
-        components: [buttons],
-      });
-    });
-
-    collector.on("end", () => {
-      buttons.components.forEach((button) => button.setDisabled(true));
-      helpMessage.edit({ components: [buttons] });
-    });
+    return await discordFormat.nanamiHelpMenu(message);
   },
   rob: async (message, args) => {
     const userMention = message.mentions.users.first();
@@ -1007,143 +810,16 @@ const commands = {
     }
   },
   botinfo: async (message) => {
-    // Get guild count
-    const guildCount = client.guilds.cache.size;
-
-    // Get total member count across all guilds
-    const totalMembers = client.guilds.cache.reduce(
-      (acc, guild) => acc + guild.memberCount,
-      0
-    );
-
-    // Get registered users count
-    const registeredUsers = Object.keys(dataManager.users).length;
-
-    // Calculate total balance across all users
-    const totalEconomy = Object.values(dataManager.users).reduce(
-      (acc, user) => acc + user.balance,
-      0
-    );
-
-    // Get uptime
-    const uptime = process.uptime();
-    const days = Math.floor(uptime / 86400);
-    const hours = Math.floor(uptime / 3600) % 24;
-    const minutes = Math.floor(uptime / 60) % 60;
-    const seconds = Math.floor(uptime % 60);
-
-    // Get memory usage
-    const memoryUsage = process.memoryUsage();
-    const memoryUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-    const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
-
-    // Fetch the full bot user to get banner
-    const botUser = await client.users.fetch(client.user.id, { force: true });
-
-    const infoEmbed = new EmbedBuilder()
-      .setColor("#FFD700")
-      .setTitle("🤖 BOT Information")
-      .setThumbnail(client.user.displayAvatarURL({ size: 4096 }))
-      // Set banner if exists
-      .setImage(
-        botUser.bannerURL({ size: 4096 }) ||
-          "https://nanami.irfanks.site/avatar.jpg" // Ganti dengan URL banner default jika bot tidak punya banner
-      )
-      .addFields(
-        {
-          name: "📊 Bot Statistics",
-          value: `**Username:** ${client.user.username}
-               **ID:** ${client.user.id}
-               **Created:** ${client.user.createdAt.toLocaleDateString()}
-               **Developer:** ${
-                 (await client.users.fetch(config.ownerId[0])).username
-               }
-               **Node.js:** ${process.version}
-               **Banner:** ${botUser.banner ? "✅" : "❌"}
-               **Verified:** ${client.user.verified ? "✅" : "❌"}
-               **Bot Public:** ${client.user.bot ? "✅" : "❌"}`,
-          inline: false,
-        },
-        {
-          name: "🌐 Network Statistics",
-          value: `**Servers:** ${guildCount.toLocaleString()}
-               **Total Members:** ${totalMembers.toLocaleString()}
-               **Registered Users:** ${registeredUsers.toLocaleString()}
-               **Total Economy:** ${formatBalance(totalEconomy)}
-               **Ping:** ${client.ws.ping}ms
-               **Shards:** ${
-                 client.shard ? `✅ (${client.shard.count})` : "❌"
-               }`,
-          inline: false,
-        },
-        {
-          name: "⚙️ System Information",
-          value: `**Uptime:** ${days}d ${hours}h ${minutes}m ${seconds}s
-               **Memory Usage:** ${memoryUsedMB}MB / ${totalMemoryMB}MB
-               **Platform:** ${process.platform}
-               **Architecture:** ${process.arch}
-               **Process ID:** ${process.pid}`,
-          inline: false,
-        },
-        {
-          name: "🔗 Links",
-          value: `• [Invite Bot](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot)
-                • [Nanami Community Server](https://discord.gg/hXT5R2ND9a)
-                • [Developer Website](https://www.irfanks.site/)
-                • [Nanami on WEBSITE!](https://nanami.irfanks.site/)`,
-          inline: false,
-        }
-      )
-      .setFooter({
-        text: `Requested by ${message.author.tag} | Bot Version 1.0.0`,
-        iconURL: message.author.displayAvatarURL({ dynamic: true }),
-      })
-      .setTimestamp();
-
-    return message.reply({ embeds: [infoEmbed] });
+    await discordFormat.nanamiBotInfo(client,message);
+  },
+  hostinginfo: async (message) => {
+    await discordFormat.nanamiHostingInfo(client, message);
   },
   ownerinfo: async (message) => {
-    const owner = await dataManager.getUserProfile(config.ownerId[0], client);
-    if (!owner) {
-      return message.reply(`You need to register first! Use ${prefix}register`);
-    }
-    const ownerHelpEmbed = new EmbedBuilder()
-      .setColor("#FFD700")
-      .setTitle("👤 BOT Owner Information")
-      .setThumbnail(owner.avatar)
-      .addFields({
-        name: "Discord Information :",
-        value: `**Username:** ${owner.username},
-                  **ID:** ${owner.id},
-                  **Account Created:** ${owner.createdAt.toLocaleDateString()}
-                  **Personal Site : [Click Here](https://www.irfanks.site/)**
-                  **Github : [Click Here](https://github.com/irfankurniawansuthiono)**`,
-      })
-      .setFooter({ text: "Nanami Owner Info" })
-      .setTimestamp();
-
-    return message.reply({ embeds: [ownerHelpEmbed] });
+    await discordFormat.nanamiOwnerInfo(client, message);
   },
   rank: async (message) => {
-    const sortedUsers = Object.entries(dataManager.users)
-      .sort(([, a], [, b]) => b.balance - a.balance)
-      .slice(0, 10);
-
-    const leaderboard = await Promise.all(
-      sortedUsers.map(async ([userId, user], index) => {
-        const discordUser = await client.users.fetch(userId);
-        return `${index + 1}. ${discordUser.username}: ${formatBalance(
-          user.balance
-        )}`;
-      })
-    );
-
-    const leaderboardEmbed = new EmbedBuilder()
-      .setTitle("Top 10 Players")
-      .setDescription(leaderboard.join("\n"))
-      .setColor("#FFD700");
-
-    return message.reply({ embeds: [leaderboardEmbed] });
+    await dataManager.showLeaderBoard(message);
   },
   giveowner: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
@@ -1155,7 +831,7 @@ const commands = {
 
     if (
       amount >
-      1000000000000000000000000000000000000000000000000000000000000000000
+      1000000000000000
     ) {
       return message.reply(`You can't give that much money!`);
     }
@@ -1207,51 +883,17 @@ const commands = {
     }
 
     try {
-      const result = await dataManager.giveMoney(
-        message.author.id,
-        targetUser.id,
-        amount
+      await dataManager.giveMoney(
+        message.author,
+        targetUser,
+        amount,
+        message
       );
 
-      const giveEmbed = new EmbedBuilder()
-        .setColor("#00FF00")
-        .setTitle("💸 Money Transfer Successful!")
-        .setDescription(
-          `${message.author.username} gave ${targetUser.username} some money!`
-        )
-        .addFields(
-          {
-            name: "Amount Transferred",
-            value: `$${amount.toLocaleString()}`,
-            inline: true,
-          },
-          {
-            name: `${message.author.username}'s New Balance`,
-            value: `$${result.fromUser.balance.toLocaleString()}`,
-            inline: true,
-          },
-          {
-            name: `${targetUser.username}'s New Balance`,
-            value: `$${result.toUser.balance.toLocaleString()}`,
-            inline: true,
-          }
-        )
-        .setTimestamp()
-        .setFooter({ text: "Money Transfer System" });
-
-      return message.reply({ embeds: [giveEmbed] });
+      
     } catch (error) {
-      if (error.message === "Target user does not have an account!") {
-        return message.reply(
-          `${targetUser.username} needs to register first! Tell them to use ${prefix}register`
-        );
-      }
-      if (error.message === "Insufficient balance!") {
-        return message.reply("You don't have enough money for this transfer!");
-      }
-
       console.error("Error in give command:", error);
-      return message.reply("An error occurred while processing the transfer.");
+      return message.reply("An error occurred while processing the command.");
     }
   },
   announcement: async (message, args) => {
@@ -1265,69 +907,8 @@ const commands = {
       );
     }
 
-    // Ambil pesan announcement
     const announcementMessage = args.slice(1).join(" ");
-
-    // Buat embed untuk pengumuman
-    const announcementEmbed = new EmbedBuilder()
-      .setColor("#FF0000")
-      .setTitle("📢 Pengumuman")
-      .setDescription(announcementMessage)
-      .setTimestamp()
-      .setFooter({
-        text: `Diumumkan oleh ${message.author.tag}`,
-        iconURL: message.author.displayAvatarURL(),
-      });
-
-    // Kirim status awal
-    const statusMessage = await message.channel.send(
-      "📤 Sending Announcement..."
-    );
-
-    let successCount = 0;
-    let failCount = 0;
-
-    // Iterate melalui semua server
-    try {
-      for (const guild of message.client.guilds.cache.values()) {
-        try {
-          // Cari channel yang cocok untuk pengumuman
-          const channel = guild.channels.cache.find(
-            (channel) =>
-              channel.type === 0 && 
-              channel
-                .permissionsFor(guild.members.me)
-                .has(["SendMessages", "ViewChannel"])
-          );
-
-          if (channel) {
-            //tag everyone
-            await channel.send({ embeds: [announcementEmbed] });
-            successCount++;
-          } else {
-            failCount++;
-          }
-        } catch (error) {
-          console.error(`Gagal mengirim ke server ${guild.name}:`, error);
-          failCount++;
-        }
-      }
-
-      // Update status akhir
-      const totalServers = message.client.guilds.cache.size;
-      await statusMessage.edit(
-        `✅ Announcement has been sent!\n\n` +
-          `📊 Statistik:\n` +
-          `- Berhasil: ${successCount} server\n` +
-          `- Gagal: ${failCount} server\n` +
-          `- Total server: ${totalServers}`
-      );
-    } catch (error) {
-      console.error("Error sending announcement:", error);
-      await statusMessage.edit(
-        `${discordEmotes.error} Terjadi kesalahan saat mengirim pengumuman.`
-      );
-    }
+    return await discordFormat.globalAnnouncement(message, announcementMessage);
   },
   nuke: async (message) => {
     if(!guildAdmin(message)) return;
@@ -1353,39 +934,14 @@ const commands = {
     }
 
     try {
-      const result = await dataManager.takeMoney(
-        message.author.id,
-        targetUser.id,
-        amount
+      await dataManager.takeMoney(
+        message.author,
+        targetUser,
+        amount,
+        message
       );
 
-      const takeEmbed = new EmbedBuilder()
-        .setColor("#FF0000")
-        .setTitle("💸 Money Transfer Successful!")
-        .setDescription(
-          `${message.author.username} took ${targetUser.username} some money!`
-        )
-        .addFields(
-          {
-            name: "Amount Transferred",
-            value: `$${amount.toLocaleString()}`,
-            inline: true,
-          },
-          {
-            name: `${message.author.username}'s New Balance`,
-            value: `$${result.fromUser.balance.toLocaleString()}`,
-            inline: true,
-          },
-          {
-            name: `${targetUser.username}'s New Balance`,
-            value: `$${result.toUser.balance.toLocaleString()}`,
-            inline: true,
-          }
-        )
-        .setTimestamp()
-        .setFooter({ text: "Money Transfer System" });
-
-      return message.reply({ embeds: [takeEmbed] });
+      
     } catch (error) {
       if (error.message === "Target user does not have an account!") {
         return message.reply(
@@ -1498,6 +1054,7 @@ const commands = {
       );
     }
   },
+  // batas slash command 5-4-25
   disablewelcome: async (message) => {
     if(!guildAdmin(message)) return;
     try {
@@ -1852,7 +1409,7 @@ ${description}
     if (!user) return message.reply("Please mention a user to unmute.");
     await discordFormat.unmuteUser(message, user.id);
   },
-  backupfiles: async (message) => {
+  backup: async (message) => {
     if (message.author.id !== config.ownerId[0]) return;
     await backupManager.startBackup();
   }

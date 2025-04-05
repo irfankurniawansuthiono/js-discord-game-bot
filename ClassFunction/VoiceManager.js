@@ -985,6 +985,7 @@ class VoiceManager {
     // Method untuk leave voice channel
     async leaveVoice(message) {
       const guildId = message.guild.id;
+      if(!guildId) return message.reply({content: `${discordEmotes.error} You are not in a server!`, ephemeral: true});
       const connection = useQueue(guildId);
       if (connection) {
         connection.delete();

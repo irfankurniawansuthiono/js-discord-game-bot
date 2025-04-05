@@ -307,7 +307,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const removebgMessage = await message.reply(
-        `${discordEmotes.loading} Processing Image...` , {ephemeral: true}
+        {content :`${discordEmotes.loading} Processing Image...` , ephemeral: true}
       );
 
       try {
@@ -323,7 +323,7 @@ class ApiManagement {
         });
 
         await removebgMessage.edit(
-          `${discordEmotes.loading} Uploading Image...`, {ephemeral: true}
+         {content: `${discordEmotes.loading} Uploading Image...`, ephemeral: true}
         );
         const uploadResponse = await axios.post(
           "https://cdn.itzky.xyz/",
@@ -337,13 +337,13 @@ class ApiManagement {
         console.log(uploadResponse.data)
         if (!uploadResponse.data?.fileUrl) {
           return await removebgMessage.edit(
-            `${discordEmotes.error} Failed to upload image to CDN. Please try again.`, {ephemeral: true}
+            {content: `${discordEmotes.error} Failed to upload image to CDN. Please try again.`, ephemeral: true}
           );
         }
 
         // Process with Remini API
         await removebgMessage.edit(
-          `${discordEmotes.loading} Generating Transparent Image...`, {ephemeral: true}
+          {content:`${discordEmotes.loading} Generating Transparent Image...`, ephemeral: true}
         );
         const encodedUrl = encodeURIComponent(uploadResponse.data.fileUrl);
         const response = await axios.get(
@@ -352,12 +352,12 @@ class ApiManagement {
         console.log(response.data)
         if (!response.data && !response.data.status !== 200) {
           return await removebgMessage.edit(
-            `${discordEmotes.error} Invalid response from Remini API. Please try again.`, {ephemeral: true}
+            {content: `${discordEmotes.error} Invalid response from Remini API. Please try again.`, ephemeral: true}
           );
         }
         // Get enhanced image
         await removebgMessage.edit(
-          `${discordEmotes.loading} Building Image...`,{ephemeral: true}
+          {content:`${discordEmotes.loading} Building Image...`,ephemeral: true}
         );
         const enhancedImageResponse = await axios.get(response.data.result, {
           responseType: "arraybuffer",
@@ -399,13 +399,13 @@ class ApiManagement {
       } catch (error) {
         console.error("Error in image processing:", error);
         await removebgMessage.edit(
-          `${discordEmotes.error} Error processing image. Please try again later.`, {ephemeral: true}
+          {content : `${discordEmotes.error} Error processing image. Please try again later.`, ephemeral: true}
         );
       }
     } catch (error) {
       console.error("Error in removebg command:", error);
       await message.channel.send(
-        `${discordEmotes.error} There was an error processing your request. Please try again later.`
+        {content:`${discordEmotes.error} There was an error processing your request. Please try again later.`, ephemeral: true}
       );
     }
   }

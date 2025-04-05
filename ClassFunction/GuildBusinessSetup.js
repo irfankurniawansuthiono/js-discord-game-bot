@@ -1,12 +1,11 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
 
 class EnterpriseGuildSetupManager {
-    constructor(companyName = 'Corporate Workspace') {
-        this.companyName = companyName;
+    constructor() {
         this.client = null;
     }
 
-    async setupEnterpriseGuild(client, guildId) {
+    async setupEnterpriseGuild(client, guildId, channelName) {
         try {
             const guild = client.guilds.cache.get(guildId);
             if (!guild) throw new Error('Guild not found');
@@ -20,7 +19,7 @@ class EnterpriseGuildSetupManager {
             const enterpriseChannels = await this._createStoreChannels(guild, enterpriseRoles, enterpriseCategories);
 
             // Set corporate branding
-            await this._setBrandingAndProfile(guild);
+            await this._setBrandingAndProfile(guild, channelName);
 
             return {
                 roles: enterpriseRoles,
@@ -398,7 +397,7 @@ class EnterpriseGuildSetupManager {
         });
     }
 
-    async _setBrandingAndProfile(guild) {
+    async _setBrandingAndProfile(guild, channelName) {
         await guild.setName(`${this.companyName} Workspace`);
         
         // Note: Replace with actual paths to your corporate branding assets

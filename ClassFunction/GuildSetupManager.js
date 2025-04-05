@@ -5,7 +5,7 @@ class GuildSetupManager {
         this.client = null;
     }
 
-    async setupBaseGuild(client, guildId) {
+    async setupBaseGuild(client, guildId, channelName) {
         try {
             const guild = client.guilds.cache.get(guildId);
             if (!guild) throw new Error('Guild not found');
@@ -19,7 +19,7 @@ class GuildSetupManager {
             const enterpriseChannels = await this._createBaseChannels(guild, enterpriseRoles, enterpriseCategories);
 
             // Set corporate branding
-            await this._setBrandingAndProfile(guild);
+            await this._setBrandingAndProfile(guild, channelName);
 
             return {
                 roles: enterpriseRoles,
@@ -35,16 +35,20 @@ class GuildSetupManager {
     async _createBaseRoles(guild) {
         return {
             officialBot: await guild.roles.create({
-                name: 'Official Bot',
+                name: '🔰 Official Bot',
                 color: '#7289DA',
                 hoist: true,
                 permissions: [PermissionFlagsBits.Administrator]
             }),
             botDev: await guild.roles.create({
-                name: 'Bot Developer',
+                name: '👨‍💻 Bot Developer',
                 color: '#FF0000',
                 hoist: true,
                 permissions: [PermissionFlagsBits.Administrator]
+            }),
+            guildSponsor: await guild.roles.create({
+                name: '🌟 Guild Sponsor',
+                color: '#00ffbb',
             }),
             communityLeader: await guild.roles.create({
                 name: '👑 Community Leader',
@@ -163,6 +167,18 @@ class GuildSetupManager {
     }
     
     async _createBaseChannels(guild, roles, categories) {
+        // setup channel
+        //visible to administrator only
+        await guild.channels.create({
+            name: 'setup',
+            type: ChannelType.GuildText,
+            permissionOverwrites: [
+                {
+                    id: guild.id,
+                    deny: [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ViewChannel]
+                }
+            ]
+        })
         // Information Channels
         await guild.channels.create({
             name: '📢│announcements',
@@ -226,6 +242,11 @@ class GuildSetupManager {
             type: ChannelType.GuildText,
             parent: categories.community.id
         });
+        await guild.channels.create({
+            name: '🎙️│community-voice',
+            type: ChannelType.GuildVoice,
+            parent: categories.community.id
+        })
         // bot channel 
         await guild.channels.create({
             name: '🤖│bot-zone',
@@ -532,8 +553,8 @@ class GuildSetupManager {
             console.error('Comprehensive cleanup error:', error);
         }
     }
-    async _setBrandingAndProfile(guild) {
-        await guild.setName(`Nanami Base`);
+    async _setBrandingAndProfile(guild, channelName) {
+        await guild.setName(channelName);
         
         // Note: Replace with actual paths to your corporate branding assets
         await guild.setIcon('./assets/default-profile.jpg');

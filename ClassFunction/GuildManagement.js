@@ -161,11 +161,11 @@ class GuildManagement {
     }
     
 
-    async setupGuild(client, guildId, channelName = 'Bot Community') {
+    async setupGuild(client, guildId, channelName) {
         if (!this.client) this.setClient(client);
         return this.setupManager.setupBaseGuild(client, guildId, channelName);
     }
-    async setupBusinessGuild (client, guildId, channelName = 'Business') {
+    async setupBusinessGuild (client, guildId, channelName) {
         if (!this.client) this.setClient(client);
         return this.setupBusinessManager.setupEnterpriseGuild(client, guildId, channelName);
     }

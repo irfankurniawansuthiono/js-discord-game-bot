@@ -31,11 +31,12 @@ class AnonChat {
      * Handles joining a session.
      */
     async joinSession(message) {
+      const author = message.user ?? message.author;
       if (message.channel.type !== ChannelType.DM) {
-        return message.reply("This command can only be used in DMs.");
+        return message.reply({ content: `${discordEmotes.error} This command can only be used in DMs.`, ephemeral: true });
       }
   
-      const userId = message.author.id;
+      const userId = author.id;
   
       // Check if the user is already in a session
       if (this.sessions.has(userId)) {
@@ -120,11 +121,12 @@ class AnonChat {
      * Handles leaving a session.
      */
     async leaveSession(message) {
+      const author = message.user ?? message.author;
       if (message.channel.type !== ChannelType.DM) {
         return message.reply(`${discordEmotes.error} This command can only be used in DMs.`);
       }
   
-      const userId = message.author.id;
+      const userId = author.id;
   
       // Check if the user is in a session
       if (!this.sessions.has(userId)) {
