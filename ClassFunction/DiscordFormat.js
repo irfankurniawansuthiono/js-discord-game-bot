@@ -1,5 +1,5 @@
 import { EmbedBuilder, ChannelType, PermissionFlagsBits, ActivityType, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { client, createHelpEmbed, formatDate } from "../index.js";
+import { client, createHelpEmbed, formatBalance, formatDate } from "../index.js";
 import { config, discordEmotes } from "../config.js";
 import { DataManager } from "./DataManager.js";
 import GuildManagement from "./GuildManagement.js";
