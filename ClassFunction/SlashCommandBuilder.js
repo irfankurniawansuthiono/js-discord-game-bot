@@ -891,7 +891,7 @@ class SlashCommands {
                 }
             }),
 
-            kick: () => ({
+            kickUser: () => ({
                 data: new SlashCommandBuilder()
                 .setName("kick")
                 .setDescription("Kick a user")

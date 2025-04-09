@@ -202,6 +202,7 @@ ${description}
     }
   }
   async discordProfileDetail(message, user) {
+    const author = message.user ?? message.author;
     try {
       const member = message.guild.members.cache.get(user.id);
       if (!member) {
@@ -291,8 +292,8 @@ ${description}
           { name: "✨ Roles", value: roles, inline: false }
         )
         .setFooter({
-          text: `Requested by ${message.author.tag}`,
-          iconURL: message.author.displayAvatarURL(),
+          text: `Requested by ${author.tag}`,
+          iconURL: author.displayAvatarURL(),
         })
         .setTimestamp();
 
@@ -732,7 +733,7 @@ ${description}
 
       // Kick the user
       await member.kick({ reason: reason || "No reason provided" });
-      message.reply(
+      return message.reply(
         `${discordEmotes.success} ${member.user.tag} has been kicked.`
       );
     } catch (error) {
