@@ -27,7 +27,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const generateImageMessage = await message.reply(
-        `${discordEmotes.loading} Generating Image...`
+        {content: `${discordEmotes.loading} Generating Image...`, ephemeral: true}
       );
   
       // Fetch dari API dengan responseType arraybuffer
@@ -37,11 +37,11 @@ class ApiManagement {
   
       if (response.status !== 200) {
         return await generateImageMessage.edit(
-          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+          {content: `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`, ephemeral: true}
         );
       }
   
-      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+      await generateImageMessage.edit({content: `${discordEmotes.loading} Building Image...`, ephemeral: true});
   
       // Buat buffer dari arraybuffer
       const imageBuffer = Buffer.from(response.data);
@@ -60,12 +60,12 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({content: "Here's a random loli ❤️‍🔥", embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Here's a random loli ❤️‍🔥", embeds: [embed], files: [attachment],  ephemeral:true });
   
     } catch (error) {
       console.error("Error generating image:", error);
       await message.reply(
-        `${discordEmotes.error} Error generating image. Please try again.`
+        {content:`${discordEmotes.error} Error generating image. Please try again.`, ephemeral: true}
       );
     }
   }
@@ -73,7 +73,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const generateImageMessage = await message.reply(
-        `${discordEmotes.loading} Getting Image...`
+        {content:`${discordEmotes.loading} Getting Image...`, ephemeral: true}
       );
   
       // Fetch dari API dengan responseType arraybuffer
@@ -83,11 +83,11 @@ class ApiManagement {
   
       if (response.status !== 200) {
         return await generateImageMessage.edit(
-          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+          {content :`${discordEmotes.error} Invalid response from Image Generator API. Please try again.`, ephemeral: true}
         );
       }
   
-      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+      await generateImageMessage.edit({content :`${discordEmotes.loading} Building Image...`, ephemeral: true});
   
       // Buat buffer dari arraybuffer
       const imageBuffer = Buffer.from(response.data);
@@ -106,12 +106,12 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({content: "Ukhty ❤️‍🔥", embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Ukhty ❤️‍🔥", embeds: [embed], files: [attachment],  ephemeral:true });
   
     } catch (error) {
       console.error("Error generating image:", error);
       await message.reply(
-        `${discordEmotes.error} Error generating image. Please try again.`
+        {content :`${discordEmotes.error} Error generating image. Please try again.`, ephemeral: true}
       );
     }
   }
@@ -119,7 +119,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const transcribeMessage = await message.reply(
-        `${discordEmotes.loading} Transcribing...`
+        {content :`${discordEmotes.loading} Transcribing...`, ephemeral: true}
       );
   
       // Fetch dari API
@@ -127,7 +127,7 @@ class ApiManagement {
       // Validasi respons API
       if (response.status !== 200 || !response.data || !response.data.result) {
         return await transcribeMessage.edit(
-          `${discordEmotes.error} Invalid response from Transcription API. Please try again.`
+         {content : `${discordEmotes.error} Invalid response from Transcription API. Please try again.`, ephemeral: true}
         );
       }
   
@@ -136,11 +136,11 @@ class ApiManagement {
       // Pastikan summarize ada dan merupakan string
       if (!summarize || typeof summarize !== "string") {
         return await transcribeMessage.edit(
-          `${discordEmotes.error} Failed to retrieve transcription summary.`
+          {content :`${discordEmotes.error} Failed to retrieve transcription summary.`, ephemeral: true}
         );
       }
   
-      await transcribeMessage.edit(`${discordEmotes.loading} Building Text...`);
+      await transcribeMessage.edit({content :`${discordEmotes.loading} Building Text...`, ephemeral: true});
   
       // Buat embed
       const embed = new EmbedBuilder()
@@ -151,12 +151,12 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed
-      await message.reply({ embeds: [embed] });
+      await message.reply({ embeds: [embed], ephemeral: true });
   
     } catch (error) {
       console.error("Error transcribing YT video:", error);
       await message.reply(
-        `${discordEmotes.error} Error transcribing YT video. Please try again.`
+        {content :`${discordEmotes.error} Error transcribing YT video. Please try again.`, ephemeral: true}
       );
     }
   }
@@ -165,7 +165,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const generateImageMessage = await message.reply(
-        `${discordEmotes.loading} Generating Image...`
+        {content :`${discordEmotes.loading} Generating Image...`, ephemeral: true}
       );
   
       // Fetch dari API dengan responseType arraybuffer
@@ -175,11 +175,11 @@ class ApiManagement {
   
       if (response.status !== 200) {
         return await generateImageMessage.edit(
-          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
+          {content :`${discordEmotes.error} Invalid response from Image Generator API. Please try again.`, ephemeral: true}
         );
       }
   
-      await generateImageMessage.edit(`${discordEmotes.loading} Building Image...`);
+      await generateImageMessage.edit({content :`${discordEmotes.loading} Building Image...`, ephemeral: true});
   
       // Buat buffer dari arraybuffer
       const imageBuffer = Buffer.from(response.data);
@@ -198,12 +198,12 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed dan file gambar
-      await generateImageMessage.edit({content: "Here's a random waifu ❤️‍🔥", embeds: [embed], files: [attachment] });
+      await generateImageMessage.edit({content: "Here's a random waifu ❤️‍🔥", embeds: [embed], files: [attachment],  ephemeral:true });
   
     } catch (error) {
       console.error("Error generating image:", error);
       await message.reply(
-        `${discordEmotes.error} Error generating image. Please try again.`
+        {content :`${discordEmotes.error} Error generating image. Please try again.`, ephemeral: true}
       );
     }
   }
@@ -212,7 +212,7 @@ class ApiManagement {
     try {
       // Mengirim pesan loading
       const generateImageMessage = await message.reply(
-        `${discordEmotes.loading} Generating Image...`
+        {content :`${discordEmotes.loading} Generating Image...`, ephemeral: true}
       );
       const response = await axios.get(
         `${API_URL}/ai/flux?prompt=${prompt}&apikey=${this.apiKey}`
@@ -223,7 +223,7 @@ class ApiManagement {
         );
       }
       await generateImageMessage.edit(
-        `${discordEmotes.loading} Building Image...`
+        {content:`${discordEmotes.loading} Building Image...`, ephemeral: true}
       );
       // get buffer image
       const imageResponse = await axios.get(response.data.result.url, {
@@ -246,63 +246,65 @@ class ApiManagement {
       await generateImageMessage.edit({
         embeds: [embed],
         files: [attachment],
+        ephemeral: true,
         content: `${discordEmotes.success} Image generated successfully!`,
       });
     } catch (error) {
       console.error("Error generating image:", error);
       await generateImageMessage.edit(
-        `${discordEmotes.error} Error generating image. Please try again.`
+        {content :`${discordEmotes.error} Error generating image. Please try again.`, ephemeral: true}
       );
     }
   }
-  async generateAnime(message, prompt) {
-    try {
-      // Mengirim pesan loading
-      const generateImageMessage = await message.reply(
-        `${discordEmotes.loading} Generating Image...`
-      );
+  // async generateAnime(message, prompt) {
+  //   try {
+  //     // Mengirim pesan loading
+  //     const generateImageMessage = await message.reply(
+  //       {content:`${discordEmotes.loading} Generating Image...`, ephemeral: true}
+  //     );
 
-      const response = await axios.get(
-        `${API_URL}/ai/animagine?prompt=${prompt}&apikey=${this.apiKey}`
-      );
-      if (!response.data && !response.data.status !== 200) {
-        return await generateImageMessage.edit(
-          `${discordEmotes.error} Invalid response from Image Generator API. Please try again.`
-        );
-      }
-      await generateImageMessage.edit(
-        `${discordEmotes.loading} Building Image...`
-      );
-      // get buffer image
-      const imageResponse = await axios.get(response.data.result.images[0], {
-        responseType: "arraybuffer",
-      });
-      const imageBuffer = Buffer.from(imageResponse.data, "base64");
-      const attachment = new AttachmentBuilder(imageBuffer, {
-        name: "image.png",
-      });
-      const generatedPrompt = response.data.result.metadata.prompt;
-      const embed = new EmbedBuilder()
-        .setTitle("Image Generated")
-        .setDescription(`Prompt: ${generatedPrompt}`)
-        .setImage("attachment://image.png")
-        .setColor("#FFD700")
-        .setFooter({
-          text: `Special Thanks to https://itzky.us.kg`,
-          iconURL: message.author.displayAvatarURL(),
-        });
-      await generateImageMessage.edit({
-        embeds: [embed],
-        files: [attachment],
-        content: `${discordEmotes.success} Image generated successfully!`,
-      });
-    } catch (error) {
-      console.error("Error generating image:", error);
-      await message.reply(
-        `${discordEmotes.error} An error occurred while generating the image. Please try again.`
-      );
-    }
-  }
+  //     const response = await axios.get(
+  //       `${API_URL}/ai/animagine?prompt=${prompt}&apikey=${this.apiKey}`
+  //     );
+  //     if (!response.data && !response.data.status !== 200) {
+  //       return await generateImageMessage.edit(
+  //         {content :`${discordEmotes.error} Invalid response from Image Generator API. Please try again.`, ephemeral: true}
+  //       );
+  //     }
+  //     await generateImageMessage.edit(
+  //       {content :`${discordEmotes.loading} Building Image...`, ephemeral: true}
+  //     );
+  //     // get buffer image
+  //     const imageResponse = await axios.get(response.data.result.images[0], {
+  //       responseType: "arraybuffer",
+  //     });
+  //     const imageBuffer = Buffer.from(imageResponse.data, "base64");
+  //     const attachment = new AttachmentBuilder(imageBuffer, {
+  //       name: "image.png",
+  //     });
+  //     const generatedPrompt = response.data.result.metadata.prompt;
+  //     const embed = new EmbedBuilder()
+  //       .setTitle("Image Generated")
+  //       .setDescription(`Prompt: ${generatedPrompt}`)
+  //       .setImage("attachment://image.png")
+  //       .setColor("#FFD700")
+  //       .setFooter({
+  //         text: `Special Thanks to https://itzky.us.kg`,
+  //         iconURL: message.author.displayAvatarURL(),
+  //       });
+  //     await generateImageMessage.edit({
+  //       embeds: [embed],
+  //       files: [attachment],
+  //       ephemeral: true,
+  //       content: `${discordEmotes.success} Image generated successfully!`,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error generating image:", error);
+  //     await message.reply(
+  //       {content : `${discordEmotes.error} An error occurred while generating the image. Please try again.`, ephemeral: true}
+  //     );
+  //   }
+  // }
   async removeBackground(message, image) {
     try {
       // Mengirim pesan loading

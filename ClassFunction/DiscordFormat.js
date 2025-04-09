@@ -35,6 +35,69 @@ class DiscordFormat {
       );
     }
   }
+  async newCommandAnnouncement(message, newCommands, description) {
+    const author = message.user ?? message.author
+    try {
+      const channelId = config.newCommandsChannelID
+      const newCommandsEmbed = new EmbedBuilder()
+   .setColor("#00FF00")
+   .setTitle("📢 NEW COMMANDS ALERT")
+   .setDescription(`**📋 New Commands: \`\`\`${newCommands}\`\`\`**`)
+   .addFields(
+       { 
+           name: "📝 Command Descriptions", 
+           value: `\`\`\`
+${description}
+\`\`\``, 
+           inline: false 
+       }
+   )
+   .setThumbnail(client.user.displayAvatarURL())
+   .setTimestamp()
+   .setFooter({
+       text: `Announced by ${author.tag}`,
+       iconURL: author.displayAvatarURL()
+   });
+   try {
+           // Fetch the announcement channel
+           const channel = await client.channels.fetch(channelId);
+   
+           // Validate if the channel exists and is a text channel
+           if (!channel || !channel.isTextBased()) {
+             return message.reply(
+               `${discordEmotes.error} The specified channel does not exist or is not a text channel.`
+             );
+           }
+   
+           // Send the announcement
+           const sentMessage = await channel.send({
+             embeds: [newCommandsEmbed],
+             allowedMentions: { parse: ["users", "roles"] }, // Safer mention handling
+             
+           });
+   
+           // Try to crosspost if it's an announcement channel
+           if (channel.type === ChannelType.GuildAnnouncement) {
+             await sentMessage.crosspost();
+             await message.reply(
+               {content:"✅ New commands successfully sent and published!", ephemeral: true}
+             );
+           } else {
+             await message.reply({content:"✅ New commands successfully sent!", ephemeral: true});
+           }
+         } catch (error) {
+           console.error("Error sending announcement:", error);
+           await message.reply(
+            {content: `${discordEmotes.error} An error occurred while sending the announcement. Please try again later.`, ephemeral: true}
+           );
+         }
+    } catch (error) {
+      console.error("Error setting welcome role:", error);
+      return message.reply(
+        {content:`${discordEmotes.error} An error occurred while setting the welcome role. Please try again later.`, ephemeral: true}
+      );
+    }
+  }
   disableWelcomeRole(guildId, message) {
     try {
       guildManagement.disableWelcomeRole(guildId);
@@ -138,11 +201,11 @@ class DiscordFormat {
       );
     }
   }
-  async DiscordProfileDetail(message, user) {
+  async discordProfileDetail(message, user) {
     try {
       const member = message.guild.members.cache.get(user.id);
       if (!member) {
-        return message.reply(`${discordEmotes.error} User not found.`);
+        return message.reply({content :`${discordEmotes.error} User not found.`, ephemeral: true});
       }
 
       // Get user presence and status with emotes
@@ -253,11 +316,11 @@ class DiscordFormat {
         embed.setImage("https://placehold.co/4096x512?text=No+Banner+Availabl");
       }
 
-      return message.reply({ embeds: [embed] });
+      return message.reply({ embeds: [embed], ephemeral: true });
     } catch (error) {
       console.error("Error fetching user profile:", error);
       return message.reply(
-        `${discordEmotes.error} An error occurred while fetching user profile: ${error.message}`
+        { content:`${discordEmotes.error} An error occurred while fetching user profile: ${error.message}`, ephemeral: true },
       );
     }
   }
@@ -305,7 +368,7 @@ class DiscordFormat {
 
       // Periksa apakah userId valid (hanya angka)
       if (!/^\d+$/.test(userId)) {
-        return message.reply(`${discordEmotes.error} Invalid user ID.`);
+        return message.reply({ content:`${discordEmotes.error} Invalid user ID.`,   ephemeral: true });
       }
 
       // Cek apakah user ID ada dalam daftar ban
@@ -313,7 +376,7 @@ class DiscordFormat {
         .fetch(userId)
         .catch(() => null);
       if (bannedUser) {
-        return message.reply(`${discordEmotes.error} This user is banned.`);
+        return message.reply({ content:`${discordEmotes.error} This user is banned.`,   ephemeral: true });
       }
 
       // Unmute user
@@ -322,7 +385,7 @@ class DiscordFormat {
         .catch(() => null);
       if (!member) {
         return message.reply(
-          `${discordEmotes.error} User not found in this server.`
+          { content :`${discordEmotes.error} User not found in this server.`,   ephemeral: true }
         );
       }
 
@@ -330,28 +393,28 @@ class DiscordFormat {
         (role) => role.name === "Muted"
       );
       if (!role) {
-        return message.reply(`${discordEmotes.error} Muted role not found (use N!cmr to create one).`);
+        return message.reply({ content :`${discordEmotes.error} Muted role not found (use ${config.defaultPrefix}cmr to create one).`,   ephemeral: true });
       }
 
       await member.roles.remove(role);
       return message.reply(
-        `${discordEmotes.success} User unmuted successfully.`
+        { content :`${discordEmotes.success} User unmuted successfully.`,   ephemeral: true }
       );
     } catch (error) {
       console.error("Error unmuting user:", error);
       return message.reply(
-        `${discordEmotes.error} An error occurred while unmuting the user: ${error.message}`
+        { content :`${discordEmotes.error} An error occurred while unmuting the user: ${error.message}`,   ephemeral: true }
       );
     }
   }
-  async muteUser(message, userId, reason) {
+  async muteUser(message, userId) {
     try {
       // Bersihkan input userId dari mention jika ada
       userId = userId.replace(/<@!?(\d+)>/, "$1"); // Hanya ambil ID numerik dari mention
 
       // Periksa apakah userId valid (hanya angka)
       if (!/^\d+$/.test(userId)) {
-        return message.reply(`${discordEmotes.error} Invalid user ID.`);
+        return message.reply({ content:`${discordEmotes.error} Invalid user ID.`,   ephemeral: true });
       }
 
       // Cek apakah user ID ada dalam daftar ban
@@ -360,7 +423,7 @@ class DiscordFormat {
         .catch(() => null);
       if (bannedUser) {
         return message.reply(
-          `${discordEmotes.error} This user is already banned.`
+          { content:`${discordEmotes.error} This user is already banned.`, ephemeral: true }
         );
       }
 
@@ -370,7 +433,7 @@ class DiscordFormat {
         .catch(() => null);
       if (!member) {
         return message.reply(
-          `${discordEmotes.error} User not found in this server.`
+          { content:`${discordEmotes.error} User not found in this server.`, ephemeral: true }
         );
       }
 
@@ -379,16 +442,16 @@ class DiscordFormat {
       );
       if (!role) {
         return message.reply(
-          `${discordEmotes.error} Muted role not found (use N!cmr to create one).`
+          { content:`${discordEmotes.error} Muted role not found (use ${config.defaultPrefix}cmr to create one).`, ephemeral: true }
         );
       }
 
       await member.roles.add(role);
-      return message.reply(`${discordEmotes.success} User muted successfully.`);
+      return message.reply({ content:`${discordEmotes.success} User muted successfully.`, ephemeral: true });
     } catch (error) {
       console.error("Error muting user:", error);
       return message.reply(
-        `${discordEmotes.error} An error occurred while muting the user. Please try again later.`
+       { content: `${discordEmotes.error} An error occurred while muting the user. Please try again later.`, ephemeral: true }
       );
     }
   }

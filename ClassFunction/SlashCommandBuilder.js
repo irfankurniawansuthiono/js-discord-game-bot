@@ -12,6 +12,7 @@ import FishingManagement from './FishingManagement.js';
 import AnonChat from './AnonimManagement.js';
 import { Games } from './GamesManagement.js';
 import { ownerHelperFirewall, guildAdmin, formatBalance } from '../index.js';
+import BackupFiles from './BackupFiles.js';
 
 class SlashCommands {
     constructor(client) {
@@ -27,6 +28,7 @@ class SlashCommands {
         this.shopManagement = new ShopManagement(client);
         this.fishingManagement = new FishingManagement(client);
         this.anonChat = new AnonChat(client);
+        this.backupManager = new BackupFiles(client);
         // Make slashCommands point to the same Map as commands
         this.client.slashCommands = this.commands;
         
@@ -1656,122 +1658,855 @@ class SlashCommands {
                   }
                   
             }),
-            blackjack: () => ({
+
+            disableWelcomeMessage: () => ({
                 data: new SlashCommandBuilder()
-                .setName("games-blackjack")
-                .setDescription("Play a game of blackjack")
-                .addStringOption(option =>
-                    option.setName("bet")
-                      .setDescription("Type 'all' or enter a number to bet")
-                      .setRequired(true)
-                  ),
+                .setName("disable-welcome-message")
+                .setDescription("Disable the welcome message"),
                 execute: async (interaction) => {
                     try {
-                        const bet = interaction.options.getString("bet");
-                        return Games.blackjack(interaction, bet);
+                        if(!guildAdmin(interaction)) return;
+                        await interaction.reply({
+                            content: `${discordEmotes.success} Executed`,
+                            ephemeral: true
+                        })
+                        return this.discordFormat.disableWelcome(message.guild.id, message);
                     } catch (error) {
-                        console.error('Error in slash blackjack command:', error);
+                        console.error('Error in slash disable-welcome-message command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                        })
+                    
+                }
+            }
+            }),
+            
+            sendto: () => ({
+                data: new SlashCommandBuilder()
+                .setName("sendto")
+                .setDescription("Send a message to a user or channel")
+                .addSubcommand(subcommand => subcommand.setName("user").setDescription("Send a message to a user")
+                    .addUserOption(option => option.setName("user").setDescription("The user to send the message to").setRequired(true))
+                    .addStringOption(option => option.setName("message").setDescription("The message to send").setRequired(true))
+            )
+                .addSubcommand(subcommand => subcommand.setName("channel").setDescription("Send a message to a channel")
+                    .addChannelOption(option => option.setName("channel").setDescription("The channel to send the message to").setRequired(true))
+                    .addStringOption(option => option.setName("message").setDescription("The message to send").setRequired(true))
+            ),
+            execute: async (interaction) => {
+                try {
+                    if(!ownerHelperFirewall(interaction.user.id, interaction)) return;
+                    const subcommand = interaction.options.getSubcommand();
+                    const message = interaction.options.getString('message');
+        
+                    if (subcommand === 'user') {
+                        const user = interaction.options.getUser('user');
+                        const dm = await user.createDM();
+        
+                        await dm.send(message);
+        
+                        await interaction.reply({
+                            content: `${discordEmotes.success} Message successfully sent to ${user.tag}.`,
+                            ephemeral: true
+                        });
+        
+                    } else if (subcommand === 'channel') {
+                        const channel = interaction.options.getChannel('channel');
+        
+                        if (!channel.isTextBased()) {
+                            return await interaction.reply({
+                                content: `${discordEmotes.error} The selected channel is not a text-based channel.`,
+                                ephemeral: true
+                            });
+                        }
+        
+                        await channel.send(message);
+        
+                        await interaction.reply({
+                            content: `${discordEmotes.success} Message successfully sent to ${channel}.`,
+                            ephemeral: true
+                        });
+                    }
+        
+                } catch (error) {
+                    console.error('Error in slash sendto command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
                 }
             }
             }),
 
-            slots: () => ({
+            daily: () => ({
                 data: new SlashCommandBuilder()
-                .setName("games-slots")
-                .setDescription("Play a game of slots")
-                .addStringOption(option =>
-                    option.setName("bet")
-                      .setDescription("Type 'all' or enter a number to bet")
-                      .setRequired(true)
-                  ),
+                .setName("daily")
+                .setDescription("Claim your daily reward"),
                 execute: async (interaction) => {
                     try {
-                        const bet = interaction.options.getString("bet");
-                        return Games.slots(interaction, bet);
+                        const userData = this.dataManager.getUser(interaction.user.id);
+                        if(!userData) return interaction.reply({content:`You have not registered yet. Please use /register to register first.`, ephemeral: true});
+                        const setCD = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                        const now = Date.now();
+                        const lastDaily = userData.stats.lastDaily;
+                         if (lastDaily && now - lastDaily < setCD) {
+                              const timeLeft = lastDaily + setCD - now;
+                              return interaction.reply({
+                                content: `You can claim your daily reward again in ${formatClockHHMMSS(
+                                  timeLeft
+                                )}`
+                         , ephemeral: true});
+                            } else {
+                              const moneyRandom = Math.floor(Math.random() * 1000) + 1;
+                              this.dataManager.updateBalance(interaction.user.id, moneyRandom);
+                              interaction.reply({content:`You have claimed your daily reward of $${formatBalance(moneyRandom)}!
+                                new balance: $${new Intl.NumberFormat("en-US").format(
+                                    this.dataManager.users[interaction.user.id].balance
+                                )} `, ephemeral: true});
+                            }
+                            this.dataManager.users[interaction.user.id].lastDaily = now;
                     } catch (error) {
-                        console.error('Error in slash slots command:', error);
+                        console.error('Error in slash daily command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                        })
+                }}
+            }),
+
+
+            SourceCode: () => ({
+                data: new SlashCommandBuilder()
+                .setName("source-code")
+                .setDescription("Get the source code of the bot"),
+                execute: async (interaction) => {
+                    try {
+                        // click this button to direct github
+                            const button = new ButtonBuilder()
+                              .setStyle(ButtonStyle.Link)
+                              .setLabel("Click Me")
+                              .setURL("https://github.com/irfankurniawansuthiono/js-discord-game-bot");
+                            interaction.reply({
+                              content: "GitHub Repository\nDon't Forget To 🌟 The Repository!",
+                              components: [new ActionRowBuilder().addComponents(button)],
+                              ephemeral: true
+                            });
+                    
+                }
+                catch (error) {
+                    console.error('Error in slash sourcecode command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
                 }
             }
             }),
 
-            flipCoin: () => ({
+            resetPlayer: () => ({
                 data: new SlashCommandBuilder()
-                .setName("games-flipcoin")
-                .setDescription("Flip a coin")
-                .addStringOption(option =>
-                    option.setName("bet")
-                      .setDescription("Type 'all' or enter a number to bet")
-                      .setRequired(true)
-                  )
-                  .addStringOption(option =>
-                    option.setName("guess")
-                      .setDescription("Type 'h' for head or 't' for tail")
-                      .setRequired(true)
-                  ),
+                .setName("reset-player")
+                .setDescription("Reset your's or another user's player data")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to reset the player data for")
+                      .setRequired(false)
+                ),
                 execute: async (interaction) => {
                     try {
-                        const guess = interaction.options.getString("guess");
-                        const bet = interaction.options.getString("bet");
-                        return Games.coinFlip(interaction, bet, guess);
-                    } catch (error) {
-                        console.error('Error in slash flipcoin command:', error);
+                        if(!ownerHelperFirewall(interaction.user.id, interaction)) return;
+                        const user = interaction.options.getUser("user").id || interaction.user.id;
+                        return this.dataManager.resetPlayer(user);
+                }
+                catch (error) {
+                    console.error('Error in slash resetplayer command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
                 }
             }
             }),
 
-            guessNumber: () => ({
+            testWelcome: () => ({
                 data: new SlashCommandBuilder()
-                .setName("games-guessnumber")
-                .setDescription("Guess a number")
-                .addStringOption(option =>
-                    option.setName("bet")
-                      .setDescription("Type 'all' or enter a number to bet")
-                      .setRequired(true)
-                  )
-                  .addIntegerOption(option =>
-                    option.setName("guess")
-                      .setDescription("Enter a number to guess")
-                      .setRequired(true)
-                      .setMinValue(1)
-                      .setMaxValue(10)
-                  ),
+                .setName("test-welcome")
+                .setDescription("Test welcome banner message")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to test the welcome banner for")
+                      .setRequired(false)
+                ),
                 execute: async (interaction) => {
                     try {
-                        const guess = interaction.options.getInteger("guess");
-                        const bet = interaction.options.getString("bet");
-                        return Games.numberGuess(interaction, bet, guess);
-                    } catch (error) {
-                        console.error('Error in slash guessnumber command:', error);
+                        if(!guildAdmin(interaction)) return;
+                        return await this.guildManagement.sendWelcomeMessage(client, interaction.guild.id, interaction.options.getUser("user") || interaction.user, true, interaction);
+
+                }
+                catch (error) {
+                    console.error('Error in slash testwelcome command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
                 }
             }
             }),
 
-            dice: () => ({
+            testleave: () => ({
                 data: new SlashCommandBuilder()
-                .setName("games-dice")
-                .setDescription("Roll the dice")
+                .setName("test-leave")
+                .setDescription("Test leave banner message")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to test the leave banner for")
+                      .setRequired(false)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        await interaction.reply({ content: `${discordEmotes.success} Test leave banner message sent!`, ephemeral: true });
+                        return await this.guildManagement.sendLeaveMessage(client, interaction.guild.id, interaction.options.getUser("user") || interaction.user, true, interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash testleave command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
+                }
+            }
+            }),
+
+            setWelcomeRole: () => ({
+                data: new SlashCommandBuilder()
+                .setName("set-welcome-role")
+                .setDescription("Set the welcome role")
+                .addRoleOption(option =>
+                    option.setName("role")
+                      .setDescription("The role to set as the welcome role")
+                      .setRequired(true)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const role = interaction.options.getRole("role");
+                        await interaction.reply({ content: `${discordEmotes.success} Welcome role set to ${role}`, ephemeral: true });
+                        return await this.guildManagement.setWelcomeRole(interaction.guild.id, role.id, interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash setwelcomerole command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
+                }}
+            }),
+
+            removeWelcomeRole: () => ({
+                data: new SlashCommandBuilder()
+                .setName("disable-welcome-role")
+                .setDescription("Remove the welcome role"),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        await interaction.reply({ content: `${discordEmotes.success} Welcome role disabled!`, ephemeral: true });
+                        return await this.guildManagement.disableWelcomeRole(interaction.guild.id, interaction);
+                    }
+                catch (error) {
+                    console.error('Error in slash remove-welcome-role command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }}
+            }),
+
+            setLeaveMessage: () => ({
+                data: new SlashCommandBuilder()
+                .setName("set-leave-message")
+                .setDescription("Set the leave message")
                 .addStringOption(option =>
-                    option.setName("bet")
-                      .setDescription("Type 'all' or enter a number to bet")
+                    option.setName("message")
+                      .setDescription("The message to set as the leave message")
                       .setRequired(true)
-                  )
-                  .addIntegerOption(option =>
-                    option.setName("guess")
-                      .setDescription("Enter a number to guess (2-12)")
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const message = interaction.options.getString("message");
+                        await interaction.reply({ content: `${discordEmotes.success} Leave message set to ${message}`, ephemeral: true });
+                        return await this.guildManagement.setLeaveMessage(message,interaction.guild.id, interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash setleavemessage command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                    })
+                }}
+            }),
+
+
+            disableLeaveMessage: () => ({
+                data: new SlashCommandBuilder()
+                .setName("disable-leave-message")
+                .setDescription("Disable the leave message"),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        await interaction.reply({ content: `${discordEmotes.success} Leave message disabled!`, ephemeral: true });
+                        return await this.guildManagement.disableLeaveMessage(interaction.guild.id, interaction);
+                    }
+                catch (error) {
+                    console.error('Error in slash disable-leave-message command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })}}
+            }),
+
+            banUser: () => ({
+                data: new SlashCommandBuilder()
+                .setName("ban-user")
+                .setDescription("Ban a user")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to ban")
                       .setRequired(true)
-                      .setMinValue(2)
-                      .setMaxValue(12)
+                )
+                .addStringOption(option =>
+                    option.setName("reason")
+                      .setDescription("The reason for the ban")
+                      .setRequired(false)
+                )
+                .addIntegerOption(option =>
+                    option.setName("days")
+                      .setDescription("The number of days to ban the user for")
+                      .setRequired(false)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const user = interaction.options.getUser("user");
+                        const reason = interaction.options.getString("reason") || "No reason provided";
+                        const days = interaction.options.getInteger("days") || 1;
+                        await this.discordFormat.banUser(interaction, user.id, days,reason);
+                        return await interaction.reply({ content: `${discordEmotes.success} User ${user} has been banned for ${days} day(s) for the reason: ${reason}`, ephemeral: true });
+                    }
+                catch (error) {
+                    console.error('Error in slash ban-user command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })}
+                }
+            }),
+
+            unbanUser: () => ({
+                data: new SlashCommandBuilder()
+                .setName("unban-user")
+                .setDescription("Unban a user")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to unban")
+                      .setRequired(true)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const user = interaction.options.getUser("user");
+                        await this.discordFormat.unbanUser(interaction, user.id);
+                        return await interaction.reply({ content: `${discordEmotes.success} User ${user} has been unbanned`, ephemeral: true });
+                    }
+                catch (error) {
+                    console.error('Error in slash unban-user command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }}
+            }),
+
+            // generateAnime: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("generateanime")
+            //     .setDescription("Generate an anime image")
+            //     .addStringOption(option =>
+            //         option.setName("prompt")
+            //           .setDescription("The prompt to generate an anime image [English Only]")
+            //           .setRequired(true)
+            //     ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const prompt = interaction.options.getString("prompt");
+            //             return this.apiManagement.generateAnime(interaction, prompt);
+            //         } catch (error) {
+            //             console.error('Error in slash generateanime command:', error);
+            //             await interaction.reply({
+            //                 content: `${discordEmotes.error} An error occurred while executing the command.`,
+            //                 ephemeral: true
+            //             })
+            //         }
+            //     }
+            // }),
+
+            generateImage: () => ({
+                data: new SlashCommandBuilder()
+                .setName("generateimg")
+                .setDescription("Generate an image")
+                .addStringOption(option =>
+                    option.setName("prompt")
+                      .setDescription("The prompt to generate an image")
+                      .setRequired(true)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        const prompt = interaction.options.getString("prompt");
+                        return this.apiManagement.generateImage(interaction, prompt);
+                    } catch (error) {
+                        console.error('Error in slash generateimg command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                        })
+                    }}
+            }),
+
+            timeoutUser: () => ({
+                data: new SlashCommandBuilder()
+                .setName("timeout-user")
+                .setDescription("Timeout a user")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to timeout")
+                      .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName("reason")
+                      .setDescription("The reason for the timeout")
+                      .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName("minutes")
+                      .setDescription("The number of minutes to timeout the user for")
+                      .setRequired(true)
+                ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const user = interaction.options.getUser("user");
+                        const reason = interaction.options.getString("reason");
+                        const minutes = interaction.options.getInteger("minutes");
+                        await this.discordFormat.timeoutUser(interaction, user.id, minutes, reason);
+                        return await interaction.reply({ content: `${discordEmotes.success} User ${user} has been timed out for ${minutes} minute(s) for the reason: ${reason}`, ephemeral: true });
+                    }
+                catch (error) {
+                    console.error('Error in slash timeout-user command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+            newCommandAnnounce: () => ({
+                data: new SlashCommandBuilder()
+                .setName("new-command-announce")
+                .setDescription("Create a new command")
+                .addStringOption(option =>
+                    option.setName("command")
+                      .setDescription("The command to create")
+                      .setRequired(true)
+                  ).addStringOption(option =>
+                    option.setName("description")
+                      .setDescription("The description of the command")
+                      .setRequired(true)
                   ),
                 execute: async (interaction) => {
                     try {
-                        const guess = interaction.options.getInteger("guess");
-                        const bet = interaction.options.getString("bet");
-                        return Games.diceRoll(interaction, bet, guess);
+                        if(interaction.user.id !== config.ownerId[0]) return message.reply({content:` ${discordEmotes.error} You don't have permission to use this command.`, ephemeral: true});
+                        const command = interaction.options.getString("command");
+                        const description = interaction.options.getString("description");
+                        await this.discordFormat.newCommandAnnouncement(interaction, command, description);
                     } catch (error) {
-                        console.error('Error in slash dice command:', error);
+                        console.error('Error in slash newcommand command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                })
                 }
             }
-            })
+            }),
+
+            setVoiceLogs: () => ({
+                data: new SlashCommandBuilder()
+                .setName("setvoicelogs")
+                .setDescription("Set the voice logs channel")
+                .addChannelOption(option =>
+                    option.setName("channel")
+                      .setDescription("The channel to set the voice logs to")
+                      .setRequired(true)
+                  ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const channel = interaction.options.getChannel("channel");
+                        return this.guildManagement.setVoiceLogs(interaction.guild.id, channel.id, interaction);
+                    } catch (error) {
+                        console.error('Error in slash setvoicelogs command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                })
+                }
+            }
+            }),
+
+            disableVoiceLogs: () => ({
+                data: new SlashCommandBuilder()
+                .setName("disablevoicelogs")
+                .setDescription("Disable the voice logs"),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        return this.guildManagement.disableVoiceLogs(interaction.guild.id);
+                    } catch (error) {
+                        console.error('Error in slash disablevoicelogs command:', error);
+                        await interaction.reply({
+                            content: `${discordEmotes.error} An error occurred while executing the command.`,
+                            ephemeral: true
+                })
+                }
+            }
+            }),
+
+            giveLoli: () => ({
+                data: new SlashCommandBuilder()
+                .setName("give-loli")
+                .setDescription("Give a random anime loli image"),
+                execute: async (interaction) => {
+                    try {
+                        return await this.apiManagement.generateLoli(interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash giveloli command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            giveUkhty: () => ({
+                data: new SlashCommandBuilder()
+                .setName("give-ukhty")
+                .setDescription("Give a random ukhty girl image"),
+                execute: async (interaction) => {
+                    try {
+                        return await this.apiManagement.generateUkhty(interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash giveukhty command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            giveWaifu: () => ({
+                data: new SlashCommandBuilder()
+                .setName("give-waifu")
+                .setDescription("Give a random waifu image"),
+                execute: async (interaction) => {
+                    try {
+                        return await this.apiManagement.generateWaifu(interaction); 
+                }
+                catch (error) {
+                    console.error('Error in slash give-waifu command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            transcribeYoutube: () => ({
+                data: new SlashCommandBuilder()
+                .setName("transcribe-youtube")
+                .setDescription("Transcribe a youtube video")
+                .addStringOption(option =>
+                    option.setName("url")
+                      .setDescription("The url of the youtube video")
+                      .setRequired(true)
+                  ),
+                execute: async (interaction) => {
+                    try {
+                        const url = interaction.options.getString("url");
+                        return await this.apiManagement.transcribeYT(interaction, url);
+                    }
+                catch (error) {
+                    console.error('Error in slash transcribe-youtube command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            resetRepo: () => ({
+                data: new SlashCommandBuilder()
+                .setName("resetrepo")
+                .setDescription("Reset the public-uploads repository"),
+                execute: async (interaction) => {
+                    try {
+                        if(interaction.user !== config.ownerId[0]) return interaction.reply({ content: `${discordEmotes.error} You are not authorized to use this command.`, ephemeral: true });
+                        return await this.githubCron.resetPublicUploads(interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash resetrepo command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            discordProfile: () => ({
+                data: new SlashCommandBuilder()
+                .setName("discord-profile")
+                .setDescription("Get your discord profile")
+                .addUserOption(option =>
+                    option.setName("user")
+                    .setRequired(false)
+                      .setDescription("The user to get the profile of")
+                  ),
+                execute: async (interaction) => {
+                    try {
+                        const user = interaction.options.getUser("user") || interaction.user;
+                        return await this.discordFormat.discordProfileDetail(interaction, user);
+                }
+                catch (error) {
+                    console.error('Error in slash discord-profile command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            CreateMutedRole: () => ({
+                data: new SlashCommandBuilder()
+                .setName("createmutedrole")
+                .setDescription("Create a muted role"),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        return await this.discordFormat.createMutedRole(interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash createmutedrole command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            muteUser: () => ({
+                data: new SlashCommandBuilder()
+                .setName("mute")
+                .setDescription("Mute a user")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to mute")
+                      .setRequired(true)
+                  ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const user = interaction.options.getUser("user");
+                        return await this.discordFormat.muteUser(interaction, user.id);
+                }
+                catch (error) {
+                    console.error('Error in slash mute command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                }
+                }
+            }),
+
+            unmuteUser: () => ({
+                data: new SlashCommandBuilder()
+                .setName("unmute")
+                .setDescription("Unmute a user")
+                .addUserOption(option =>
+                    option.setName("user")
+                      .setDescription("The user to unmute")
+                      .setRequired(true)
+                  ),
+                execute: async (interaction) => {
+                    try {
+                        if(!guildAdmin(interaction)) return;
+                        const user = interaction.options.getUser("user");
+                        return await this.discordFormat.unmuteUser(interaction, user.id);
+                }
+                catch (error) {
+                    console.error('Error in slash unmute command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                
+                }}
+            }),
+
+            backup: () => ({
+                data: new SlashCommandBuilder()
+                .setName("backup")
+                .setDescription("Backup the server"),
+                execute: async (interaction) => {
+                    try {
+                        if(interaction.user !== config.ownerId[0]) return interaction.reply({ content: `${discordEmotes.error} You are not authorized to use this command.`, ephemeral: true });
+                        return await this.backupManager.startBackup(interaction);
+                }
+                catch (error) {
+                    console.error('Error in slash backup command:', error);
+                    await interaction.reply({
+                        content: `${discordEmotes.error} An error occurred while executing the command.`,
+                        ephemeral: true
+                })
+                
+                }}
+            }),
+
+            // blackjack: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("games-blackjack")
+            //     .setDescription("Play a game of blackjack")
+            //     .addStringOption(option =>
+            //         option.setName("bet")
+            //           .setDescription("Type 'all' or enter a number to bet")
+            //           .setRequired(true)
+            //       ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const bet = interaction.options.getString("bet");
+            //             return Games.blackjack(interaction, bet);
+            //         } catch (error) {
+            //             console.error('Error in slash blackjack command:', error);
+            //     }
+            //     }
+            // }),
+
+            // slots: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("games-slots")
+            //     .setDescription("Play a game of slots")
+            //     .addStringOption(option =>
+            //         option.setName("bet")
+            //           .setDescription("Type 'all' or enter a number to bet")
+            //           .setRequired(true)
+            //       ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const bet = interaction.options.getString("bet");
+            //             return Games.slots(interaction, bet);
+            //         } catch (error) {
+            //             console.error('Error in slash slots command:', error);
+            //     }
+            // }
+            // }),
+
+            // flipCoin: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("games-flipcoin")
+            //     .setDescription("Flip a coin")
+            //     .addStringOption(option =>
+            //         option.setName("bet")
+            //           .setDescription("Type 'all' or enter a number to bet")
+            //           .setRequired(true)
+            //       )
+            //       .addStringOption(option =>
+            //         option.setName("guess")
+            //           .setDescription("Type 'h' for head or 't' for tail")
+            //           .setRequired(true)
+            //       ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const guess = interaction.options.getString("guess");
+            //             const bet = interaction.options.getString("bet");
+            //             return Games.coinFlip(interaction, bet, guess);
+            //         } catch (error) {
+            //             console.error('Error in slash flipcoin command:', error);
+            //     }
+            // }
+            // }),
+
+            // guessNumber: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("games-guessnumber")
+            //     .setDescription("Guess a number")
+            //     .addStringOption(option =>
+            //         option.setName("bet")
+            //           .setDescription("Type 'all' or enter a number to bet")
+            //           .setRequired(true)
+            //       )
+            //       .addIntegerOption(option =>
+            //         option.setName("guess")
+            //           .setDescription("Enter a number to guess")
+            //           .setRequired(true)
+            //           .setMinValue(1)
+            //           .setMaxValue(10)
+            //       ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const guess = interaction.options.getInteger("guess");
+            //             const bet = interaction.options.getString("bet");
+            //             return Games.numberGuess(interaction, bet, guess);
+            //         } catch (error) {
+            //             console.error('Error in slash guessnumber command:', error);
+            //     }
+            // }
+            // }),
+
+            // dice: () => ({
+            //     data: new SlashCommandBuilder()
+            //     .setName("games-dice")
+            //     .setDescription("Roll the dice")
+            //     .addStringOption(option =>
+            //         option.setName("bet")
+            //           .setDescription("Type 'all' or enter a number to bet")
+            //           .setRequired(true)
+            //       )
+            //       .addIntegerOption(option =>
+            //         option.setName("guess")
+            //           .setDescription("Enter a number to guess (2-12)")
+            //           .setRequired(true)
+            //           .setMinValue(2)
+            //           .setMaxValue(12)
+            //       ),
+            //     execute: async (interaction) => {
+            //         try {
+            //             const guess = interaction.options.getInteger("guess");
+            //             const bet = interaction.options.getString("bet");
+            //             return Games.diceRoll(interaction, bet, guess);
+            //         } catch (error) {
+            //             console.error('Error in slash dice command:', error);
+            //     }
+            // }
+            // })
 
 
             // Add more command builders here

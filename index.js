@@ -1063,7 +1063,7 @@ const commands = {
       );
     }
   },
-  // batas slash command 5-4-25
+
   disablewelcome: async (message) => {
     if(!guildAdmin(message)) return;
     try {
@@ -1124,9 +1124,11 @@ const commands = {
     }
   },
   daily: (message) => {
+    const userData = dataManager.getUser(message.author.id);
+    if(!userData) return message.reply(`You don't have an account yet!, use ${config.defaultPrefix}register`);
     const setCD = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     const now = Date.now();
-    const lastDaily = dataManager.users[message.author.id].lastDaily;
+    const lastDaily = userData.stats.lastDaily;
     if (lastDaily && now - lastDaily < setCD) {
       const timeLeft = lastDaily + setCD - now;
       return message.reply(
@@ -1257,11 +1259,11 @@ const commands = {
     const guildId = message.guild.id;
     await discordFormat.raidServer(guildId, message);
   },
-  generateanime: (message, args)=>{
-    if(args.length < 2) return message.reply(`Usage: ${prefix}generateanime <prompt>`);
-    const prompt = args.slice(1).join(" ");
-    return apiManagement.generateAnime(message, prompt);
-  },
+  // generateanime: (message, args)=>{
+  //   if(args.length < 2) return message.reply(`Usage: ${prefix}generateanime <prompt>`);
+  //   const prompt = args.slice(1).join(" ");
+  //   return apiManagement.generateAnime(message, prompt);
+  // },
   generateimg: (message, args)=>{
     if(args.length < 2) return message.reply(`Usage: ${prefix}generateimg <prompt>`);
     const prompt = args.slice(1).join(" ");
@@ -1287,6 +1289,7 @@ const commands = {
       if(message.author.id !== config.ownerId[0]) return message.reply("You don't have permission to use this command.");
       
       const splitted = args.slice(1).join(" ").split("|");
+      if(splitted.length < 2) return message.reply(`${discordEmotes.error} usage : ${config.defaultPrefix}nc <commands> | <description.`);
       const newCommands = splitted[0];
       const description = splitted[1];
       if (!description || !newCommands) {
@@ -1294,66 +1297,7 @@ const commands = {
           `${discordEmotes.error} Please provide a description for the new commands.`
         );
       }
-
-      // Fetch the announcement channel using the correct config property
-      const channelId = config.newCommandsChannelID; // Fixed: Using correct config property
-
-      // Validate channel ID
-      if (!channelId) {
-        return message.reply(
-          `${discordEmotes.error} Configuration error: Missing announcement channel ID.`
-        );
-      }
-      const newCommandsEmbed = new EmbedBuilder()
-   .setColor("#00FF00")
-   .setTitle("📢 NEW COMMANDS ALERT")
-   .setDescription(`**📋 New Commands: \`\`\`${newCommands}\`\`\`**`)
-   .addFields(
-       { 
-           name: "📝 Command Descriptions", 
-           value: `\`\`\`
-${description}
-\`\`\``, 
-           inline: false 
-       }
-   )
-   .setThumbnail(client.user.displayAvatarURL())
-   .setTimestamp()
-   .setFooter({
-       text: `Announced by ${message.author.tag}`,
-       iconURL: message.author.displayAvatarURL()
-   });
-      try {
-        // Fetch the announcement channel
-        const channel = await client.channels.fetch(channelId);
-
-        // Validate if the channel exists and is a text channel
-        if (!channel || !channel.isTextBased()) {
-          return message.reply(
-            `${discordEmotes.error} The specified channel does not exist or is not a text channel.`
-          );
-        }
-
-        // Send the announcement
-        const sentMessage = await channel.send({
-          embeds: [newCommandsEmbed],
-          allowedMentions: { parse: ["users", "roles"] }, // Safer mention handling
-        });
-
-        // Try to crosspost if it's an announcement channel
-        if (channel.type === ChannelType.GuildAnnouncement) {
-          await sentMessage.crosspost();
-          await message.reply(
-            "✅ New commands successfully sent and published!"
-          );
-        } else {
-          await message.reply("✅ New commands successfully sent!");
-        }
-      } catch (channelError) {
-        return message.reply(
-          `${discordEmotes.error} Failed to access the announcement channel. Please check channel permissions.`
-        );
-      }
+      await discordFormat.newCommandAnnouncement(message, newCommands, description);
     } catch (error) {
       console.error("Error in 'ga' command:", error);
       await message.reply(
@@ -1399,7 +1343,7 @@ ${description}
     if (args.length < 1) return message.reply(`${discordEmotes.error} Usage: ${prefix}dprofile <@user?>`);
     let user = message.mentions.users.first();
     if (!user) user = message.author;
-    return await discordFormat.DiscordProfileDetail(message, user);
+    return await discordFormat.discordProfileDetail(message, user);
   },
   cmr: async (message) => {
     // administrator

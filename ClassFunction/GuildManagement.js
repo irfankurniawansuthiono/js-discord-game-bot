@@ -25,13 +25,13 @@ class GuildManagement {
         if (this.guildData[guildId]) {
             this.guildData[guildId].voiceLogs = channelId;
             this.saveData();
-            message.reply("Voice logs channel has been set.");
+            message.reply({content : `${discordEmotes.success} Voice logs channel has been set to <#${channelId}>.`, ephemeral : true});
             return this.guildData[guildId];
         }else { 
             this.createGuild(guildId);
             this.guildData[guildId].voiceLogs = channelId;
             this.saveData();
-            message.reply("Voice logs channel has been set.");
+            message.reply({content : `${discordEmotes.success} Voice logs channel has been set to <#${channelId}>.`, ephemeral : true});
             return this.guildData[guildId];
         }
     }
@@ -340,7 +340,7 @@ class GuildManagement {
         try {
             const guildConfig = this.getGuild(guildId);
             if (!guildConfig || (!guildConfig.welcome.welcomeChannel && isTest)) {
-                return message.reply('Welcome channel is not configured in this server.');
+                return message.reply({content:'Welcome channel is not configured in this server.', ephemeral: true});
             }
             if (!guildConfig || !guildConfig.welcome.welcomeChannel) {
                 return;
@@ -383,7 +383,7 @@ class GuildManagement {
         try {
             const guildConfig = this.getGuild(guildId);
             if (!guildConfig || (!guildConfig.welcome.leaveChannel && isTest)) {
-                return message.reply('Leave channel is not configured. in this server');  
+                return message.reply({content:'Leave channel is not configured. in this server', ephemeral: true});  
             }
             if (!guildConfig || !guildConfig.welcome.leaveChannel){
                 return;
