@@ -232,6 +232,7 @@ const pages = {
           "`✅ clt jawab` - Answer tebak gambar",
           "`🔧 setupguild <guild_name>` - Setup guild server",
           "`🔧 setupbusinessguild <guild_name>` - Setup business server",
+          "`🔧 setupcheatguild <guild_name>` - Setup cheat seller server",
           "`📝 nc <new cmd> |<description>` - Announce new commands",
           "`⚠️ resetrepo` - Reset PUBLIC UPLOADS Repository",
           "`⚠️ backup` - Backup files (players and guilds)",

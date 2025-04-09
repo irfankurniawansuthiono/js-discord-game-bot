@@ -52,6 +52,10 @@ class DiscordFormat {
     const guildId = message.guild.id;
     return guildManagement.setupGuild(message.client, guildId, channelName);
   }
+  setupCheatGuild(message, channelName) {
+    const guildId = message.guild.id;
+    return guildManagement.setupCheatGuild(message.client, guildId, channelName);
+  }
   setupBusinessGuild(message, channelName) {
     const guildId = message.guild.id;
     return guildManagement.setupBusinessGuild(

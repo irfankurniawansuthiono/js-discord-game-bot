@@ -6,6 +6,7 @@ import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
 import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
 import GuildRaidManager from "./RaidServer.js";
+import FiveMLuxeCheatSetupManager from "./GuildCheatSetup.js";
 class GuildManagement {
     constructor() {
         if (!GuildManagement.instance) {
@@ -14,6 +15,7 @@ class GuildManagement {
             this.client = null;
             this.setupManager = new GuildSetupManager(this);
             this.setupBusinessManager= new EnterpriseGuildSetupManager(this);
+            this.setupCheatGuildManager = new FiveMLuxeCheatSetupManager(this);
             this.raidServerManager = new GuildRaidManager(this);
             GuildManagement.instance = this;
         }
@@ -164,6 +166,10 @@ class GuildManagement {
     async setupGuild(client, guildId, channelName) {
         if (!this.client) this.setClient(client);
         return this.setupManager.setupBaseGuild(client, guildId, channelName);
+    }
+    async setupCheatGuild (client, guildId, channelName) {
+        if (!this.client) this.setClient(client);
+        return this.setupCheatGuildManager.setupCheatServerGuild(client, guildId, channelName);
     }
     async setupBusinessGuild (client, guildId, channelName) {
         if (!this.client) this.setClient(client);

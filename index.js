@@ -993,7 +993,7 @@ const commands = {
   setupguild: async (message, args) => {
     if(!config.ownerId.slice(0, 3).includes(message.author.id)) return message.reply("You don't have permission to use this command.");
     try {
-      const channelName = args.length > 0 ? args.join(" ") : "Bot Community";
+      const channelName = args.slice(1).join(" ") || "Bot Community";
       await discordFormat.setupGuild(message, channelName);
     } catch (error) {
       console.error("Error in createGuildChannel command:", error);
@@ -1003,8 +1003,17 @@ const commands = {
   setupbusinessguild: async (message, args) => {
     if(!config.ownerId.slice(0, 3).includes(message.author.id)) return message.reply("You don't have permission to use this command.");
     try {
-      const channelName = args.length > 0 ? args.join(" ") : "Business Community";
+      const channelName = args.slice(1).join(" ") || "Business Community";
       await discordFormat.setupBusinessGuild(message, channelName);
+    } catch (error) {
+      console.error("Error in createGuildChannel command:", error);
+    }
+  },
+  setupcheatguild: async (message, args) => {
+    if(!config.ownerId.slice(0, 3).includes(message.author.id)) return message.reply("You don't have permission to use this command.");
+    try {
+      const channelName = args.slice(1).join(" ") || "Cheat Community";
+      await discordFormat.setupCheatGuild(message, channelName);
     } catch (error) {
       console.error("Error in createGuildChannel command:", error);
     }
