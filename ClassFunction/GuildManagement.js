@@ -339,12 +339,16 @@ class GuildManagement {
     async sendWelcomeMessage(client, guildId, user, isTest = false, message) {
         try {
             const guildConfig = this.getGuild(guildId);
-            if (!guildConfig || (!guildConfig.welcome.welcomeChannel && isTest)) {
-                return message.reply({content:'Welcome channel is not configured in this server.', ephemeral: true});
+            const welcomeChannelId = guildConfig?.welcome?.welcomeChannel;
+
+            if (!welcomeChannelId && isTest) {
+                return message?.reply?.({
+                    content: 'Welcome channel is not configured in this server.',
+                    ephemeral: true
+                });
             }
-            if (!guildConfig || !guildConfig.welcome.welcomeChannel) {
-                return;
-            }
+            if (!welcomeChannelId) return;
+            
             const channel = client.channels.cache.get(guildConfig.welcome.welcomeChannel);
             if (!channel) {
                 return;
