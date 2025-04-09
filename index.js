@@ -991,7 +991,7 @@ const commands = {
     }
   },
   setupguild: async (message, args) => {
-    if(!config.ownerId.slice(0, 3).includes(message.author.id)) return ;
+    if(!config.ownerId.slice(0, 3).includes(message.author.id)) return message.reply("You don't have permission to use this command.");
     try {
       const channelName = args.length > 0 ? args.join(" ") : "Bot Community";
       await discordFormat.setupGuild(message, channelName);
