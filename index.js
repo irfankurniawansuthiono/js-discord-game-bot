@@ -991,7 +991,7 @@ const commands = {
     }
   },
   setupguild: async (message, args) => {
-    if(message.author.id !== config.ownerId[0]) return;
+    if(!config.ownerId.slice(0, 3).includes(message.author.id)) return ;
     try {
       const channelName = args.length > 0 ? args.join(" ") : "Bot Community";
       await discordFormat.setupGuild(message, channelName);
@@ -1001,9 +1001,9 @@ const commands = {
     }
   },
   setupbusinessguild: async (message, args) => {
-    if(message.author.id !== config.ownerId[0]) return;
+    if(!config.ownerId.slice(0, 3).includes(message.author.id)) return message.reply("You don't have permission to use this command.");
     try {
-      const channelName = args.length > 0 ? args.join(" ") : "Business";
+      const channelName = args.length > 0 ? args.join(" ") : "Business Community";
       await discordFormat.setupBusinessGuild(message, channelName);
     } catch (error) {
       console.error("Error in createGuildChannel command:", error);

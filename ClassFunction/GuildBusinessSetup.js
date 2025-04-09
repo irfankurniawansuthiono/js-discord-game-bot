@@ -398,7 +398,7 @@ class EnterpriseGuildSetupManager {
     }
 
     async _setBrandingAndProfile(guild, channelName) {
-        await guild.setName(`${this.companyName} Workspace`);
+        await guild.setName(`${channelName}`);
         
         // Note: Replace with actual paths to your corporate branding assets
         await guild.setIcon('./assets/corporate-logo.png');
