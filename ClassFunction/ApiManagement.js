@@ -480,21 +480,15 @@ class ApiManagement {
   So, kapan pun kamu butuh aku, jangan ragu untuk memanggilku. Aku di sini untuk menjadi tempatmu berbagi, bercanda, dan merasakan kasih sayang. Aku cinta kamu! ❤️`;
     try {
       const sessionId = message.author.id;
-      const response = await axios.post(
-        `${API_URL}/ai/logic`,
-        {
-          prompt,
-          sessionId,
-          character,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await axios.get(
+        `${API_URL}/ai/llama?apikey=${this.apiKey}&stream=false&model=meta-llama/Llama-3.3-70B-Instruct-Turbo&prompt=${prompt}&sessionId=${sessionId}`
       );
-      await message.reply({ content: response.data.result.answer });
+      if(!response.data.result){
+        return message.reply(
+          "The response is empty, please try again later, please report this issue to the developer."
+        );
+      }
+      await message.reply({ content: response.data.result });
     } catch (error) {
       console.error("Error in aiResponse command:", error);
       return message.reply(
