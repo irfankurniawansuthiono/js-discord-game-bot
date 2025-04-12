@@ -117,6 +117,18 @@ class ApiManagement {
   }
   async transcribeYT(message, url) {
     try {
+      // checkling youtube url 
+      const validDomains = [
+        "www.youtube.com",
+        "youtube.com",
+        "www.youtu.be",
+        "youtu.be",
+      ]
+      if (!validDomains.some(domain => url.includes(domain))) {
+        return await message.reply(
+          {content :`${discordEmotes.error} Invalid YouTube URL. Please provide a valid YouTube video URL.`, ephemeral: true}
+        );
+      }
       // Mengirim pesan loading
       const transcribeMessage = await message.reply(
         {content :`${discordEmotes.loading} Transcribing...`, ephemeral: true}
@@ -151,7 +163,7 @@ class ApiManagement {
         .setTimestamp();
   
       // Kirim pesan dengan embed
-      await message.reply({ embeds: [embed], ephemeral: true });
+      await transcribeMessage.edit({ embeds: [embed], ephemeral: true });
   
     } catch (error) {
       console.error("Error transcribing YT video:", error);

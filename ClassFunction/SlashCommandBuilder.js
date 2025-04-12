@@ -2266,7 +2266,7 @@ class SlashCommands {
                 .setDescription("Reset the public-uploads repository"),
                 execute: async (interaction) => {
                     try {
-                        if(!interaction.user !== config.ownerId[0]) return interaction.reply({ content: `${discordEmotes.error} You are not authorized to use this command.`, ephemeral: true });
+                        if(interaction.user !== config.ownerId[0]) return interaction.reply({ content: `${discordEmotes.error} You are not authorized to use this command.`, ephemeral: true });
                         return await this.githubCron.resetPublicUploads(interaction);
                 }
                 catch (error) {
