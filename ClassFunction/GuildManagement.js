@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config, discordEmotes } from "../config.js";
 import fs from "fs";
 import { createCanvas } from "canvas";
 import { loadImage } from "canvas";
