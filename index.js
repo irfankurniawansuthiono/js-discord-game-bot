@@ -1478,6 +1478,7 @@ client.on("guildMemberAdd", async (member) => {
   guildManagement.sendWelcomeMessage(client, member.guild.id, member);
 });
 
+
 const voiceJoinLogs = new Map();
 
 client.on("voiceStateUpdate", async (oldState, newState) => {
@@ -1486,6 +1487,7 @@ client.on("voiceStateUpdate", async (oldState, newState) => {
   // Check if this was a forced move by getting the guild audit logs
   let mover = null;
   let wasForced = false;
+
   // Check for a recent MEMBER_DISCONNECT audit log
   if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
     try {
