@@ -22,11 +22,11 @@ class DataManager {
     return this.saveData();
   }
 
-  async showLeaderBoard(message) {
-    const sortedUsers = Object.entries(dataManager.users)
-      .sort(([, a], [, b]) => b.balance - a.balance)
-      .slice(0, 10);
-  
+  async showLeaderBoard(message, client) {
+    const users = this.getAllUsers();
+    // get balance terbesar
+    const sortedUsers = Object.entries(users).sort(([, a], [, b]) => b.balance - a.balance);
+    console.log(sortedUsers);
     const medalEmojis = ["🥇", "🥈", "🥉"]; // Untuk Top 3
     const defaultEmoji = "🏅"; // Untuk posisi 4 sampai 10
   
@@ -49,7 +49,7 @@ class DataManager {
         iconURL: message.client.user.displayAvatarURL(),
       })
       .setTimestamp();
-  
+      
     return message.reply({ embeds: [leaderboardEmbed], ephemeral: true });
   }
   

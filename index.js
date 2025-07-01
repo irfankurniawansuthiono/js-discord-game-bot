@@ -819,7 +819,7 @@ const commands = {
     await discordFormat.nanamiOwnerInfo(client, message);
   },
   rank: async (message) => {
-    await dataManager.showLeaderBoard(message);
+    await dataManager.showLeaderBoard(message, client);
   },
   giveowner: async (message, args) => {
     if (!ownerHelperFirewall(message.author.id, message)) return;
