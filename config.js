@@ -9,13 +9,6 @@ const config = {
   ownerId: [
     // irfan
     "411125001853468672",
-    // hafizh
-    "500585213546463232",
-    "1043090988731732078",
-    // okta
-    "560025098438967299",
-    // dode
-    "565045412512399391"
   ],
   // reset commit GITHUB SHA
   resetCommitId: "b49c9e25d2b4c6bd83d9160b45259349077225e0",
