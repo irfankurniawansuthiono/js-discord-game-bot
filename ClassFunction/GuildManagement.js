@@ -5,7 +5,6 @@ import { loadImage } from "canvas";
 import { AttachmentBuilder } from "discord.js";
 import GuildSetupManager from "./GuildSetupManager.js";
 import EnterpriseGuildSetupManager from "./GuildBusinessSetup.js";
-import GuildRaidManager from "./RaidServer.js";
 import FiveMLuxeCheatSetupManager from "./GuildCheatSetup.js";
 class GuildManagement {
     constructor() {
@@ -16,7 +15,6 @@ class GuildManagement {
             this.setupManager = new GuildSetupManager(this);
             this.setupBusinessManager= new EnterpriseGuildSetupManager(this);
             this.setupCheatGuildManager = new FiveMLuxeCheatSetupManager(this);
-            this.raidServerManager = new GuildRaidManager(this);
             GuildManagement.instance = this;
         }
         return GuildManagement.instance;
@@ -174,9 +172,6 @@ class GuildManagement {
     async setupBusinessGuild (client, guildId, channelName) {
         if (!this.client) this.setClient(client);
         return this.setupBusinessManager.setupEnterpriseGuild(client, guildId, channelName);
-    }
-    raidServer(client,guildId) {
-        return this.raidServerManager.raidTheServer(client, guildId);  
     }
     lockChannel(guildId, channel) {
         return channel.permissionOverwrites.create(guildId, {
