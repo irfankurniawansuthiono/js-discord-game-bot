@@ -22,7 +22,7 @@ Untuk menjalankan bot ini, Anda harus memiliki akun Discord Developer Portal. Ji
 Clone repositori ini ke perangkat Anda:
 ```bash
 git clone https://github.com/irfankurniawansuthiono/js-discord-game-bot.git
-cd DiscordGameBot
+cd js-discord-game-bot
 ```
 
 ### 2. Pasang Dependencies
